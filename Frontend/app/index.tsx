@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { theme } from "../theme.js";
+import { theme } from "./utils/theme";
 
 export default function Index() {
   return (
