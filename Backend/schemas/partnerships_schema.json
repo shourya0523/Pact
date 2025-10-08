@@ -1,0 +1,44 @@
+{
+    "Partnerships": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["PartnershipID", "UserID_1", "UserID_2", "Status"],
+        "properties": {
+          "PartnershipID": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "UserID_1": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to first User"
+          },
+          "UserID_2": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to second User"
+          },
+          "Status": {
+            "enum": ["pending", "active", "completed", "broken"],
+            "description": "Current partnership status"
+          },
+          "Current_streak": {
+            "bsonType": "int",
+            "description": "Current active streak count in days",
+            "minimum": 0
+          },
+          "longest_streak": {
+            "bsonType": "int",
+            "description": "Longest streak achieved in this partnership",
+            "minimum": 0
+          },
+          "CreatedAt": {
+            "bsonType": "date",
+            "description": "Partnership creation timestamp"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"UserID_1": 1, "UserID_2": 1}},
+        {"key": {"Status": 1}}
+      ]
+    }
+  }

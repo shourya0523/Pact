@@ -1,0 +1,368 @@
+{
+    "User": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["UserID", "name", "username", "email", "password"],
+        "properties": {
+          "UserID": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "name": {
+            "bsonType": "string",
+            "description": "User's display name"
+          },
+          "username": {
+            "bsonType": "string",
+            "description": "Unique username for searching and identification"
+          },
+          "email": {
+            "bsonType": "string",
+            "description": "User's email address"
+          },
+          "password": {
+            "bsonType": "string",
+            "description": "Hashed password"
+          },
+          "phone_number": {
+            "bsonType": "string",
+            "description": "Optional phone number for invites"
+          },
+          "notification_preferences": {
+            "bsonType": "object",
+            "description": "JSON object storing notification settings"
+          },
+          "partner_preferences": {
+            "bsonType": "object",
+            "description": "JSON object storing partner matching preferences"
+          },
+          "last_login": {
+            "bsonType": "date",
+            "description": "Timestamp of last login"
+          },
+          "created_at": {
+            "bsonType": "date",
+            "description": "Account creation timestamp"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"username": 1}, "unique": true},
+        {"key": {"email": 1}, "unique": true}
+      ]
+    },
+  
+    "Partnerships": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["PartnershipID", "UserID_1", "UserID_2", "Status"],
+        "properties": {
+          "PartnershipID": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "UserID_1": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to first User"
+          },
+          "UserID_2": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to second User"
+          },
+          "Status": {
+            "enum": ["pending", "active", "completed", "broken"],
+            "description": "Current partnership status"
+          },
+          "Current_streak": {
+            "bsonType": "int",
+            "description": "Current active streak count in days",
+            "minimum": 0
+          },
+          "longest_streak": {
+            "bsonType": "int",
+            "description": "Longest streak achieved in this partnership",
+            "minimum": 0
+          },
+          "CreatedAt": {
+            "bsonType": "date",
+            "description": "Partnership creation timestamp"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"UserID_1": 1, "UserID_2": 1}},
+        {"key": {"Status": 1}}
+      ]
+    },
+  
+    "Habit": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Habit_Id", "Partnership_id", "Habit_name", "Habit_type", "Habit_category"],
+        "properties": {
+          "Habit_Id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "Partnership_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to Partnership"
+          },
+          "Habit_name": {
+            "bsonType": "string",
+            "description": "Clear, action-oriented habit name"
+          },
+          "Habit_type": {
+            "enum": ["build", "break"],
+            "description": "Whether building a positive habit or breaking a negative one"
+          },
+          "Habit_category": {
+            "enum": ["exercise", "productivity", "health", "social", "finance", "sleep", "nutrition", "mindfulness"],
+            "description": "Category of the habit"
+          },
+          "Habit_description": {
+            "bsonType": "string",
+            "description": "Optional detailed description of what counts as completion"
+          },
+          "created_at": {
+            "bsonType": "date",
+            "description": "Habit creation timestamp"
+          },
+          "is_active": {
+            "bsonType": "bool",
+            "description": "Whether habit is currently active",
+            "default": true
+          },
+          "Broken": {
+            "bsonType": "bool",
+            "description": "Whether the habit streak has been broken",
+            "default": false
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"Partnership_id": 1}},
+        {"key": {"is_active": 1}}
+      ]
+    },
+  
+    "HabitLog": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Log_id", "Habit_id", "User_id", "Log_date", "completed"],
+        "properties": {
+          "Log_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "Habit_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to Habit"
+          },
+          "User_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to User who logged"
+          },
+          "Log_date": {
+            "bsonType": "date",
+            "description": "Date of the habit completion"
+          },
+          "completed": {
+            "bsonType": "bool",
+            "description": "Whether habit was completed (yes/no toggle)"
+          },
+          "timestamp": {
+            "bsonType": "date",
+            "description": "Timestamp when log was created"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"Habit_id": 1, "User_id": 1, "Log_date": 1}, "unique": true},
+        {"key": {"Log_date": 1}}
+      ]
+    },
+  
+    "StreakHistory": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Streak_id", "Partnership_id", "Habit_id", "Streak_start_date"],
+        "properties": {
+          "Streak_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "Partnership_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to Partnership"
+          },
+          "Habit_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to Habit"
+          },
+          "Streak_start_date": {
+            "bsonType": "date",
+            "description": "Date the streak started"
+          },
+          "Streak_end_date": {
+            "bsonType": "date",
+            "description": "Date the streak ended (null if ongoing)"
+          },
+          "Streak_length_days": {
+            "bsonType": "int",
+            "description": "Total length of streak in days",
+            "minimum": 0
+          },
+          "Ended_reason": {
+            "enum": ["missed_checkin", "partnership_ended", "habit_archived", "ongoing"],
+            "description": "Reason the streak ended"
+          },
+          "Created_at": {
+            "bsonType": "date",
+            "description": "Record creation timestamp"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"Partnership_id": 1, "Habit_id": 1}},
+        {"key": {"Streak_start_date": 1}}
+      ]
+    },
+  
+    "Notification": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Notification_id", "UserID", "Noti_type"],
+        "properties": {
+          "Notification_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "UserID": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to User receiving notification"
+          },
+          "PartnershipID": {
+            "bsonType": "objectId",
+            "description": "Optional foreign key reference to related Partnership"
+          },
+          "Noti_type": {
+            "enum": ["reminder", "partner_completed", "nudge", "streak_broken", "milestone", "partner_request"],
+            "description": "Type of notification"
+          },
+          "Noti_title": {
+            "bsonType": "string",
+            "description": "Notification headline"
+          },
+          "Noti_description": {
+            "bsonType": "string",
+            "description": "Detailed notification message"
+          },
+          "Noti_IsRead": {
+            "bsonType": "bool",
+            "description": "Whether notification has been read",
+            "default": false
+          },
+          "Noti_CreatedAt": {
+            "bsonType": "date",
+            "description": "When notification was created"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"UserID": 1, "Noti_IsRead": 1}},
+        {"key": {"Noti_CreatedAt": -1}}
+      ]
+    },
+  
+    "PartnerRequests": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["request_id", "Sender_id", "Receiver_id"],
+        "properties": {
+          "request_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "Sender_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to User who sent request"
+          },
+          "Receiver_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to User receiving request"
+          },
+          "status": {
+            "enum": ["pending", "accepted", "rejected", "expired"],
+            "description": "Current status of request",
+            "default": "pending"
+          },
+          "message": {
+            "bsonType": "string",
+            "description": "Optional personal message with request"
+          },
+          "sent_at": {
+            "bsonType": "date",
+            "description": "When request was sent"
+          },
+          "responded_at": {
+            "bsonType": "date",
+            "description": "When request was accepted/rejected"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"Sender_id": 1, "Receiver_id": 1}},
+        {"key": {"status": 1}},
+        {"key": {"sent_at": -1}}
+      ]
+    },
+  
+    "Milestone": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Milestone_id", "HabitID", "Milestone_name", "threshold_value"],
+        "properties": {
+          "Milestone_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "HabitID": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to Habit"
+          },
+          "Milestone_name": {
+            "bsonType": "string",
+            "description": "Name of the planet/milestone (e.g., 'Mercury', 'Venus')"
+          },
+          "threshold_value": {
+            "bsonType": "int",
+            "description": "Days required to reach this milestone",
+            "minimum": 1
+          },
+          "Rewarded_points": {
+            "bsonType": "int",
+            "description": "Points awarded for reaching milestone",
+            "minimum": 0
+          },
+          "Description": {
+            "bsonType": "string",
+            "description": "Description of the milestone achievement"
+          },
+          "is_achieved": {
+            "bsonType": "bool",
+            "description": "Whether partnership has achieved this milestone",
+            "default": false
+          },
+          "achieved_at": {
+            "bsonType": "date",
+            "description": "Timestamp when milestone was achieved"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"HabitID": 1}},
+        {"key": {"threshold_value": 1}}
+      ]
+    }
+  }
