@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from config.database import connect_to_mongo, close_mongo_connection
-from app.routes import auth, partnership
+from app.routes import auth, partnership, habits
 import os
 from dotenv import load_dotenv
 
@@ -35,6 +35,8 @@ app.add_middleware(
 # Include routers
 app.include_router(auth.router)
 app.include_router(partnership.router)
+app.include_router(habits.router)
+
 
 @app.get("/")
 async def root():
