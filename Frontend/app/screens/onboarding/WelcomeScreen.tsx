@@ -1,6 +1,6 @@
 // Welcome screen file
 import React from "react";
-import { View, Text, StyleSheet, Button } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../../assets/theme";
 import { useRouter } from "expo-router";
@@ -19,7 +19,12 @@ export default function Index() {
         <Text style={styles.logoText}>Logo</Text>
       </View>
       <Text style={styles.title}>PACT</Text>
-      <Button title="Continue" onPress={() => router.push("/screens/auth/SignupScreen")} />
+      
+      <TouchableOpacity style={styles.continueButton} activeOpacity={0.8} onPress={() => router.push("/screens/auth/LoginScreen")}>
+
+        <Text style={styles.continueText}>Continue →</Text>
+
+      </TouchableOpacity>
     </LinearGradient>
   )
 }
@@ -56,5 +61,28 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontWeight: "700",
     letterSpacing: 4,
+  },
+
+  continueButton: {
+    // marginTop: 48,
+    // borderWidth: 1,
+    // borderColor: "rgba(255, 255, 255, 0.6)",
+    paddingVertical: 14,
+    paddingHorizontal: 36,
+    borderRadius: 10,
+    shadowColor: "transparent",
+  },
+
+  continueGradient: {
+    paddingVertical: 14,
+    alignItems: "center",
+    borderRadius: 30,
+  },
+
+  continueText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "600",
+    letterSpacing: 0.5,
   }
 })

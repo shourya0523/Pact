@@ -53,16 +53,16 @@ const styles = StyleSheet.create({
     },
 
     title: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: "bold",
         color: theme.colors.text,
-        marginBottom: 24,
+        marginBottom: 50,
     },
 
     input: {
         width: "100%",
         backgroundColor: "#FFFFFF",
-        borderRadius: theme.sizes.radius,
+        borderRadius: theme.sizes.radiusText,
         height: theme.sizes.inputHeight,
         paddingHorizontal: 16,
         marginVertical: 8,
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
 
     button: {
         width: "100%",
-        borderRadius: theme.sizes.radius,
+        borderRadius: theme.sizes.radiusButton,
         height: theme.sizes.inputHeight,
         alignItems: "center",
         justifyContent: "center",
@@ -89,13 +89,14 @@ const styles = StyleSheet.create({
     },
 
     googleText: {
-        color: theme.colors.text
+        color: theme.colors.text,
+        fontSize: 14,
     },
 
     orText: {
         color: theme.colors.text,
         marginVertical: 16,
-        fontSize: 12,
+        fontSize: 14,
     },
 
     primaryButton: {
