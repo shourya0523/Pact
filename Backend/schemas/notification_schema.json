@@ -1,0 +1,47 @@
+{
+    "Notification": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Notification_id", "UserID", "Noti_type"],
+        "properties": {
+          "Notification_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "UserID": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to User receiving notification"
+          },
+          "PartnershipID": {
+            "bsonType": "objectId",
+            "description": "Optional foreign key reference to related Partnership"
+          },
+          "Noti_type": {
+            "enum": ["reminder", "partner_completed", "nudge", "streak_broken", "milestone", "partner_request"],
+            "description": "Type of notification"
+          },
+          "Noti_title": {
+            "bsonType": "string",
+            "description": "Notification headline"
+          },
+          "Noti_description": {
+            "bsonType": "string",
+            "description": "Detailed notification message"
+          },
+          "Noti_IsRead": {
+            "bsonType": "bool",
+            "description": "Whether notification has been read",
+            "default": false
+          },
+          "Noti_CreatedAt": {
+            "bsonType": "date",
+            "description": "When notification was created"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"UserID": 1, "Noti_IsRead": 1}},
+        {"key": {"Noti_CreatedAt": -1}}
+      ]
+    }
+  }

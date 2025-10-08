@@ -1,0 +1,49 @@
+{ 
+    "Milestone": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Milestone_id", "HabitID", "Milestone_name", "threshold_value"],
+        "properties": {
+          "Milestone_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "HabitID": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to Habit"
+          },
+          "Milestone_name": {
+            "bsonType": "string",
+            "description": "Name of the planet/milestone (e.g., 'Mercury', 'Venus')"
+          },
+          "threshold_value": {
+            "bsonType": "int",
+            "description": "Days required to reach this milestone",
+            "minimum": 1
+          },
+          "Rewarded_points": {
+            "bsonType": "int",
+            "description": "Points awarded for reaching milestone",
+            "minimum": 0
+          },
+          "Description": {
+            "bsonType": "string",
+            "description": "Description of the milestone achievement"
+          },
+          "is_achieved": {
+            "bsonType": "bool",
+            "description": "Whether partnership has achieved this milestone",
+            "default": false
+          },
+          "achieved_at": {
+            "bsonType": "date",
+            "description": "Timestamp when milestone was achieved"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"HabitID": 1}},
+        {"key": {"threshold_value": 1}}
+      ]
+    }
+  }
