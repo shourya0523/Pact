@@ -2,6 +2,7 @@ export const theme = {
   colors: {
     backgroundGradientStart: "#DAE5EF",
     backgroundGradientEnd: "#72768F",
+    backgroundColorSolid: "A4A7BC",
     text: "#2C2F38",
     logoCircle: "#FFFFFF",
   },
@@ -13,5 +14,7 @@ export const theme = {
   sizes: {
     logoSize: 100,
     spacing: 16,
+    radius: 10,
+    inputHeight: 50,
   },
 };

@@ -1,55 +1,8 @@
-import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { theme } from "./utils/theme";
+import { Redirect } from "expo-router";
 
+// for now automatically redirects to the welcome screen
+// once add authentication can check if user is loged in and redirect to either
+// auth welcomescreen or just straight to the dashboard welcomescreen
 export default function Index() {
-  return (
-    <LinearGradient
-      colors={[theme.colors.backgroundGradientStart, theme.colors.backgroundGradientEnd]}
-      start={{x: 0, y: 0}}
-      end={{x: 1, y: 0}}
-      style={styles.container}
-    >
-      <View style={styles.logoCircle}>
-        <Text style={styles.logoText}>Logo</Text>
-      </View>
-      <Text style={styles.title}>PACT</Text>
-    </LinearGradient>
-  )
+  return <Redirect href="/screens/onboarding/WelcomeScreen" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  
-  logoCircle: {
-    width: theme.sizes.logoSize,
-    height: theme.sizes.logoSize,
-    borderRadius: theme.sizes.logoSize / 2,
-    backgroundColor: theme.colors.logoCircle,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: theme.sizes.spacing * 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    elevation: 4,
-  },
-
-  logoText: {
-    fontSize: 14,
-    color: theme.colors.text,
-  },
-
-  title: {
-    fontSize: 72,
-    color: theme.colors.text,
-    fontWeight: "700",
-    letterSpacing: 4,
-  }
-})
