@@ -24,7 +24,7 @@ export default function SignupScreen() {
                 <TextInput placeholder="Password" style={styles.input} secureTextEntry></TextInput>
 
                 <TouchableOpacity style={[styles.button, styles.primaryButton]}>
-                    <Text style={styles.primaryButtonText}>Get Started</Text>
+                    <Text style={styles.primaryButtonText}>Create Account</Text>
                 </TouchableOpacity>
 
                 <Text style={styles.footerText}>
