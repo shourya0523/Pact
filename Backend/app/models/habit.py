@@ -50,7 +50,8 @@ class Habit(HabitBase):
     id: str = Field(alias="_id")
     partnership_id: str
     created_by: str
-    status: HabitStatus = HabitStatus.ACTIVE
+    status: HabitStatus = HabitStatus.PENDING_APPROVAL
+    approved_by: Optional[str] = None
     pending_edit: Optional[dict] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -68,6 +69,7 @@ class HabitResponse(BaseModel):
     description: Optional[str]
     partnership_id: str
     status: str
+    created_by: str
     created_at: datetime
 
 
