@@ -1,0 +1,44 @@
+{ 
+    "PartnerRequests": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["request_id", "Sender_id", "Receiver_id"],
+        "properties": {
+          "request_id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "Sender_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to User who sent request"
+          },
+          "Receiver_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to User receiving request"
+          },
+          "status": {
+            "enum": ["pending", "accepted", "rejected", "expired"],
+            "description": "Current status of request",
+            "default": "pending"
+          },
+          "message": {
+            "bsonType": "string",
+            "description": "Optional personal message with request"
+          },
+          "sent_at": {
+            "bsonType": "date",
+            "description": "When request was sent"
+          },
+          "responded_at": {
+            "bsonType": "date",
+            "description": "When request was accepted/rejected"
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"Sender_id": 1, "Receiver_id": 1}},
+        {"key": {"status": 1}},
+        {"key": {"sent_at": -1}}
+      ]
+    }
+  }

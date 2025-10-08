@@ -1,0 +1,52 @@
+{
+    "Habit": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["Habit_Id", "Partnership_id", "Habit_name", "Habit_type", "Habit_category"],
+        "properties": {
+          "Habit_Id": {
+            "bsonType": "objectId",
+            "description": "Primary key"
+          },
+          "Partnership_id": {
+            "bsonType": "objectId",
+            "description": "Foreign key reference to Partnership"
+          },
+          "Habit_name": {
+            "bsonType": "string",
+            "description": "Clear, action-oriented habit name"
+          },
+          "Habit_type": {
+            "enum": ["build", "break"],
+            "description": "Whether building a positive habit or breaking a negative one"
+          },
+          "Habit_category": {
+            "enum": ["exercise", "productivity", "health", "social", "finance", "sleep", "nutrition", "mindfulness"],
+            "description": "Category of the habit"
+          },
+          "Habit_description": {
+            "bsonType": "string",
+            "description": "Optional detailed description of what counts as completion"
+          },
+          "created_at": {
+            "bsonType": "date",
+            "description": "Habit creation timestamp"
+          },
+          "is_active": {
+            "bsonType": "bool",
+            "description": "Whether habit is currently active",
+            "default": true
+          },
+          "Broken": {
+            "bsonType": "bool",
+            "description": "Whether the habit streak has been broken",
+            "default": false
+          }
+        }
+      },
+      "indexes": [
+        {"key": {"Partnership_id": 1}},
+        {"key": {"is_active": 1}}
+      ]
+    }
+  }
