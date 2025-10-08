@@ -1,15 +1,55 @@
-import { Text, View } from "react-native";
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { theme } from "../theme.js";
 
 export default function Index() {
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
+    <LinearGradient
+      colors={[theme.colors.backgroundGradientStart, theme.colors.backgroundGradientEnd]}
+      start={{x: 0, y: 0}}
+      end={{x: 1, y: 0}}
+      style={styles.container}
     >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
-    </View>
-  );
+      <View style={styles.logoCircle}>
+        <Text style={styles.logoText}>Logo</Text>
+      </View>
+      <Text style={styles.title}>PACT</Text>
+    </LinearGradient>
+  )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  
+  logoCircle: {
+    width: theme.sizes.logoSize,
+    height: theme.sizes.logoSize,
+    borderRadius: theme.sizes.logoSize / 2,
+    backgroundColor: theme.colors.logoCircle,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: theme.sizes.spacing * 2,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 6,
+    elevation: 4,
+  },
+
+  logoText: {
+    fontSize: 14,
+    color: theme.colors.text,
+  },
+
+  title: {
+    fontSize: 72,
+    color: theme.colors.text,
+    fontWeight: "700",
+    letterSpacing: 4,
+  }
+})

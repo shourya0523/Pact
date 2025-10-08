@@ -5,12 +5,12 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/components/*": ["./src/components/common/*"],
-      "@/screens/*": ["./src/screens/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@/constants/*": ["./src/constants/*"],
-      "@/navigation/*": ["./src/navigation/*"]
+      "@/hooks/*": ["app/hooks/*"],
+      "@/components/*": ["app/components/common/*"],
+      "@/screens/*": ["app/screens/*"],
+      "@/utils/*": ["app/utils/*"],
+      "@/constants/*": ["app/constants/*"],
+      "@/navigation/*": ["app/navigation/*"]
     }
   },
   "include": [
