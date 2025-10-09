@@ -5,7 +5,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { theme } from "../../assets/theme";
 import { useRouter } from "expo-router";
 
-export default function Index() {
+// TODO: check if token in storage
+export default function WelcomeScreen() {
     const router = useRouter();
     
   return (

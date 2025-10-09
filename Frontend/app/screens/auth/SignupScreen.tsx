@@ -1,11 +1,63 @@
 // Same thing as login screen (can also be a modal )
-import React from "react";
-import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View } from "react-native";
+import React, { useState } from "react";
+import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Alert } from "react-native";
 import { theme } from "../../assets/theme"
 import { useRouter } from "expo-router";
 
 export default function SignupScreen() {
     const router = useRouter();
+    // const [displayName, setDisplayName] = useState(""); TODO: Do we have display name for users????
+    const [username, setUsername] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    // TODO : storing tokens
+    const handleSignup = async () => {
+        if (!username || !email || !password) {
+            Alert.alert("Missing fields", "Please fill out all fields.");
+            return;
+        }
+
+        if (password.length < 8) {
+            Alert.alert("Password too short", "Password must be longer than 8 characters.")
+            return;
+        }
+
+        if (password.length > 72) {
+            Alert.alert("Password too long", "Password connot be longer than 72 characters.");
+            return;
+            // TODO : change this later?
+        }
+
+        console.log({ username, email, password });
+        
+        try {
+            const response = await fetch("http://localhost:8000/auth/signup", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    username,
+                    email,
+                    password,
+                }),
+            });
+            console.log(response.status);
+            const data = await response.json();
+            console.log(data);
+
+            if (response.ok) {
+                router.push("/screens/auth/Onboarding");
+            } else {
+                const errorData = await response.json();
+                Alert.alert("Signup failer", errorData.detail || "Error creating account");
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Network error", "Could not connect to server");
+        }
+    }
 
     return (
         <View style={styles.container}>
@@ -18,12 +70,12 @@ export default function SignupScreen() {
 
                 <Text style={styles.orText}>Or log in with email</Text>
 
-                <TextInput placeholder="Display name" style={styles.input}></TextInput>
-                <TextInput placeholder="Username" style={styles.input}></TextInput>
-                <TextInput placeholder="Email" style={styles.input} keyboardType="email-address"></TextInput>
-                <TextInput placeholder="Password" style={styles.input} secureTextEntry></TextInput>
+                {/* <TextInput placeholder="Display name" style={styles.input}></TextInput> */}
+                <TextInput placeholder="Username" value={username} onChangeText={setUsername} style={styles.input} ></TextInput>
+                <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address"></TextInput>
+                <TextInput placeholder="Password" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry></TextInput>
 
-                <TouchableOpacity style={[styles.button, styles.primaryButton]}>
+                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSignup}>
                     <Text style={styles.primaryButtonText}>Create Account</Text>
                 </TouchableOpacity>
 

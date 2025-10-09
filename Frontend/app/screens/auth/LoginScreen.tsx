@@ -1,11 +1,39 @@
 // Login screen (can also be a modal)
-import React from "react";
-import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View } from "react-native";
+import React, { useState } from "react";
+import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Alert } from "react-native";
 import { theme } from "../../assets/theme"
 import { useRouter } from "expo-router";
 
 export default function LoginScreen() {
     const router = useRouter();
+
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+
+    const handleLogIn = async () => {
+        try {
+            const response = await fetch("http://localhost:8000/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-type": "application/json"
+                },
+                body: JSON.stringify({
+                    email,
+                    password
+                })
+            });
+
+            if (response.ok) {
+                router.push("/screens/main/DashboardScreen");
+            } else {
+                const errorData = await response.json();
+                Alert.alert("Signup failer", errorData.detail || "Error creating account");
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert("Network error", "Could not connect to server");
+        }
+    }
 
     return (
         <View style={styles.container}>
@@ -18,10 +46,10 @@ export default function LoginScreen() {
 
                 <Text style={styles.orText}>Or log in with email</Text>
 
-                <TextInput placeholder="Email" style={styles.input} keyboardType="email-address"></TextInput>
-                <TextInput placeholder="Password" style={styles.input} secureTextEntry></TextInput>
+                <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address"></TextInput>
+                <TextInput placeholder="Password" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry></TextInput>
 
-                <TouchableOpacity style={[styles.button, styles.primaryButton]}>
+                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleLogIn}>
                     <Text style={styles.primaryButtonText}>Log In</Text>
                 </TouchableOpacity>
 
