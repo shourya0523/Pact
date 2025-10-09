@@ -1,49 +1,43 @@
 { 
-    "Milestone": {
+  "milestones": {
+    "validator": {
       "$jsonSchema": {
         "bsonType": "object",
-        "required": ["Milestone_id", "HabitID", "Milestone_name", "threshold_value"],
+        "required": ["habit_id", "milestone_name", "threshold_value"],
         "properties": {
-          "Milestone_id": {
-            "bsonType": "objectId",
-            "description": "Primary key"
+          "_id": {
+            "bsonType": "objectId"
           },
-          "HabitID": {
-            "bsonType": "objectId",
-            "description": "Foreign key reference to Habit"
+          "habit_id": {
+            "bsonType": "objectId"
           },
-          "Milestone_name": {
-            "bsonType": "string",
-            "description": "Name of the planet/milestone (e.g., 'Mercury', 'Venus')"
+          "milestone_name": {
+            "bsonType": "string"
           },
           "threshold_value": {
             "bsonType": "int",
-            "description": "Days required to reach this milestone",
             "minimum": 1
           },
-          "Rewarded_points": {
+          "reward_points": {
             "bsonType": "int",
-            "description": "Points awarded for reaching milestone",
             "minimum": 0
           },
-          "Description": {
-            "bsonType": "string",
-            "description": "Description of the milestone achievement"
+          "description": {
+            "bsonType": "string"
           },
           "is_achieved": {
             "bsonType": "bool",
-            "description": "Whether partnership has achieved this milestone",
             "default": false
           },
           "achieved_at": {
-            "bsonType": "date",
-            "description": "Timestamp when milestone was achieved"
+            "bsonType": "date"
           }
         }
-      },
-      "indexes": [
-        {"key": {"HabitID": 1}},
-        {"key": {"threshold_value": 1}}
-      ]
-    }
+      }
+    },
+    "indexes": [
+      {"key": {"habit_id": 1}},
+      {"key": {"threshold_value": 1}}
+    ]
   }
+}
