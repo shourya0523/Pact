@@ -42,15 +42,16 @@ export default function Home() {
         </View>
 
         <View className="w-full px-4 mt-6 ">
-          <View className="flex-row justify-between items-center mb-2">
+          <View className="flex-row justify-between items-center px-6">
             <Text className="text-lg font-semibold text-gray-800">Latest Activity</Text>
             <Text
-              className="text-blue-500 text-sm"
+              className="font-semibold text-sm"
             >
               See more
             </Text>
           </View>
 
+        <View className="mt-3 items-center">
           {latestActivities.map((activity) => (
             <ActivityBox
               key={activity.id}
@@ -58,6 +59,7 @@ export default function Home() {
               activityTime={activity.description}
             />
           ))}
+          </View>
         </View>
       </ScrollView>
     </GradientBackground>

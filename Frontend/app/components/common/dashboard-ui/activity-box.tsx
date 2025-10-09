@@ -9,7 +9,7 @@ type ActivityBoxProps = {
 
 const ActivityBox: React.FC<ActivityBoxProps> = ({ activityAction, activityTime, image }) => {
   return (
-    <View className="bg-white p-4 w-[90%] h-[80px] m-2 justify-center rounded-xl border border-gray-200">
+    <View className="bg-white p-4 w-[90%] h-[80px] m-1 justify-center rounded-xl">
       {image && (
         <Image
           source={image}
