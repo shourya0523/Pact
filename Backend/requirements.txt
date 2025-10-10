@@ -1,7 +1,7 @@
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 motor==3.3.2
-pymongo==4.6.1
+pymongo==4.3.3
 pydantic==2.5.3
 pydantic-settings==2.1.0
 python-multipart==0.0.6
@@ -9,3 +9,4 @@ python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-dotenv==1.0.0
 email-validator==2.1.0
+certifi==2024.2.2
