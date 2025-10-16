@@ -22,10 +22,17 @@ class HabitCategory(str, Enum):
     CUSTOM = "custom"
 
 
+class HabitFrequency(str, Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    # CUSTOM = "custom"
+
+
 class HabitStatus(str, Enum):
     PENDING_APPROVAL = "pending_approval"
     ACTIVE = "active"
     ARCHIVED = "archived"
+    PENDING_DELETION = "pending_deletion"
 
 
 class HabitBase(BaseModel):
@@ -33,6 +40,7 @@ class HabitBase(BaseModel):
     habit_type: HabitType
     category: HabitCategory
     description: Optional[str] = None
+    goal: Optional[int]
 
 
 class HabitCreate(HabitBase):
@@ -44,6 +52,7 @@ class HabitUpdate(BaseModel):
     habit_type: Optional[HabitType] = None
     category: Optional[HabitCategory] = None
     description: Optional[str] = None
+    frequency: Optional[HabitFrequency] = None # default value
 
 
 class Habit(HabitBase):
@@ -53,6 +62,7 @@ class Habit(HabitBase):
     status: HabitStatus = HabitStatus.PENDING_APPROVAL
     approved_by: Optional[str] = None
     pending_edit: Optional[dict] = None
+    pending_deletion: Optional[dict] = None  # NEW - for deletion approval workflow
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -67,6 +77,8 @@ class HabitResponse(BaseModel):
     habit_type: str
     category: str
     description: Optional[str]
+    goal: Optional[str]  # NEW
+    frequency: str  # NEW
     partnership_id: str
     status: str
     created_by: str
@@ -78,3 +90,5 @@ class PresetHabit(BaseModel):
     type: HabitType
     category: HabitCategory
     description: str
+    goal: Optional[str] = None  # NEW
+    frequency: HabitFrequency = HabitFrequency.DAILY  # NEW

@@ -87,6 +87,8 @@ async def create_habit(
         habit_type=created_habit["habit_type"],
         category=created_habit["category"],
         description=created_habit.get("description"),
+        goal=created_habit.get("goal"),  # NEW
+        frequency=created_habit.get("frequency", "daily"),  # NEW
         partnership_id=created_habit["partnership_id"],
         status=created_habit["status"],
         created_by=created_habit["created_by"],
@@ -127,6 +129,8 @@ async def get_pending_habits(
             habit_type=habit["habit_type"],
             category=habit["category"],
             description=habit.get("description"),
+            goal=habit.get("goal"),  # NEW
+            frequency=habit.get("frequency", "daily"),  # NEW
             partnership_id=habit["partnership_id"],
             status=habit["status"],
             created_by=habit["created_by"],
@@ -283,6 +287,8 @@ async def get_habits(
             habit_type=habit["habit_type"],
             category=habit["category"],
             description=habit.get("description"),
+            goal=habit.get("goal"),  # NEW
+            frequency=habit.get("frequency", "daily"),  # NEW
             partnership_id=habit["partnership_id"],
             status=habit["status"],
             created_by=habit["created_by"],
@@ -330,10 +336,11 @@ async def get_habit(
         habit_type=habit["habit_type"],
         category=habit["category"],
         description=habit.get("description"),
+        goal=habit.get("goal"),  # NEW
+        frequency=habit.get("frequency", "daily"),  # NEW
         partnership_id=habit["partnership_id"],
         status=habit["status"],
         created_by=habit["created_by"],
         created_at=habit["created_at"]
     )
 
-# ... rest of the endpoints (update, delete, archive) remain the same ...
