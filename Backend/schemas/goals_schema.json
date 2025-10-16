@@ -41,6 +41,23 @@
           "maximum": 100,
           "description": "Progress percentage (0-100)"
         },
+        "Goal_frequency": {
+          "bsonType": "object",
+          "required": ["Freq", "End_Val"],
+          "properties": {
+            "Freq": {
+              "bsonType": "string",
+              "enum": ["daily", "weekly", "monthly"],
+              "description": "Frequency of the goal"
+            },
+            "End_Val": {
+              "bsonType": "int",
+              "minimum": 1,
+              "description": "Number of times the goal should be achieved in the timeframe"
+            }
+          },
+          "description": "How many times the goal should be achieved in the timeframe"
+        },
         "status": {
           "bsonType": "string",
           "enum": ["active", "completed", "failed", "archived"],
