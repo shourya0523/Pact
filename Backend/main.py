@@ -38,6 +38,7 @@ app.include_router(partnership.router)
 app.include_router(habits.router)
 
 
+
 @app.get("/")
 async def root():
     return {
