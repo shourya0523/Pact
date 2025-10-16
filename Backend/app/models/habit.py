@@ -25,6 +25,7 @@ class HabitCategory(str, Enum):
 class HabitFrequency(str, Enum):
     DAILY = "daily"
     WEEKLY = "weekly"
+    MONTH = "month"
     # CUSTOM = "custom"
 
 
