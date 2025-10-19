@@ -32,8 +32,6 @@ class HabitFrequency(str, Enum):
 class HabitStatus(str, Enum):
     PENDING_APPROVAL = "pending_approval"
     ACTIVE = "active"
-    ARCHIVED = "archived"
-    PENDING_DELETION = "pending_deletion"
 
 
 class HabitBase(BaseModel):
@@ -53,7 +51,7 @@ class HabitUpdate(BaseModel):
     habit_type: Optional[HabitType] = None
     category: Optional[HabitCategory] = None
     description: Optional[str] = None
-    frequency: Optional[HabitFrequency] = None # default value
+    frequency: Optional[HabitFrequency] = None  # default value
 
 
 class Habit(HabitBase):
@@ -62,6 +60,7 @@ class Habit(HabitBase):
     created_by: str
     status: HabitStatus = HabitStatus.PENDING_APPROVAL
     approved_by: Optional[str] = None
+    count_checkins: int = Field(default=0)  # for percentage later down the line
     pending_edit: Optional[dict] = None
     pending_deletion: Optional[dict] = None  # NEW - for deletion approval workflow
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -79,6 +78,7 @@ class HabitResponse(BaseModel):
     category: str
     description: Optional[str]
     goal: Optional[str]  # NEW
+    count_checkins: int  # NEW - expose current check-in count
     frequency: str  # NEW
     partnership_id: str
     status: str

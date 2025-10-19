@@ -24,8 +24,8 @@
         },
         "Goal_type": {
           "bsonType": "string",
-          "enum": ["daily", "weekly", "monthly", "custom"],
-          "description": "Type of goal timeframe"
+          "enum": ["freq, completion"],
+          "description": "Type of goal (e.g., frequency-based, completion-based)"
         },
         "Goal_startDate": {
           "bsonType": "date",
@@ -60,7 +60,7 @@
         },
         "status": {
           "bsonType": "string",
-          "enum": ["active", "completed", "failed", "archived"],
+          "enum": ["active", "completed", "failed"],
           "description": "Current status of the goal"
         },
         "created_at": {

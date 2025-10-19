@@ -70,6 +70,7 @@ async def create_habit(
     habit_data["created_by"] = user_id
     habit_data["status"] = HabitStatus.PENDING_APPROVAL.value
     habit_data["approved_by"] = None
+    habit_data["count_checkins"] = 0
     habit_data["created_at"] = datetime.utcnow()
     habit_data["updated_at"] = datetime.utcnow()
     habit_data["pending_edit"] = None
@@ -87,8 +88,9 @@ async def create_habit(
         habit_type=created_habit["habit_type"],
         category=created_habit["category"],
         description=created_habit.get("description"),
-        goal=created_habit.get("goal"),  # NEW
-        frequency=created_habit.get("frequency", "daily"),  # NEW
+        goal=created_habit.get("goal"),
+        count_checkins=created_habit.get("count_checkins", 0),
+        frequency=created_habit.get("frequency", "daily"),
         partnership_id=created_habit["partnership_id"],
         status=created_habit["status"],
         created_by=created_habit["created_by"],
@@ -129,8 +131,9 @@ async def get_pending_habits(
             habit_type=habit["habit_type"],
             category=habit["category"],
             description=habit.get("description"),
-            goal=habit.get("goal"),  # NEW
-            frequency=habit.get("frequency", "daily"),  # NEW
+            goal=habit.get("goal"),
+            count_checkins=habit.get("count_checkins", 0),
+            frequency=habit.get("frequency", "daily"),
             partnership_id=habit["partnership_id"],
             status=habit["status"],
             created_by=habit["created_by"],
@@ -287,8 +290,9 @@ async def get_habits(
             habit_type=habit["habit_type"],
             category=habit["category"],
             description=habit.get("description"),
-            goal=habit.get("goal"),  # NEW
-            frequency=habit.get("frequency", "daily"),  # NEW
+            goal=habit.get("goal"),
+            count_checkins=habit.get("count_checkins", 0),
+            frequency=habit.get("frequency", "daily"),
             partnership_id=habit["partnership_id"],
             status=habit["status"],
             created_by=habit["created_by"],
@@ -336,11 +340,77 @@ async def get_habit(
         habit_type=habit["habit_type"],
         category=habit["category"],
         description=habit.get("description"),
-        goal=habit.get("goal"),  # NEW
-        frequency=habit.get("frequency", "daily"),  # NEW
+        goal=habit.get("goal"),
+        count_checkins=habit.get("count_checkins", 0),
+        frequency=habit.get("frequency", "daily"),
         partnership_id=habit["partnership_id"],
         status=habit["status"],
         created_by=habit["created_by"],
         created_at=habit["created_at"]
     )
 
+
+@router.post("/{habit_id}/checkin", response_model=dict)
+async def checkin_habit(
+        habit_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Check in to a habit - increments count_checkins"""
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+
+    # Verify habit exists and user has access
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+
+    # Verify user is part of partnership
+    partnership = await db.partnerships.find_one({
+        "_id": ObjectId(habit["partnership_id"]),
+        "$or": [
+            {"user_id_1": user_id},
+            {"user_id_2": user_id}
+        ]
+    })
+
+    if not partnership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    # Check if habit is active
+    if habit["status"] != HabitStatus.ACTIVE.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Habit must be active to check in"
+        )
+
+    # Increment count_checkins
+    await db.habits.update_one(
+        {"_id": ObjectId(habit_id)},
+        {
+            "$inc": {"count_checkins": 1},
+            "$set": {"updated_at": datetime.utcnow()}
+        }
+    )
+    # Get updated habit
+    updated_habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+
+    # Calculate progress percentage
+    progress_percentage = None
+    if updated_habit.get("goal") and updated_habit.get("goal") > 0:
+        progress_percentage = (updated_habit.get("count_checkins", 0) / updated_habit["goal"]) * 100
+        progress_percentage = min(progress_percentage, 100)  # Cap at 100%
+
+    return {
+        "message": "Check-in successful",
+        "habit_id": habit_id,
+        "count_checkins": updated_habit.get("count_checkins", 0),
+        "goal": updated_habit.get("goal"),
+        "progress_percentage": progress_percentage
+    }
