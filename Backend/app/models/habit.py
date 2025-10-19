@@ -61,8 +61,6 @@ class Habit(HabitBase):
     status: HabitStatus = HabitStatus.PENDING_APPROVAL
     approved_by: Optional[str] = None
     count_checkins: int = Field(default=0)  # for percentage later down the line
-    pending_edit: Optional[dict] = None
-    pending_deletion: Optional[dict] = None  # NEW - for deletion approval workflow
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

@@ -102,3 +102,66 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         email=user["email"],
         created_at=user["created_at"]
     )
+
+
+@router.post("/test-login", include_in_schema=False)
+async def test_login():
+    """
+    Development only - returns test user credentials and token
+    Hidden from API docs - remove in production!
+    """
+    # Fixed test user IDs (use valid MongoDB ObjectId format)
+    test_user = {
+        "user_id": "507f1f77bcf86cd799439011",
+        "email": "test@example.com",
+        "username": "testuser"
+    }
+
+    # Generate JWT token for test user
+    access_token = create_access_token(data={"sub": test_user["user_id"]})
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": test_user["user_id"],
+            "email": test_user["email"],
+            "username": test_user["username"]
+        },
+        "message": "⚠️ Test credentials - for development only"
+    }
+
+
+@router.post("/test-login/{user_number}", tags=["Testing"])
+async def test_login(user_number: int):
+    """
+    Quick test login(mainly for partnership)
+
+    These users have a pre-existing partnership for testing.
+    """
+    test_users = {
+        1: {
+            "user_id": "507f1f77bcf86cd799439011",
+            "email": "sohum@test.com",
+            "username": "alice",
+            "partnership_id": "507f1f77bcf86cd799439020"
+        },
+        2: {
+            "user_id": "507f1f77bcf86cd799439012",
+            "email": "krishna@test.com",
+            "username": "bob",
+            "partnership_id": "507f1f77bcf86cd799439020"
+        }
+    }
+
+    if user_number not in test_users:
+        raise HTTPException(status_code=400, detail="Use 1 or 2")
+
+    test_user = test_users[user_number]
+    access_token = create_access_token(data={"sub": test_user["user_id"]})
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "partnership_id": test_user["partnership_id"]
+    }
