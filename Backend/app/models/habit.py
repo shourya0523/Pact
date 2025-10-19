@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict
 from datetime import datetime
 from bson import ObjectId
 from enum import Enum
@@ -39,7 +39,23 @@ class HabitBase(BaseModel):
     habit_type: HabitType
     category: HabitCategory
     description: Optional[str] = None
-    goal: Optional[int]
+    streak: int = Field(default=0)  # NEW
+    goal: Dict[str, UserGoal] = Field(
+        default_factory=dict,
+        description="Per-user goals. Key: user_id, Value: UserGoal object"
+    )
+
+        # streak
+        # user1
+        # goal_for_user1
+        # progress for goal_user1
+        # user2
+        # goal_for_user2
+        # progress for goal_user2
+        #
+
+
+
 
 
 class HabitCreate(HabitBase):
@@ -59,7 +75,6 @@ class Habit(HabitBase):
     partnership_id: str
     created_by: str
     status: HabitStatus = HabitStatus.PENDING_APPROVAL
-    approved_by: Optional[str] = None
     count_checkins: int = Field(default=0)  # for percentage later down the line
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
