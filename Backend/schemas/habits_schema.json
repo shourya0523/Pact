@@ -28,6 +28,11 @@
             "bsonType": "string",
             "description": "Optional detailed description of what counts as completion"
           },
+          "count_checkins": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "Total number of check-ins for this habit goal"
+          },
           "created_at": {
             "bsonType": "date",
             "description": "Habit creation timestamp"

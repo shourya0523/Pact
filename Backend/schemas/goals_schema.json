@@ -1,0 +1,84 @@
+{
+  "Goals": {
+    "$jsonSchema": {
+      "bsonType": "object",
+      "required": ["Goal_id", "Habit_id", "User_id", "Goal_name", "Goal_type", "Goal_startDate", "Goal_endDate", "Goal_progress"],
+      "properties": {
+        "Goal_id": {
+          "bsonType": "objectId",
+          "description": "Primary key"
+        },
+        "Habit_id": {
+          "bsonType": "objectId",
+          "description": "Foreign key reference to Habit"
+        },
+        "User_id": {
+          "bsonType": "objectId",
+          "description": "Foreign key reference to User who owns the goal"
+        },
+        "Goal_name": {
+          "bsonType": "string",
+          "description": "Name of the goal",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "Goal_type": {
+          "bsonType": "string",
+          "enum": ["freq, completion"],
+          "description": "Type of goal (e.g., frequency-based, completion-based)"
+        },
+        "Goal_startDate": {
+          "bsonType": "date",
+          "description": "Start date of the goal"
+        },
+        "Goal_endDate": {
+          "bsonType": "date",
+          "description": "End date of the goal"
+        },
+        "Goal_progress": {
+          "bsonType": "int",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Progress percentage (0-100)"
+        },
+        "Goal_frequency": {
+          "bsonType": "object",
+          "required": ["Freq", "End_Val"],
+          "properties": {
+            "Freq": {
+              "bsonType": "string",
+              "enum": ["daily", "weekly", "monthly"],
+              "description": "Frequency of the goal"
+            },
+            "End_Val": {
+              "bsonType": "int",
+              "minimum": 1,
+              "description": "Number of times the goal should be achieved in the timeframe"
+            }
+          },
+          "description": "How many times the goal should be achieved in the timeframe"
+        },
+        "status": {
+          "bsonType": "string",
+          "enum": ["active", "completed", "failed"],
+          "description": "Current status of the goal"
+        },
+        "created_at": {
+          "bsonType": "date",
+          "description": "Timestamp when goal was created"
+        },
+        "updated_at": {
+          "bsonType": "date",
+          "description": "Timestamp when goal was last updated"
+        }
+      }
+    },
+    "indexes": [
+      {"key": {"Habit_id": 1, "User_id": 1}},
+      {"key": {"User_id": 1}},
+      {"key": {"Goal_startDate": 1}},
+      {"key": {"Goal_endDate": 1}},
+      {"key": {"status": 1}}
+    ]
+  }
+}
