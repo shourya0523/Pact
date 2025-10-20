@@ -21,7 +21,17 @@
             "enum": ["exercise", "productivity", "health", "social", "finance", "sleep", "nutrition", "mindfulness"]
           },
           "habit_description": {
-            "bsonType": "string"
+            "bsonType": "string",
+            "description": "Optional detailed description of what counts as completion"
+          },
+          "count_checkins": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "Total number of check-ins for this habit goal"
+          },
+          "created_at": {
+            "bsonType": "date",
+            "description": "Habit creation timestamp"
           },
           "is_active": {
             "bsonType": "bool",
