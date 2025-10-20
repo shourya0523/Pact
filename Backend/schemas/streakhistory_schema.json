@@ -1,47 +1,41 @@
 {
-    "StreakHistory": {
+  "streak_history": {
+    "validator": {
       "$jsonSchema": {
         "bsonType": "object",
-        "required": ["Streak_id", "Partnership_id", "Habit_id", "Streak_start_date"],
+        "required": ["partnership_id", "habit_id", "streak_start_date"],
         "properties": {
-          "Streak_id": {
-            "bsonType": "objectId",
-            "description": "Primary key"
+          "_id": {
+            "bsonType": "objectId"
           },
-          "Partnership_id": {
-            "bsonType": "objectId",
-            "description": "Foreign key reference to Partnership"
+          "partnership_id": {
+            "bsonType": "objectId"
           },
-          "Habit_id": {
-            "bsonType": "objectId",
-            "description": "Foreign key reference to Habit"
+          "habit_id": {
+            "bsonType": "objectId"
           },
-          "Streak_start_date": {
-            "bsonType": "date",
-            "description": "Date the streak started"
+          "streak_start_date": {
+            "bsonType": "date"
           },
-          "Streak_end_date": {
-            "bsonType": "date",
-            "description": "Date the streak ended (null if ongoing)"
+          "streak_end_date": {
+            "bsonType": "date"
           },
-          "Streak_length_days": {
+          "streak_length_days": {
             "bsonType": "int",
-            "description": "Total length of streak in days",
             "minimum": 0
           },
-          "Ended_reason": {
-            "enum": ["missed_checkin", "partnership_ended", "habit_archived", "ongoing"],
-            "description": "Reason the streak ended"
+          "ended_reason": {
+            "enum": ["missed_checkin", "partnership_ended", "habit_archived", "ongoing"]
           },
-          "Created_at": {
-            "bsonType": "date",
-            "description": "Record creation timestamp"
+          "created_at": {
+            "bsonType": "date"
           }
         }
-      },
-      "indexes": [
-        {"key": {"Partnership_id": 1, "Habit_id": 1}},
-        {"key": {"Streak_start_date": 1}}
-      ]
-    }
+      }
+    },
+    "indexes": [
+      {"key": {"partnership_id": 1, "habit_id": 1}},
+      {"key": {"streak_start_date": 1}}
+    ]
   }
+}

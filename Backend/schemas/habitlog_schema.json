@@ -1,38 +1,34 @@
 {
-    "HabitLog": {
+ "habit_logs": {
+    "validator": {
       "$jsonSchema": {
         "bsonType": "object",
-        "required": ["Log_id", "Habit_id", "User_id", "Log_date", "completed"],
+        "required": ["habit_id", "user_id", "log_date", "completed"],
         "properties": {
-          "Log_id": {
-            "bsonType": "objectId",
-            "description": "Primary key"
+          "_id": {
+            "bsonType": "objectId"
           },
-          "Habit_id": {
-            "bsonType": "objectId",
-            "description": "Foreign key reference to Habit"
+          "habit_id": {
+            "bsonType": "objectId"
           },
-          "User_id": {
-            "bsonType": "objectId",
-            "description": "Foreign key reference to User who logged"
+          "user_id": {
+            "bsonType": "objectId"
           },
-          "Log_date": {
-            "bsonType": "date",
-            "description": "Date of the habit completion"
+          "log_date": {
+            "bsonType": "date"
           },
           "completed": {
-            "bsonType": "bool",
-            "description": "Whether habit was completed (yes/no toggle)"
+            "bsonType": "bool"
           },
           "timestamp": {
-            "bsonType": "date",
-            "description": "Timestamp when log was created"
+            "bsonType": "date"
           }
         }
-      },
-      "indexes": [
-        {"key": {"Habit_id": 1, "User_id": 1, "Log_date": 1}, "unique": true},
-        {"key": {"Log_date": 1}}
-      ]
-    }
+      }
+    },
+    "indexes": [
+      {"key": {"habit_id": 1, "user_id": 1, "log_date": 1}, "unique": true},
+      {"key": {"log_date": 1}}
+    ]
   }
+}
