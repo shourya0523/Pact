@@ -1,30 +1,26 @@
 {
-    "Habit": {
+  "habits": {
+    "validator": {
       "$jsonSchema": {
         "bsonType": "object",
-        "required": ["Habit_Id", "Partnership_id", "Habit_name", "Habit_type", "Habit_category"],
+        "required": ["partnership_id", "habit_name", "habit_type", "habit_category"],
         "properties": {
-          "Habit_Id": {
-            "bsonType": "objectId",
-            "description": "Primary key"
+          "_id": {
+            "bsonType": "objectId"
           },
-          "Partnership_id": {
-            "bsonType": "objectId",
-            "description": "Foreign key reference to Partnership"
+          "partnership_id": {
+            "bsonType": "objectId"
           },
-          "Habit_name": {
-            "bsonType": "string",
-            "description": "Clear, action-oriented habit name"
+          "habit_name": {
+            "bsonType": "string"
           },
-          "Habit_type": {
-            "enum": ["build", "break"],
-            "description": "Whether building a positive habit or breaking a negative one"
+          "habit_type": {
+            "enum": ["build", "break"]
           },
-          "Habit_category": {
-            "enum": ["exercise", "productivity", "health", "social", "finance", "sleep", "nutrition", "mindfulness"],
-            "description": "Category of the habit"
+          "habit_category": {
+            "enum": ["exercise", "productivity", "health", "social", "finance", "sleep", "nutrition", "mindfulness"]
           },
-          "Habit_description": {
+          "habit_description": {
             "bsonType": "string",
             "description": "Optional detailed description of what counts as completion"
           },
@@ -39,19 +35,21 @@
           },
           "is_active": {
             "bsonType": "bool",
-            "description": "Whether habit is currently active",
             "default": true
           },
-          "Broken": {
+          "is_broken": {
             "bsonType": "bool",
-            "description": "Whether the habit streak has been broken",
             "default": false
+          },
+          "created_at": {
+            "bsonType": "date"
           }
         }
-      },
-      "indexes": [
-        {"key": {"Partnership_id": 1}},
-        {"key": {"is_active": 1}}
-      ]
-    }
+      }
+    },
+    "indexes": [
+      {"key": {"partnership_id": 1}},
+      {"key": {"is_active": 1}}
+    ]
   }
+}

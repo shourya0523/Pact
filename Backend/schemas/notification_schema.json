@@ -1,47 +1,41 @@
 {
-    "Notification": {
+  "notifications": {
+    "validator": {
       "$jsonSchema": {
         "bsonType": "object",
-        "required": ["Notification_id", "UserID", "Noti_type"],
+        "required": ["user_id", "notification_type"],
         "properties": {
-          "Notification_id": {
-            "bsonType": "objectId",
-            "description": "Primary key"
+          "_id": {
+            "bsonType": "objectId"
           },
-          "UserID": {
-            "bsonType": "objectId",
-            "description": "Foreign key reference to User receiving notification"
+          "user_id": {
+            "bsonType": "objectId"
           },
-          "PartnershipID": {
-            "bsonType": "objectId",
-            "description": "Optional foreign key reference to related Partnership"
+          "partnership_id": {
+            "bsonType": "objectId"
           },
-          "Noti_type": {
-            "enum": ["reminder", "partner_completed", "nudge", "streak_broken", "milestone", "partner_request"],
-            "description": "Type of notification"
+          "notification_type": {
+            "enum": ["reminder", "partner_completed", "nudge", "streak_broken", "milestone", "partner_request"]
           },
-          "Noti_title": {
-            "bsonType": "string",
-            "description": "Notification headline"
+          "title": {
+            "bsonType": "string"
           },
-          "Noti_description": {
-            "bsonType": "string",
-            "description": "Detailed notification message"
+          "description": {
+            "bsonType": "string"
           },
-          "Noti_IsRead": {
+          "is_read": {
             "bsonType": "bool",
-            "description": "Whether notification has been read",
             "default": false
           },
-          "Noti_CreatedAt": {
-            "bsonType": "date",
-            "description": "When notification was created"
+          "created_at": {
+            "bsonType": "date"
           }
         }
-      },
-      "indexes": [
-        {"key": {"UserID": 1, "Noti_IsRead": 1}},
-        {"key": {"Noti_CreatedAt": -1}}
-      ]
-    }
+      }
+    },
+    "indexes": [
+      {"key": {"user_id": 1, "is_read": 1}},
+      {"key": {"created_at": -1}}
+    ]
   }
+}
