@@ -1,68 +1,72 @@
-// get started screen
-import React from "react";
-import { Text, TouchableOpacity, StyleSheet, ScrollView, View } from "react-native";
-import { theme } from "../../assets/theme"
-import { useRouter } from "expo-router";
+import React, { useState } from 'react'
+import { useRouter } from 'expo-router';
+import { Text, Image, View, TouchableOpacity, TextInput } from "react-native";
 
-export default function GetStarted() {
+export default function LinkScreen() {
     const router = useRouter();
+    const [link, setLink] = useState('')
 
+    const handleCopyLink = () => {
+        console.log('Link copied')
+    }
+    
     return (
-        <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-                <Text style={styles.title}>PACT</Text>
+        <View className="flex-1 bg-[#291133]">
+            <View className="flex-1 items-center justify-between px-6 pt-16 pb-8">
+                <View className="items-center">
+                    <View className="mb-12">
+                        <Image
+                            source={require('../../images/space/planet-big.png')}
+                            className='w-80 h-80'
+                            resizeMode='contain'
+                        />
+                    </View>
 
-                <Text>Welcome to Pact!</Text>
+                    <Text className='text-white text-3xl font-bold text-center mb-8 px-4'>
+                        Don`t track your habits{'\n'}alone!
+                    </Text>
 
-                <TouchableOpacity style={[styles.button]}>
-                    <Text style={styles.buttonText}>Get Started</Text>
-                </TouchableOpacity>
+                    <View className="w-full mb-4">
+                        <TextInput
+                        className="w-full bg-purple-200 rounded-full px-6 py-4 text-purple-900 text-base"
+                        placeholder="Link"
+                        placeholderTextColor="#7C3AED"
+                        value={link}
+                        onChangeText={setLink}
+                        />
+                    </View>
 
-            </ScrollView>
+                    <TouchableOpacity
+                        className="bg-purple-700/80 rounded-full px-8 py-3 flex-row items-center"
+                        activeOpacity={0.8}
+                        onPress={handleCopyLink}
+                    >
+                        <View className="w-5 h-5 mr-2">
+                        <View className="absolute top-0 left-1 w-3 h-4 border-2 border-white rounded" />
+                        <View className="absolute bottom-0 right-1 w-3 h-4 border-2 border-white rounded bg-purple-700" />
+                        </View>
+                        <Text className="text-white text-sm font-semibold tracking-wide">
+                        COPY LINK
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View className="absolute bottom-32 left-0 right-0 h-32 opacity-30">
+                    <View className="absolute inset-0 bg-gradient-to-t from-purple-300 to-transparent rounded-full blur-3xl" />
+                </View>
+
+                <View className="w-full">
+                    <TouchableOpacity
+                        className="w-full bg-purple-800/60 rounded-full py-4 items-center"
+                        activeOpacity={0.8}
+                        onPress={() => router.push('/screens/onboarding/HabitSetupScreen')}
+                    >
+                        <Text className="text-white text-lg font-semibold tracking-wide">
+                        CONTINUE
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
         </View>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.backgroundColorSolid
-    },
-
-    scroll: {
-        flexGrow: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-    },
-
-    title: {
-        fontSize: 24,
-        fontWeight: "bold",
-        color: theme.colors.text,
-        marginBottom: 80,
-    },
-
-    input: {
-        width: "100%",
-        backgroundColor: "#FFFFFF",
-        borderRadius: theme.sizes.radiusText,
-        height: theme.sizes.inputHeight,
-        paddingHorizontal: 16,
-        marginVertical: 8,
-    },
-
-    button: {
-        width: "100%",
-        borderRadius: theme.sizes.radiusButton,
-        height: theme.sizes.inputHeight,
-        alignItems: "center",
-        justifyContent: "center",
-        marginVertical: 8,
-    },
-
-    buttonText: {
-        color: theme.colors.text,
-        fontWeight: "600",
-    },
-})

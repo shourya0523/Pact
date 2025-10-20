@@ -45,3 +45,5 @@ app-example
 __pycache__
 
 venv/
+
+config

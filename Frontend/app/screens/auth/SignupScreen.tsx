@@ -1,18 +1,17 @@
-// Same thing as login screen (can also be a modal )
 import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, View, Alert } from "react-native";
-import { theme } from "../../assets/theme"
+import { Text, TouchableOpacity, ScrollView, View, Alert, Image } from "react-native";
 import { useRouter } from "expo-router";
+import { getBaseUrl } from "../../../config";
+import Input from "../../components/common/Text-input";
 
 export default function SignupScreen() {
     const router = useRouter();
-    // const [displayName, setDisplayName] = useState(""); TODO: Do we have display name for users????
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
 
-    // TODO : storing tokens
     const handleSignup = async () => {
+        const BASE_URL = await getBaseUrl();
         if (!username || !email || !password) {
             Alert.alert("Missing fields", "Please fill out all fields.");
             return;
@@ -23,16 +22,10 @@ export default function SignupScreen() {
             return;
         }
 
-        if (password.length > 72) {
-            Alert.alert("Password too long", "Password connot be longer than 72 characters.");
-            return;
-            // TODO : change this later?
-        }
-
         console.log({ username, email, password });
         
         try {
-            const response = await fetch("http://localhost:8000/auth/signup", {
+            const response = await fetch(`${BASE_URL}/auth/signup`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -48,10 +41,9 @@ export default function SignupScreen() {
             console.log(data);
 
             if (response.ok) {
-                router.push("/screens/auth/Onboarding");
+                router.push("/screens/auth/WelcomeScreen");
             } else {
-                const errorData = await response.json();
-                Alert.alert("Signup failer", errorData.detail || "Error creating account");
+                Alert.alert("Signup failed", data.detail || "Error creating account");
             }
         } catch (error) {
             console.error(error);
@@ -60,112 +52,81 @@ export default function SignupScreen() {
     }
 
     return (
-        <View style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-                <Text style={styles.title}>Create your account</Text>
+        <View className="flex-1 bg-[#291133]">
+            <Image
+                source={require('../../images/space/moon.png')}
+                className="absolute w-100 h-100 -top-10 -right-10"
+                resizeMode="contain"
+            />
 
-                <TouchableOpacity style={[styles.button, styles.googleButton]}>
-                    <Text style={styles.googleText}>Continue with Google</Text>
+            <ScrollView 
+                className="flex-1 px-6"
+                contentContainerStyle={{ paddingTop: 150, paddingBottom: 40 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                <Text className="text-white text-4xl font-semibold mb-2 leading-tight">
+                    Create your{'\n'}account
+                </Text>
+                <Text className="text-white text-2xl font-bold mb-10">Sign Up</Text>
+
+                <Input
+                    placeholder="Username"
+                    value={username}
+                    onChangeText={setUsername}
+                    type="text"
+                />
+
+                <Input
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    type="email"
+                />
+
+                <Input
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    type="password"
+                    className="mb-6"
+                />
+
+                <View className="flex-row items-center my-6">
+                    <View className="flex-1 h-[1px] bg-white" />
+                    <Text className="text-white text-xs font-bold mx-3 opacity-60">
+                        OR SIGN UP WITH
+                    </Text>
+                    <View className="flex-1 h-[1px] bg-white" />
+                </View>
+
+                <TouchableOpacity className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center">
+                    <View className="w-5 h-5 mr-2">
+                        <View className="absolute w-2 h-2 top-0 left-0 bg-[#EA4335]" />
+                        <View className="absolute w-2 h-2 top-0 right-0 bg-[#4285F4]" />
+                        <View className="absolute w-2 h-2 bottom-0 left-0 bg-[#FBBC05]" />
+                        <View className="absolute w-2 h-2 bottom-0 right-0 bg-[#34A853]" />
+                    </View>
+                    <Text className="text-white text-sm font-semibold">GOOGLE</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.orText}>Or log in with email</Text>
-
-                {/* <TextInput placeholder="Display name" style={styles.input}></TextInput> */}
-                <TextInput placeholder="Username" value={username} onChangeText={setUsername} style={styles.input} ></TextInput>
-                <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address"></TextInput>
-                <TextInput placeholder="Password" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry></TextInput>
-
-                <TouchableOpacity style={[styles.button, styles.primaryButton]} onPress={handleSignup}>
-                    <Text style={styles.primaryButtonText}>Create Account</Text>
+                <TouchableOpacity 
+                    className="bg-white rounded-full py-4 mb-6 items-center"
+                    onPress={handleSignup}
+                >
+                    <Text className="text-gray-900 text-sm font-semibold">NEXT</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.footerText}>
-                    Already have an Account?{" "}
-                    <Text style={styles.link} onPress={() => router.push("/screens/auth/LoginScreen")}>
-                        Sign In
+                <Text className="text-white text-sm text-center font-medium">
+                    ALREADY HAVE AN ACCOUNT?{" "}
+                    <Text 
+                        className="text-blue-500 font-semibold"
+                        onPress={() => router.push("/screens/auth/LoginScreen")}
+                    >
+                        SIGN IN
                     </Text>
                 </Text>
-
             </ScrollView>
         </View>
     )
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.backgroundColorSolid
-    },
-
-    scroll: {
-        flexGrow: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-    },
-
-    title: {
-        fontSize: 28,
-        fontWeight: "bold",
-        color: theme.colors.text,
-        marginBottom: 50,
-    },
-
-    input: {
-        width: "100%",
-        backgroundColor: "#FFFFFF",
-        borderRadius: theme.sizes.radiusText,
-        height: theme.sizes.inputHeight,
-        paddingHorizontal: 16,
-        marginVertical: 8,
-    },
-
-    button: {
-        width: "100%",
-        borderRadius: theme.sizes.radiusButton,
-        height: theme.sizes.inputHeight,
-        alignItems: "center",
-        justifyContent: "center",
-        marginVertical: 8,
-    },
-
-    googleButton: {
-        borderColor: "#D0D3DC",
-        borderWidth: 1,
-        backgroundColor: "transparent",
-    },
-
-    buttonText: {
-        color: theme.colors.text,
-        fontWeight: "600",
-    },
-
-    googleText: {
-        color: theme.colors.text,
-        fontSize: 14,
-    },
-
-    orText: {
-        color: theme.colors.text,
-        marginVertical: 16,
-        fontSize: 14,
-    },
-
-    primaryButton: {
-        backgroundColor: "#EAE6F8",
-    },
-
-    primaryButtonText: {
-        color: theme.colors.text,
-        fontWeight: "700",
-    },
-
-    footerText: {
-        color: theme.colors.text,
-        marginTop: 16,
-    },
-
-    link: {
-        fontWeight: "700",
-    }
-})
