@@ -34,6 +34,10 @@ class HabitStatus(str, Enum):
     ACTIVE = "active"
 
 
+class UserGoal(BaseModel):
+    target: int = Field(..., description="The target number for the goal")
+    progress: int = Field(0, description="The current progress towards the goal")
+
 class HabitBase(BaseModel):
     habit_name: str = Field(..., min_length=1, max_length=100)
     habit_type: HabitType
@@ -44,6 +48,9 @@ class HabitBase(BaseModel):
         default_factory=dict,
         description="Per-user goals. Key: user_id, Value: UserGoal object"
     )
+    frequency: Optional[int] = 0
+    is_active: bool = True
+    checkedIn: bool = False
 
         # streak
         # user1
@@ -67,8 +74,10 @@ class HabitUpdate(BaseModel):
     habit_type: Optional[HabitType] = None
     category: Optional[HabitCategory] = None
     description: Optional[str] = None
-    frequency: Optional[HabitFrequency] = None  # default value
-
+    frequency: Optional[HabitFrequency] = None
+    is_active: Optional[bool] = None
+    checkedIn: Optional[bool] = None
+    goal: Optional[Dict[str, UserGoal]] = None
 
 class Habit(HabitBase):
     id: str = Field(alias="_id")
@@ -90,14 +99,13 @@ class HabitResponse(BaseModel):
     habit_type: str
     category: str
     description: Optional[str]
-    goal: Optional[str]  # NEW
-    count_checkins: int  # NEW - expose current check-in count
-    frequency: str  # NEW
+    goal: Optional[str]
+    count_checkins: int
+    frequency: str
     partnership_id: str
     status: str
     created_by: str
     created_at: datetime
-
 
 class PresetHabit(BaseModel):
     name: str

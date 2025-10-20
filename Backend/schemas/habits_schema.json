@@ -20,18 +20,9 @@
             "enum": ["build", "break"],
             "description": "Whether building a positive habit or breaking a negative one"
           },
-          "Habit_category": {
-            "enum": ["exercise", "productivity", "health", "social", "finance", "sleep", "nutrition", "mindfulness"],
-            "description": "Category of the habit"
-          },
           "Habit_description": {
             "bsonType": "string",
             "description": "Optional detailed description of what counts as completion"
-          },
-          "count_checkins": {
-            "bsonType": "int",
-            "minimum": 0,
-            "description": "Total number of check-ins for this habit goal"
           },
           "created_at": {
             "bsonType": "date",
@@ -42,10 +33,35 @@
             "description": "Whether habit is currently active",
             "default": true
           },
-          "Broken": {
-            "bsonType": "bool",
-            "description": "Whether the habit streak has been broken",
+          "Partnership": {
+            "bsonType": "object",
+            "description": "Partnership details",
             "default": false
+          },
+          "Frequency": {
+            "bsonType": "integer",
+            "description": "Describes the frequency",
+            "default": 0
+          },
+          "checkedIn": {
+            "bsonType": "bool",
+            "description": "Determines whether a person is checked in ",
+            "default": false
+          },
+          "habit_progress": {
+            "bsonType": "integer",
+            "description": "Function that describes the habit progress",
+            "default": 0
+          },
+          "current_streak": {
+            "bsonType": "integer",
+            "description": "The streak count of the habit currently",
+            "default": 0
+          },
+          "longest_streak": {
+            "bsonType": "integer",
+            "description": "Longest streak held by the habit",
+            "default": 0
           }
         }
       },

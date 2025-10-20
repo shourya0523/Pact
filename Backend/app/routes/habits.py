@@ -17,7 +17,6 @@ from typing import List
 router = APIRouter(prefix="/habits", tags=["Habits"])
 security = HTTPBearer()
 
-
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     payload = decode_access_token(token)
@@ -389,13 +388,45 @@ async def checkin_habit(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Habit must be active to check in"
         )
+    
+    last_checkin = habit.get("last_checkin")
+    current_streak = habit.get("current_streak", 0)
+    longest_streak = habit.get("longest_streak", 0)
+
+    today = datetime.utcnow().date()
+    if last_checkin:
+        last_date = last_checkin.date()
+        if today == last_date:
+            raise HTTPException(status_code=400, detail="Already checked in today")
+        elif (today - last_date) == timedelta(days=1):
+            current_streak += 1
+        else:
+            current_streak = 1
+    else:
+        current_streak = 1
+
+    longest_streak = max(longest_streak, current_streak)
+
+    goal_data = habit.get("goal", {})
+    user_goal = goal_data.get(user_id)
+
+    if user_goal:
+        user_goal["progress"] = min(user_goal["progress"] + 1, user_goal["target"])
+        goal_data[user_id] = user_goal
 
     # Increment count_checkins
     await db.habits.update_one(
         {"_id": ObjectId(habit_id)},
         {
             "$inc": {"count_checkins": 1},
-            "$set": {"updated_at": datetime.utcnow()}
+            "$set": {
+                "goal": goal_data,
+                "current_streak": current_streak,
+                "longest_streak": longest_streak,
+                "last_checkin": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "checkedIn": True
+            }
         }
     )
     # Get updated habit
@@ -412,5 +443,7 @@ async def checkin_habit(
         "habit_id": habit_id,
         "count_checkins": updated_habit.get("count_checkins", 0),
         "goal": updated_habit.get("goal"),
-        "progress_percentage": progress_percentage
+        "progress_percentage": progress_percentage,
+        "current_streak": current_streak,
+        "longest_streak": longest_streak
     }
