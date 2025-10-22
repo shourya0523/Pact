@@ -30,6 +30,7 @@ class HabitFrequency(str, Enum):
 
 
 class HabitStatus(str, Enum):
+    DRAFT = "draft"
     PENDING_APPROVAL = "pending_approval"
     ACTIVE = "active"
 
@@ -40,26 +41,23 @@ class HabitBase(BaseModel):
     category: HabitCategory
     description: Optional[str] = None
     streak: int = Field(default=0)  # NEW
-    goal: Dict[str, UserGoal] = Field(
-        default_factory=dict,
-        description="Per-user goals. Key: user_id, Value: UserGoal object"
-    )
+    # goal: Dict[str, UserGoal] = Field(
+    #     default_factory=dict,
+    #     description="Per-user goals. Key: user_id, Value: UserGoal object"
+    # )
 
-        # streak
-        # user1
-        # goal_for_user1
-        # progress for goal_user1
-        # user2
-        # goal_for_user2
-        # progress for goal_user2
-        #
-
-
-
+    # streak
+    # user1
+    # goal_for_user1
+    # progress for goal_user1
+    # user2
+    # goal_for_user2
+    # progress for goal_user2
+    #
 
 
 class HabitCreate(HabitBase):
-    partnership_id: str
+    partnership_id: Optional[str] = None  # ← Optional because drafts don't have partners yet
 
 
 class HabitUpdate(BaseModel):
@@ -74,7 +72,7 @@ class Habit(HabitBase):
     id: str = Field(alias="_id")
     partnership_id: str
     created_by: str
-    status: HabitStatus = HabitStatus.PENDING_APPROVAL
+    status: HabitStatus = HabitStatus.DRAFT
     count_checkins: int = Field(default=0)  # for percentage later down the line
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
@@ -93,7 +91,7 @@ class HabitResponse(BaseModel):
     goal: Optional[str]  # NEW
     count_checkins: int  # NEW - expose current check-in count
     frequency: str  # NEW
-    partnership_id: str
+    partnership_id: Optional[str]
     status: str
     created_by: str
     created_at: datetime

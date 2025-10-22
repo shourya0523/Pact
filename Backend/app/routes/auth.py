@@ -1,5 +1,7 @@
+from bson import ObjectId
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.models.user import UserCreate, UserLogin, UserResponse, User
 from app.utils.security import hash_password, verify_password, create_access_token, decode_access_token
 from config.database import get_database
@@ -10,9 +12,10 @@ security = HTTPBearer()
 
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def signup(user: UserCreate):
-    db = get_database()
-
+async def signup(
+    user: UserCreate,
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
     # Check if user already exists
     existing_user = await db.users.find_one({"$or": [
         {"email": user.email},
@@ -46,9 +49,10 @@ async def signup(user: UserCreate):
 
 
 @router.post("/login")
-async def login(credentials: UserLogin):
-    db = get_database()
-
+async def login(
+    credentials: UserLogin,
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
     # Find user by email
     user = await db.users.find_one({"email": credentials.email})
 
@@ -76,7 +80,10 @@ async def login(credentials: UserLogin):
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
     token = credentials.credentials
     payload = decode_access_token(token)
 
@@ -86,7 +93,6 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="Invalid authentication credentials"
         )
 
-    db = get_database()
     user_id = payload.get("sub")
     user = await db.users.find_one({"_id": ObjectId(user_id)})
 
@@ -133,7 +139,7 @@ async def test_login():
 
 
 @router.post("/test-login/{user_number}", tags=["Testing"])
-async def test_login(user_number: int):
+async def test_login_numbered(user_number: int):  # Renamed to avoid conflict
     """
     Quick test login(mainly for partnership)
 

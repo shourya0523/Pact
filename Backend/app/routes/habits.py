@@ -14,6 +14,10 @@ from bson import ObjectId
 from datetime import datetime
 from typing import List
 
+from motor.motor_asyncio import AsyncIOMotorDatabase
+
+from Backend.app.routes.auth import get_current_user
+
 router = APIRouter(prefix="/habits", tags=["Habits"])
 security = HTTPBearer()
 
@@ -414,3 +418,298 @@ async def checkin_habit(
         "goal": updated_habit.get("goal"),
         "progress_percentage": progress_percentage
     }
+
+# Routes for Habit draft begin here:
+"""
+Additional endpoints for habit drafts (using existing Habit model with DRAFT status)
+"""
+
+
+@router.post(
+    "/drafts",
+    response_model=HabitResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create habit draft",
+    description="Create a new habit draft. User can save their progress before finding a partner."
+)
+async def create_habit_draft(
+        habit_data: HabitCreate,
+        current_user: dict = Depends(get_current_user),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Create a habit draft (status = DRAFT).
+
+    Drafts don't require a partner and allow users to:
+    - Save their habit creation progress
+    - Come back and edit later
+    - Convert to active habit when they find a partner
+
+    The habit will have status="draft" and partnership_id=None.
+    """
+    habit_dict = habit_data.model_dump(exclude_none=True)
+    habit_dict["created_by"] = current_user.id  # Changed from current_user["user_id"]
+    habit_dict["status"] = HabitStatus.DRAFT.value  # Set as draft
+    habit_dict["partnership_id"] = None  # No partner yet
+    habit_dict["created_at"] = datetime.utcnow()
+    habit_dict["updated_at"] = datetime.utcnow()
+
+    result = await db.habits.insert_one(habit_dict)
+
+    created_habit = await db.habits.find_one({"_id": result.inserted_id})
+    return format_habit_response(created_habit)
+
+
+@router.get(
+    "/drafts",
+    response_model=List[HabitResponse],
+    summary="Get user's habit drafts",
+    description="Get all draft habits for the current user."
+)
+async def get_user_drafts(
+        current_user: dict = Depends(get_current_user),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get all draft habits for the authenticated user.
+
+    Drafts are habits with:
+    - status = "draft"
+    - created_by = current user
+    - partnership_id = None
+
+    Frontend can use this to restore the user's work in progress.
+    """
+    drafts = await db.habits.find({
+        "created_by": current_user.id,  # Changed from current_user["user_id"]
+        "status": HabitStatus.DRAFT.value
+    }).to_list(length=None)
+
+    return [format_habit_response(draft) for draft in drafts]
+
+
+@router.get(
+    "/drafts/{draft_id}",
+    response_model=HabitResponse,
+    summary="Get specific habit draft",
+    description="Get a specific draft habit by ID."
+)
+async def get_draft(
+        draft_id: str,
+        current_user: dict = Depends(get_current_user),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Get a specific draft by ID.
+
+    Only the creator can access their own drafts.
+    """
+    # Validate ObjectId
+    if not ObjectId.is_valid(draft_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid draft ID format"
+        )
+
+    draft = await db.habits.find_one({
+        "_id": ObjectId(draft_id),
+        "created_by": current_user.id,  # Changed from current_user["user_id"]
+        "status": HabitStatus.DRAFT.value
+    })
+
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Draft not found"
+        )
+
+    return format_habit_response(draft)
+
+
+@router.put(
+    "/drafts/{draft_id}",
+    response_model=HabitResponse,
+    summary="Update habit draft",
+    description="Update an existing habit draft."
+)
+async def update_habit_draft(
+        draft_id: str,
+        habit_data: HabitUpdate,
+        current_user: dict = Depends(get_current_user),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Update an existing habit draft.
+
+    Only the creator can update their own drafts.
+    All fields are optional - only provided fields will be updated.
+    """
+    # Validate ObjectId
+    if not ObjectId.is_valid(draft_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid draft ID format"
+        )
+
+    # Check if draft exists and belongs to user
+    existing_draft = await db.habits.find_one({
+        "_id": ObjectId(draft_id),
+        "created_by": current_user.id,  # Changed from current_user["user_id"]
+        "status": HabitStatus.DRAFT.value
+    })
+
+    if not existing_draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Draft not found"
+        )
+
+    # Prepare update data
+    update_dict = habit_data.model_dump(exclude_none=True)
+    update_dict["updated_at"] = datetime.utcnow()
+
+    # Update the draft
+    result = await db.habits.update_one(
+        {"_id": ObjectId(draft_id)},
+        {"$set": update_dict}
+    )
+
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to update draft"
+        )
+
+    # Return updated draft
+    updated_draft = await db.habits.find_one({"_id": ObjectId(draft_id)})
+    return format_habit_response(updated_draft)
+
+
+@router.delete(
+    "/drafts/{draft_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete habit draft",
+    description="Delete a habit draft."
+)
+async def delete_habit_draft(
+        draft_id: str,
+        current_user: dict = Depends(get_current_user),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Delete a habit draft.
+
+    Only the creator can delete their own drafts.
+    """
+    # Validate ObjectId
+    if not ObjectId.is_valid(draft_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid draft ID format"
+        )
+
+    result = await db.habits.delete_one({
+        "_id": ObjectId(draft_id),
+        "created_by": current_user.id,  # Changed from current_user["user_id"]
+        "status": HabitStatus.DRAFT.value
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Draft not found"
+        )
+
+    return None
+
+
+@router.post(
+    "/drafts/{draft_id}/convert",
+    response_model=HabitResponse,
+    summary="Convert draft to active habit",
+    description="Convert a draft to active habit when user finds a partner."
+)
+async def convert_draft_to_habit(
+        draft_id: str,
+        partnership_id: str,
+        current_user: dict = Depends(get_current_user),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Convert a draft to an active habit.
+
+    This is called when:
+    - User finds a partner
+    - Partner accepts the partnership
+
+    The draft status changes from DRAFT → PENDING_APPROVAL
+    and partnership_id is added.
+    """
+    # Validate ObjectId
+    if not ObjectId.is_valid(draft_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid draft ID format"
+        )
+
+    # Check if draft exists
+    draft = await db.habits.find_one({
+        "_id": ObjectId(draft_id),
+        "created_by": current_user.id,  # Changed from current_user["user_id"]
+        "status": HabitStatus.DRAFT.value
+    })
+
+    if not draft:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Draft not found"
+        )
+
+    # Verify partnership exists
+    partnership = await db.partnerships.find_one({"_id": ObjectId(partnership_id)})
+    if not partnership:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Partnership not found"
+        )
+
+    # Update draft to active habit
+    result = await db.habits.update_one(
+        {"_id": ObjectId(draft_id)},
+        {
+            "$set": {
+                "status": HabitStatus.PENDING_APPROVAL.value,
+                "partnership_id": partnership_id,
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    if result.modified_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to convert draft"
+        )
+
+    # Return converted habit
+    converted_habit = await db.habits.find_one({"_id": ObjectId(draft_id)})
+    return format_habit_response(converted_habit)
+
+
+# Helper function (add to your existing habits.py if not already there)
+def format_habit_response(habit: dict) -> HabitResponse:
+    """Format MongoDB habit document to response model."""
+    return HabitResponse(
+        id=str(habit["_id"]),
+        habit_name=habit["habit_name"],
+        habit_type=habit["habit_type"],
+        category=habit["category"],
+        description=habit.get("description"),
+        goal=habit.get("goal"),
+        count_checkins=habit.get("count_checkins", 0),
+        frequency=habit.get("frequency", "daily"),
+        partnership_id=habit.get("partnership_id"),
+        status=habit["status"],
+        created_by=habit["created_by"],
+        created_at=habit["created_at"]
+    )
