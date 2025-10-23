@@ -130,3 +130,18 @@ async def second_auth_headers(client: AsyncClient, second_test_user):
     token = response.json()["access_token"]
 
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture
+async def test_partnership_id(test_db, test_user, second_test_user):
+    """Create a test partnership between test_user and second_test_user."""
+    partnership_data = {
+        "user_id_1": str(test_user["_id"]),
+        "user_id_2": str(second_test_user["_id"]),
+        "status": "active",
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
+    }
+
+    result = await test_db.partnerships.insert_one(partnership_data)
+    return str(result.inserted_id)

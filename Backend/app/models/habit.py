@@ -67,6 +67,10 @@ class HabitUpdate(BaseModel):
     description: Optional[str] = None
     frequency: Optional[HabitFrequency] = None  # default value
 
+class ConvertDraftRequest(BaseModel):
+    """Request model for converting a draft to active habit."""
+    partnership_id: str = Field(..., description="Partnership ID to associate with the habit")
+
 
 class Habit(HabitBase):
     id: str = Field(alias="_id")
