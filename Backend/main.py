@@ -4,9 +4,6 @@ from contextlib import asynccontextmanager
 from config.database import connect_to_mongo, close_mongo_connection
 from app.routes import auth, partnership, habits, users, streak_history
 
-from app.routes.auth import router as auth_router
-from app.routes.partnership import router as partnership_router
-from app.routes.habits import router as habits_router
 import os
 from dotenv import load_dotenv
 
@@ -36,16 +33,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
-app.include_router(auth.router)
-app.include_router(partnership.router)
-app.include_router(habits.router)
-app.include_router(users.router)
-app.include_router(streak_history.router)
-app.include_router(auth_router)
-app.include_router(partnership_router)
-app.include_router(habits_router)
-
+# Include routers with /api prefix
+app.include_router(auth.router, prefix="/api")
+app.include_router(partnership.router, prefix="/api")
+app.include_router(habits.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(streak_history.router, prefix="/api")
 
 
 @app.get("/")
