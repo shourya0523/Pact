@@ -47,6 +47,12 @@ app.include_router(auth_router)
 app.include_router(partnership_router)
 app.include_router(habits_router)
 
+# Include routers with /api prefix
+app.include_router(auth.router, prefix="/api")
+app.include_router(partnership.router, prefix="/api")
+app.include_router(habits.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(streak_history.router, prefix="/api")
 
 
 @app.get("/")

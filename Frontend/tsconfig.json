@@ -4,19 +4,34 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"],
-      "@/hooks/*": ["./src/hooks/*"],
-      "@/components/*": ["./src/components/common/*"],
-      "@/screens/*": ["./src/screens/*"],
-      "@/utils/*": ["./src/utils/*"],
-      "@/constants/*": ["./src/constants/*"],
-      "@/navigation/*": ["./src/navigation/*"]
+      "@/*": [
+        "./src/*"
+      ],
+      "@/hooks/*": [
+        "app/hooks/*"
+      ],
+      "@/components/*": [
+        "app/components/common/*"
+      ],
+      "@/screens/*": [
+        "app/screens/*"
+      ],
+      "@/utils/*": [
+        "app/utils/*"
+      ],
+      "@/constants/*": [
+        "app/constants/*"
+      ],
+      "@/navigation/*": [
+        "app/navigation/*"
+      ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
   ]
 }
