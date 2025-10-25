@@ -4,6 +4,8 @@ from datetime import datetime
 from bson import ObjectId
 from enum import Enum
 
+from Backend.app.models.goals import UserGoal # remove .Backend if it give you isseues
+
 
 class HabitType(str, Enum):
     BUILD = "build"
@@ -41,10 +43,11 @@ class HabitBase(BaseModel):
     category: HabitCategory
     description: Optional[str] = None
     streak: int = Field(default=0)  # NEW
-    # goal: Dict[str, UserGoal] = Field(
-    #     default_factory=dict,
-    #     description="Per-user goals. Key: user_id, Value: UserGoal object"
-    # )
+    # Per-user goals embedded in habit
+    goals: Dict[str, UserGoal] = Field(
+        default_factory=dict,
+        description="Per-user goals. Key: user_id, Value: UserGoal object"
+    )
 
     # streak
     # user1
