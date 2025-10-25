@@ -1,1 +1,0 @@
-// Same thing as login screen (can also be a modal )
