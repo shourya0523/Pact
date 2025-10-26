@@ -1,14 +1,15 @@
 import React from 'react'
 import { ScrollView, View, Text, TouchableOpacity } from 'react-native'
 import { useRouter } from "expo-router"
-import GradientBackground from '@/components/ui/gradientBackground'
+import Particles from '@/components/ui/starsParticlesBackground'
 import HabitsBox from '@/components/dashboard-ui/habit-box'
 
 export default function HabitViews() {
     const router = useRouter()
 
     return (
-        <GradientBackground>
+        <View>
+        <Particles />
             <ScrollView
                 className="flex-1"
                 contentContainerStyle={{ alignItems: 'center' }}
@@ -31,6 +32,6 @@ export default function HabitViews() {
                     </View>
                 </View>
             </ScrollView>
-        </GradientBackground>
+            </View>
     )
 }

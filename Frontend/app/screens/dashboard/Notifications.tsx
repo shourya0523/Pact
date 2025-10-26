@@ -1,7 +1,7 @@
 import React from 'react'
 import { ScrollView, FlatList, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import GradientBackground from '@/components/ui/gradientBackground'
+import GradientBackground from '@/components/ui/starsParticlesBackground'
 
 const NOTIFICATIONS = [
     { id: '1', title: "Hey, it's time for lunch.", timeStatus: "About 1 minute ago"},

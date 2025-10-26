@@ -1,7 +1,7 @@
 import React from 'react'
 import { ScrollView, Text, View } from 'react-native'
 import { useRouter } from "expo-router"
-import GradientBackground from "../../components/common/ui/gradientBackground";
+import Particles from "../../components/common/ui/starsParticlesBackground";
 import CircularButton from '@/components/ui/CircularButton';
 import HabitsBox from '@/components/dashboard-ui/habit-box'
 import ActivityBox from '@/components/dashboard-ui/activity-box'
@@ -16,7 +16,8 @@ export default function Home() {
   const router = useRouter()
 
   return (
-    <GradientBackground>
+    <View>
+    <Particles />
       <ScrollView
         flex-1
         showsVerticalScrollIndicator={false}
@@ -62,6 +63,6 @@ export default function Home() {
           </View>
         </View>
       </ScrollView>
-    </GradientBackground>
+      </View>
   )
 }

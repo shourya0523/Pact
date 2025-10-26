@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, Image, TouchableOpacity, TextInput } from 'react-native'
-import GradientBackground from '@/components/ui/gradientBackground'
+import GradientBackground from '@/components/ui/starsParticlesBackground'
 import { useRouter } from 'expo-router'
 
 export default function ProfileView() {

@@ -1,7 +1,7 @@
 import React from "react";
 import { ScrollView, View, Text } from 'react-native'
 import { useRouter } from "expo-router"
-import GradientBackground from "@/components/ui/gradientBackground";
+import GradientBackground from "@/components/ui/starsParticlesBackground";
 import Challenge from "@/components/dashboard-ui/challenge";
 
 const challenges = [

@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
-import GradientBackground from '@/components/ui/gradientBackground'
+import GradientBackground from '@/components/ui/starsParticlesBackground'
 
 export default function Settings() {
     return (
