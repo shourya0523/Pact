@@ -21,8 +21,8 @@ class GoalStatus(str, Enum):
     """Status of the goal"""
     ACTIVE = "active"
     COMPLETED = "completed"
-    PAUSED = "paused"
-    CANCELLED = "cancelled"
+    # PAUSED = "paused"
+    # CANCELLED = "cancelled"
 
 
 class UserGoal(BaseModel):
@@ -132,7 +132,6 @@ class SetGoalRequest(BaseModel):
 class UpdateGoalRequest(BaseModel):
     """Request to update specific fields of a user's goal"""
     goal_name: Optional[str] = Field(None, min_length=1, max_length=200)
-    goal_status: Optional[GoalStatus] = None
     goal_end_date: Optional[datetime] = None
 
 
