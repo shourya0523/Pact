@@ -1,4 +1,4 @@
-# DuoTrack - Habit Tracker App
+# Pact - Habit Tracker App
 
 ## Getting Started
 

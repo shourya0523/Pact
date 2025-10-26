@@ -1,0 +1,41 @@
+{
+  "notifications": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["user_id", "notification_type"],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "user_id": {
+            "bsonType": "objectId"
+          },
+          "partnership_id": {
+            "bsonType": "objectId"
+          },
+          "notification_type": {
+            "enum": ["reminder", "partner_completed", "nudge", "streak_broken", "milestone", "partner_request"]
+          },
+          "title": {
+            "bsonType": "string"
+          },
+          "description": {
+            "bsonType": "string"
+          },
+          "is_read": {
+            "bsonType": "bool",
+            "default": false
+          },
+          "created_at": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "indexes": [
+      {"key": {"user_id": 1, "is_read": 1}},
+      {"key": {"created_at": -1}}
+    ]
+  }
+}

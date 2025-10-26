@@ -1,0 +1,41 @@
+{
+  "streak_history": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["partnership_id", "habit_id", "streak_start_date"],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "partnership_id": {
+            "bsonType": "objectId"
+          },
+          "habit_id": {
+            "bsonType": "objectId"
+          },
+          "streak_start_date": {
+            "bsonType": "date"
+          },
+          "streak_end_date": {
+            "bsonType": "date"
+          },
+          "streak_length_days": {
+            "bsonType": "int",
+            "minimum": 0
+          },
+          "ended_reason": {
+            "enum": ["missed_checkin", "partnership_ended", "habit_archived", "ongoing"]
+          },
+          "created_at": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "indexes": [
+      {"key": {"partnership_id": 1, "habit_id": 1}},
+      {"key": {"streak_start_date": 1}}
+    ]
+  }
+}

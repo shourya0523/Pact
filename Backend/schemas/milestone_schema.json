@@ -1,0 +1,43 @@
+{ 
+  "milestones": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["habit_id", "milestone_name", "threshold_value"],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "habit_id": {
+            "bsonType": "objectId"
+          },
+          "milestone_name": {
+            "bsonType": "string"
+          },
+          "threshold_value": {
+            "bsonType": "int",
+            "minimum": 1
+          },
+          "reward_points": {
+            "bsonType": "int",
+            "minimum": 0
+          },
+          "description": {
+            "bsonType": "string"
+          },
+          "is_achieved": {
+            "bsonType": "bool",
+            "default": false
+          },
+          "achieved_at": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "indexes": [
+      {"key": {"habit_id": 1}},
+      {"key": {"threshold_value": 1}}
+    ]
+  }
+}

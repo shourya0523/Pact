@@ -1,60 +1,47 @@
-// Welcome screen file
-import React from "react";
-import { View, Text, StyleSheet, Button } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { theme } from "../../assets/theme";
-import { useRouter } from "expo-router";
+import React, { useEffect } from 'react';
+import { View, Text, Image } from 'react-native';
+import { useRouter } from 'expo-router';
 
-export default function Index() {
+export default function EntryScreen() {
   const router = useRouter();
-    
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push('/screens/auth/SignupScreen');
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <LinearGradient
-      colors={[theme.colors.backgroundGradientStart, theme.colors.backgroundGradientEnd]}
-      start={{x: 0, y: 0}}
-      end={{x: 1, y: 0}}
-      style={styles.container}
-    >
-      <View style={styles.logoCircle}>
-        <Text style={styles.logoText}>Logo</Text>
+    <View className="flex-1 bg-[#291133]">
+      <View className="absolute inset-0">
+        {[...Array(50)].map((_, i) => (
+          <View
+            key={i}
+            className="absolute bg-white rounded-full"
+            style={{
+              top: `${Math.random() * 100}%`,
+              left: `${Math.random() * 100}%`,
+              width: Math.random() * 3 + 1,
+              height: Math.random() * 3 + 1,
+              opacity: Math.random() * 0.7 + 0.3,
+            }}
+          />
+        ))}
       </View>
-      <Text style={styles.title}>PACT</Text>
-      <Button title="Continue" onPress={() => router.push("/screens/auth/SignupScreen")} />
-    </LinearGradient>
-  )
+
+      <View className="flex-1 items-center justify-center">
+        <Image
+          source={require('../../images/space/logo.png')}
+          className="w-32 h-32 mb-4"
+          resizeMode="contain"
+        />
+        
+        <Text className="text-white text-6xl font-bold">
+          Pact
+        </Text>
+      </View>
+    </View>
+  );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  
-  logoCircle: {
-    width: theme.sizes.logoSize,
-    height: theme.sizes.logoSize,
-    borderRadius: theme.sizes.logoSize / 2,
-    backgroundColor: theme.colors.logoCircle,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: theme.sizes.spacing * 2,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-    elevation: 4,
-  },
-
-  logoText: {
-    fontSize: 14,
-    color: theme.colors.text,
-  },
-
-  title: {
-    fontSize: 72,
-    color: theme.colors.text,
-    fontWeight: "700",
-    letterSpacing: 4,
-  }
-})

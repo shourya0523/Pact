@@ -1,0 +1,44 @@
+{
+  "partnerships": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["user_id_1", "user_id_2", "status"],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "user_id_1": {
+            "bsonType": "objectId",
+            "description": "First user in partnership"
+          },
+          "user_id_2": {
+            "bsonType": "objectId",
+            "description": "Second user in partnership"
+          },
+          "status": {
+            "enum": ["pending", "active", "completed", "broken"],
+            "description": "Partnership status"
+          },
+          "current_streak": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "Current streak in days"
+          },
+          "longest_streak": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "Longest streak achieved"
+          },
+          "created_at": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "indexes": [
+      {"key": {"user_id_1": 1, "user_id_2": 1}},
+      {"key": {"status": 1}}
+    ]
+  }
+}

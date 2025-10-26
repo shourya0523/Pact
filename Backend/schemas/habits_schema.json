@@ -1,0 +1,55 @@
+{
+  "habits": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["partnership_id", "habit_name", "habit_type", "habit_category"],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId"
+          },
+          "partnership_id": {
+            "bsonType": "objectId"
+          },
+          "habit_name": {
+            "bsonType": "string"
+          },
+          "habit_type": {
+            "enum": ["build", "break"]
+          },
+          "habit_category": {
+            "enum": ["exercise", "productivity", "health", "social", "finance", "sleep", "nutrition", "mindfulness"]
+          },
+          "habit_description": {
+            "bsonType": "string",
+            "description": "Optional detailed description of what counts as completion"
+          },
+          "count_checkins": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "Total number of check-ins for this habit goal"
+          },
+          "created_at": {
+            "bsonType": "date",
+            "description": "Habit creation timestamp"
+          },
+          "is_active": {
+            "bsonType": "bool",
+            "default": true
+          },
+          "is_broken": {
+            "bsonType": "bool",
+            "default": false
+          },
+          "created_at": {
+            "bsonType": "date"
+          }
+        }
+      }
+    },
+    "indexes": [
+      {"key": {"partnership_id": 1}},
+      {"key": {"is_active": 1}}
+    ]
+  }
+}
