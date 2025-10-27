@@ -2,9 +2,14 @@ import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useRouter } from "expo-router"
 import Particles from '@/components/ui/starsParticlesBackground'
+import GreyButton from '@/components/ui/greyButton'
 
 export default function HabitCreation() {
     const router = useRouter()
+
+    const handleContinuePress = () => {
+        router.push('screens/dashboard/ChooseHabitCategory')
+    }
 
     return (
         <View className="flex-1 relative">
@@ -16,14 +21,10 @@ export default function HabitCreation() {
                     {"Get Started By\nCreating a\nHabit!"}
                 </Text>
                 <View className="absolute bottom-5 w-full p-5 items-center">
-                    <Pressable
-                        className="w-[480px] h-[60px] rounded-[30px] flex-row items-center justify-center"
-                        style={{ backgroundColor: "rgba(129, 132, 152, 0.27)" }} 
-                    >
-                        <Text className="text-[16px] font-wix text-white text-center">
-                            CONTINUE
-                        </Text>
-                    </Pressable>
+                    <GreyButton 
+                        onPress={handleContinuePress}
+                        text="CONTINUE"    
+                    />
                 </View>
             </View>
         </View>
