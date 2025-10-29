@@ -114,7 +114,9 @@ async def log_habit_completion(
         completed=log["completed"],
         notes=log.get("notes"),
         date=log["date"].isoformat(),
-        logged_at=log["logged_at"]
+        logged_at=log["logged_at"],
+        current_streak=habit.get("current_streak", 0)
+        
     )
 
 async def update_partnership_streak(db, habit_id: str, partnership_id: str, check_date: date):
