@@ -1,4 +1,4 @@
-
+import pytest
 import asyncio
 import sys
 from pathlib import Path
@@ -9,6 +9,7 @@ sys.path.insert(0, str(backend_dir))
 
 from config.database import connect_to_mongo, close_mongo_connection
 
+@pytest.mark.asyncio
 async def test_connection():
     try:
         db = await connect_to_mongo()

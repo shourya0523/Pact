@@ -1,8 +1,3 @@
-
-"""
-Test fixtures and configuration for pytest.
-"""
-
 import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
@@ -12,6 +7,8 @@ import sys
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+
+os.environ["TESTING_MODE"] = "true"
 
 # Add Backend directory to Python path
 backend_dir = Path(__file__).parent.parent
@@ -46,12 +43,17 @@ async def test_db():
 @pytest_asyncio.fixture
 async def client(test_db):
     """Create async test client."""
+    # IMPORTANT: Clear any existing overrides first
+    app.dependency_overrides.clear()
 
-    # Override database dependency
+    # Override both database dependencies
+    from app.routes.badges import get_db
+
     async def override_get_database():
         return test_db
 
     app.dependency_overrides[get_database] = override_get_database
+    app.dependency_overrides[get_db] = override_get_database
 
     # Create client
     transport = ASGITransport(app=app)
@@ -70,8 +72,10 @@ async def test_user(test_db):
     user_data = {
         "username": "testuser",
         "email": "test@example.com",
-        "password": hash_password("testpass123"),  # ✅ Changed from "hashed_password"
-        "created_at": datetime.utcnow()
+        "password": "testpass123", 
+        "display_name": "Test User",
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
     }
 
     result = await test_db.users.insert_one(user_data)
@@ -91,7 +95,7 @@ async def auth_headers(client: AsyncClient, test_user):
         }
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Login failed: {response.text}"
     token = response.json()["access_token"]
 
     return {"Authorization": f"Bearer {token}"}
@@ -105,8 +109,10 @@ async def second_test_user(test_db):
     user_data = {
         "username": "testuser2",
         "email": "test2@example.com",
-        "password": hash_password("testpass123"),  # ✅ Changed from "hashed_password"
-        "created_at": datetime.utcnow()
+        "password": "testpass123",
+        "display_name": "Test User 2",
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow()
     }
 
     result = await test_db.users.insert_one(user_data)
@@ -126,7 +132,7 @@ async def second_auth_headers(client: AsyncClient, second_test_user):
         }
     )
 
-    assert response.status_code == 200
+    assert response.status_code == 200, f"Login failed: {response.text}"
     token = response.json()["access_token"]
 
     return {"Authorization": f"Bearer {token}"}
