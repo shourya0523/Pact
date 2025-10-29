@@ -81,6 +81,11 @@ class Habit(HabitBase):
     created_by: str
     status: HabitStatus = HabitStatus.DRAFT
     count_checkins: int = Field(default=0)  # for percentage later down the line
+
+    current_streak: int = Field(default=0)
+    longest_streak: int = Field(default=0)
+    last_completed_date: Optional[datetime] = None
+
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
