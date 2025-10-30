@@ -1,8 +1,9 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import Particles from '@/components/ui/starsParticlesBackground';
+import Particles from 'app/components/space/whiteStarsParticlesBackground';
 import HabitShadowCircle from '@/components/ui/habitShadowCircle';
 import GreyButton from '@/components/ui/greyButton';
+import OrComponent from '@/components/ui/or';
 import { useRouter } from 'expo-router';
 
 export default function ChooseHabitCategory() {
@@ -49,11 +50,7 @@ export default function ChooseHabitCategory() {
         </View>
         
         <View className="mt-auto">
-          <View className="flex-row justify-center items-center mb-6">
-            <View className="flex-1 h-[1px] bg-white" />
-            <Text className="mx-4 text-white font-wix text-sm">OR</Text>
-            <View className="flex-1 h-[1px] bg-white" />
-          </View>
+          <OrComponent />
           
           <View className="items-center">
             <GreyButton
