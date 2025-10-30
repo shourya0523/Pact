@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, TextInput, Pressable } from 'react-native'
 import { useRouter } from 'expo-router'
-import Particles from '@/components/ui/starsParticlesBackground'
+import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton';
 
 export default function Goals() {
@@ -9,7 +9,7 @@ export default function Goals() {
 
     return (
         <View className="flex-1 relative">
-            <Particles />
+            <WhiteParticles />
             <View className="flex-1 justify-center items-center">
                 <Text className="font-wix text-white text-[38px] text-center">Create Frequency Goal</Text>
             <TextInput

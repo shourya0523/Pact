@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, Pressable } from 'react-native'
 import { useRouter } from "expo-router"
-import Particles from '@/components/ui/starsParticlesBackground'
+import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton'
 
 export default function HabitCreation() {
@@ -13,7 +13,7 @@ export default function HabitCreation() {
 
     return (
         <View className="flex-1 relative">
-        <Particles />
+        <WhiteParticles />
             <View 
                 className="flex-1 justify-center items-center"
             >

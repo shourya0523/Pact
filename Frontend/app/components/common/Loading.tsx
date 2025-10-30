@@ -1,1 +1,0 @@
-// File to show loading (use react suspense)
