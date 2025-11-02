@@ -23,9 +23,6 @@ async def get_db():
     db = get_database()
     return db
 
-# ============================================================================
-# BASIC BADGE CRUD (Supporting endpoints)
-# ============================================================================
 
 @router.post("/badges", response_model=BadgeResponse, status_code=status.HTTP_201_CREATED)
 async def create_badge(
@@ -244,9 +241,7 @@ async def assign_badge_to_user(
     """
     KAN-81: Assign a badge to a user
     
-    This endpoint is typically called by the system/backend when a user
-    completes requirements for a badge. No notification logic included -
-    that's handled by the Notification API.
+    No notification logic included - that's handled by the Notification API.
     """
     token = credentials.credentials
     payload = decode_access_token(token)
