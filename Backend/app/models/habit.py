@@ -4,7 +4,7 @@ from datetime import datetime
 from bson import ObjectId
 from enum import Enum
 
-from Backend.app.models.goals import UserGoal # remove .Backend if it give you isseues
+from app.models.goals import UserGoal 
 
 
 class HabitType(str, Enum):
