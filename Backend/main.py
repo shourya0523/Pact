@@ -3,11 +3,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from config.database import connect_to_mongo, close_mongo_connection
-from app.routes import auth, habits, users, streak_history
+from app.routes import auth, habits, users, streak_history, streaks
 
 from app.routes.auth import router as auth_router
 from Backend.app.routes.partnership_apis import router as partnership_router
 from app.routes.habits import router as habits_router
+from app.routes.streaks import router as streaks_router
 import os
 from dotenv import load_dotenv
 
@@ -46,6 +47,7 @@ app.include_router(streak_history.router)
 app.include_router(auth_router)
 app.include_router(partnership_router)
 app.include_router(habits_router)
+app.include_router(streaks_router)
 
 # Include routers with /api prefix
 app.include_router(auth.router, prefix="/api")
