@@ -1,4 +1,5 @@
 
+
 """
 Test fixtures and configuration for pytest.
 """
@@ -12,6 +13,7 @@ import sys
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from bson import ObjectId
 
 # Add Backend directory to Python path
 backend_dir = Path(__file__).parent.parent
@@ -70,7 +72,7 @@ async def test_user(test_db):
     user_data = {
         "username": "testuser",
         "email": "test@example.com",
-        "password": hash_password("testpass123"),  # ✅ Changed from "hashed_password"
+        "password": hash_password("testpass123"),
         "created_at": datetime.utcnow()
     }
 
@@ -105,7 +107,7 @@ async def second_test_user(test_db):
     user_data = {
         "username": "testuser2",
         "email": "test2@example.com",
-        "password": hash_password("testpass123"),  # ✅ Changed from "hashed_password"
+        "password": hash_password("testpass123"),
         "created_at": datetime.utcnow()
     }
 
@@ -136,8 +138,8 @@ async def second_auth_headers(client: AsyncClient, second_test_user):
 async def test_partnership_id(test_db, test_user, second_test_user):
     """Create a test partnership between test_user and second_test_user."""
     partnership_data = {
-        "user_id_1": str(test_user["_id"]),
-        "user_id_2": str(second_test_user["_id"]),
+        "user_id_1": ObjectId(test_user["_id"]),  # Changed from str() to ObjectId
+        "user_id_2": ObjectId(second_test_user["_id"]),  # Changed from str() to ObjectId
         "status": "active",
         "created_at": datetime.utcnow(),
         "updated_at": datetime.utcnow()
