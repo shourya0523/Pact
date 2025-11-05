@@ -18,7 +18,7 @@ from typing import List
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from Backend.app.routes.auth import get_current_user
+from app.routes.auth import get_current_user
 
 router = APIRouter(prefix="/habits", tags=["Habits"])
 security = HTTPBearer()

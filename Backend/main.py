@@ -1,12 +1,13 @@
-from Backend.app.routes import partnership_apis
+from app.routes import partnership_apis
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from config.database import connect_to_mongo, close_mongo_connection
-from app.routes import auth, habits, users, streak_history, streaks
+from app.routes import auth, habits, users, streak_history
+from app.routes import goals
 
 from app.routes.auth import router as auth_router
-from Backend.app.routes.partnership_apis import router as partnership_router
+from app.routes.partnership_apis import router as partnership_router
 from app.routes.habits import router as habits_router
 from app.routes.streaks import router as streaks_router
 import os
@@ -51,10 +52,11 @@ app.include_router(streaks_router)
 
 # Include routers with /api prefix
 app.include_router(auth.router, prefix="/api")
-app.include_router(partnership.router, prefix="/api")
+app.include_router(partnership_apis.router, prefix="/api")
 app.include_router(habits.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(streak_history.router, prefix="/api")
+app.include_router(goals.router, prefix="/api")
 
 
 @app.get("/")
