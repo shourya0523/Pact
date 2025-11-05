@@ -197,7 +197,7 @@ async def create_user_goal(
         summary="Create a completion goal",
         description="Create a new completion goal for a specfic user within a specific habit."
 )
-async def create_completion_goal(
+async def create_user_goal_completion(
     habit_id: str,
     target_user_id: str,
     goal_data: SetGoalRequest,
