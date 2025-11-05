@@ -328,10 +328,10 @@ async def get_my_goals(
 # UPDATE GOAL
 
 @router.put(
-    "/habits/{habit_id}/users/{target_user_id}/goal",
+    "/habits/{habit_id}/users/{target_user_id}/goal-completion",
     response_model=UserGoalResponse,
-    summary="Update a user's goal",
-    description="Update specific fields of a user's goal within a habit. Progress and completion fields are read-only."
+    summary="Update a user's completion goal",
+    description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."
 )
 async def update_user_goal(
         habit_id: str,
@@ -393,6 +393,12 @@ async def update_user_goal(
         user_goal=user_goal
     )
 
+@router.put(
+     "/habits/{habit_id}/users/{target_user_id}/goal/completion",
+    response_model=UserGoalResponse,
+    summary="Update a user's goal",
+    description="Update specific fields of a user's goal within a habit. Progress and completion fields are read-only."   
+)
 
 # DELETE GOAL
 
