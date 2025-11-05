@@ -9,6 +9,7 @@ Handles streak calculation logic with the following design:
 """
 
 from datetime import datetime, timedelta, timezone, date
+import asyncio
 from bson import ObjectId
 from typing import Optional, Dict, Tuple
 import pytz
@@ -20,6 +21,8 @@ class StreakCalculationService:
     # Key: habit_id (str) → {"data": Dict, "expires_at": datetime}
     streak_mem_cache: Dict[str, Dict] = {}
     CACHE_TTL_SECONDS: int = 60
+    # Per-habit recompute locks to avoid concurrent recomputes/upserts (thundering herd)
+    _recompute_locks: Dict[str, asyncio.Lock] = {}
     
     @staticmethod
     async def calculate_streak_for_habit(
@@ -178,14 +181,36 @@ class StreakCalculationService:
             }
             return data
 
-        # Cold start: recompute and persist
-        data = await StreakCalculationService.recompute_streak_from_logs(db, habit_id, partnership_id)
-        await StreakCalculationService.upsert_streaks(db, habit_id, partnership_id, data)
-        StreakCalculationService.streak_mem_cache[habit_id] = {
-            "data": data,
-            "expires_at": now + timedelta(seconds=StreakCalculationService.CACHE_TTL_SECONDS),
-        }
-        return data
+        # Cold start: recompute and persist with per-habit lock (double-checked)
+        lock = StreakCalculationService._recompute_locks.setdefault(habit_id, asyncio.Lock())
+        async with lock:
+            # Recheck memory inside lock
+            cached2 = StreakCalculationService.streak_mem_cache.get(habit_id)
+            if cached2 and cached2["expires_at"] > datetime.utcnow():
+                return cached2["data"]
+            # Recheck persistent cache inside lock
+            streak2 = await db.streaks.find_one({"habit_id": ObjectId(habit_id)})
+            if streak2:
+                data2 = {
+                    "current_streak": streak2.get("current_streak", 0),
+                    "longest_streak": streak2.get("longest_streak", 0),
+                    "streak_started_at": streak2.get("streak_started_at"),
+                    "last_both_completed_date": streak2.get("last_both_completed_date"),
+                    "updated_at": streak2.get("updated_at"),
+                }
+                StreakCalculationService.streak_mem_cache[habit_id] = {
+                    "data": data2,
+                    "expires_at": datetime.utcnow() + timedelta(seconds=StreakCalculationService.CACHE_TTL_SECONDS),
+                }
+                return data2
+
+            data = await StreakCalculationService.recompute_streak_from_logs(db, habit_id, partnership_id)
+            await StreakCalculationService.upsert_streaks(db, habit_id, partnership_id, data)
+            StreakCalculationService.streak_mem_cache[habit_id] = {
+                "data": data,
+                "expires_at": datetime.utcnow() + timedelta(seconds=StreakCalculationService.CACHE_TTL_SECONDS),
+            }
+            return data
 
     @staticmethod
     async def recompute_streak_from_logs(db, habit_id: str, partnership_id: str) -> Dict:
