@@ -397,8 +397,16 @@ async def update_user_goal(
      "/habits/{habit_id}/users/{target_user_id}/goal/completion",
     response_model=UserGoalResponse,
     summary="Update a user's goal",
-    description="Update specific fields of a user's goal within a habit. Progress and completion fields are read-only."   
+    description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."   
 )
+async def update_user_goal_completion(
+    habit_id: str,
+    target_user_id: str,
+    update_data: UpdateGoalRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    
 
 # DELETE GOAL
 
