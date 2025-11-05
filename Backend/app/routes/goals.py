@@ -191,7 +191,7 @@ async def create_user_goal(
     )
 
 @router.post(
-        "/habits/{habit_id}/users/{target_user_id}/completion-goal",
+        "/habits/{habit_id}/users/{target_user_id}/goal/completion",
         response_model=UserGoalResponse,
         status_code=status.HTTP_201_CREATED,
         summary="Create a completion goal",
