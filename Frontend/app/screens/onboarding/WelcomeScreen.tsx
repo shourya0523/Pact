@@ -7,7 +7,7 @@ export default function EntryScreen() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.push('/screens/auth/SignupScreen');
+      router.push('/screens/auth/WelcomeScreen');  // Changed to WelcomeScreen
     }, 3000);
 
     return () => clearTimeout(timer);
