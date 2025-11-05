@@ -190,6 +190,37 @@ async def create_user_goal(
         user_goal=user_goal
     )
 
+@router.post(
+        "/habits/{habit_id}/users/{target_user_id}/completion-goal",
+        response_model=UserGoalResponse,
+        status_code=status.HTTP_201_CREATED,
+        summary="Create a completion goal",
+        description="Create a new completion goal for a specfic user within a specific habit."
+)
+async def create_completion_goal(
+    habit_id: str,
+    target_user_id: str,
+    goal_data: SetGoalRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    request = SetGoalRequest(
+        goal_type=GoalType.COMPLETION,
+        goal_name=goal_data.goal_name,
+        frequency_count=None,
+        frequency_unit=None,
+        duration_count=None,
+        duration_unit=None
+    )
+
+    return await create_user_goal(
+        habit_id=habit_id,
+        target_user_id=target_user_id,
+        goal_data=request,
+        current_user_id=current_user_id,
+        db=db
+    )
+
 
 # ============================================================================
 # READ GOAL(S)
