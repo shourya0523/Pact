@@ -8,7 +8,7 @@ export default function HabitCreation() {
     const router = useRouter()
 
     const handleContinuePress = () => {
-        router.push('screens/dashboard/ChooseHabitCategory')
+        router.push('screens/dashboard/chooseHabitCategory')
     }
 
     return (
@@ -20,7 +20,7 @@ export default function HabitCreation() {
                 <Text className="font-wix text-white text-[38px] text-center ps leading-[54px]">
                     {"Get Started By\nCreating a\nHabit!"}
                 </Text>
-                <View className="absolute bottom-5 w-full p-5 items-center">
+                <View className="absolute bottom-10 w-full p-5 items-center">
                     <GreyButton 
                         onPress={handleContinuePress}
                         text="CONTINUE"    

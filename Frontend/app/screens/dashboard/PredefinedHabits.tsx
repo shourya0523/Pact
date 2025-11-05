@@ -32,36 +32,33 @@ export default function ChooseHabitCategory() {
           Choose from Predefined Productivity Habits
         </Text>
         
-        <View className="flex-1 justify-center items-center">
-          <View className="flex-row justify-center mb-12 gap-8">
+          <View className="flex-row flex-wrap justify-center mt-12">
             <HabitShadowCircle 
-              label="Study Everyday"
+              label="Study everyday"
               onPress={() => handleCategoryPress('productivity')}
             />
             <HabitShadowCircle
-              label="Reduce Screen Time"
+              label="Reduce screen time"
               onPress={() => handleCategoryPress('fitness')}
             />
-          </View>
-          <View className="flex-row justify-center mb-12 gap-8">
             <HabitShadowCircle
-              label="Wake up Early"
+              label="Wake up early"
               onPress={() => handleCategoryPress('selfcare')}
             />
             <HabitShadowCircle
-              label="Stop Procrastinating"
+              label="Stop procrastinating"
               onPress={() => handleCategoryPress('selfcare')}
             />
           </View>
-        </View>
         
         <View className="mt-auto">
           <OrComponent />
           
           <View className="items-center">
             <GreyButton
-                text="CREATE YOUR OWN HABIT"
-                onPress={chooseHabitPress}
+              onPress={chooseHabitPress}
+              text="CREATE YOUR OWN HABIT"
+              style={{ marginTop: 40, marginBottom: 40 }}
             />
           </View>
         </View>
