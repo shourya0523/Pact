@@ -210,6 +210,27 @@ async def test_create_goal_unauthorized_access(client: AsyncClient, auth_headers
 
     assert response.status_code == 403
 
+# @pytest.mark.asyncio
+# async def test_create_completion_goal_success(client: AsyncClient, auth_headers, test_db, test_user,
+#                                               test_partnership_id):
+#     """Test creating a completion-based goal successfully."""
+#     habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+#     goal_data = {
+#         "goal_type": "completion",
+#         "goal_name": "Complete 30 day challenge",
+
+#     }
+
+#     response = await client.post(
+#         f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+#         json=goal_data,
+#         headers=auth_headers
+#     )
+
+#     assert response.status_code == 201
+#     data = response.json()
+#     assert data["goal_type"] == "completion"
 
 # ============================================================================
 # READ GOAL TESTS
