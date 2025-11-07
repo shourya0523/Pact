@@ -328,7 +328,7 @@ async def get_my_goals(
 # UPDATE GOAL
 
 @router.put(
-    "/habits/{habit_id}/users/{target_user_id}/goal-completion",
+    "/habits/{habit_id}/users/{target_user_id}/goal",
     response_model=UserGoalResponse,
     summary="Update a user's completion goal",
     description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."
@@ -406,7 +406,49 @@ async def update_user_goal_completion(
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
+    habit = await verify_habit_access(db, habit_id, current_user_id)
+
+    if target_user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            details="Can only update your own goals"
+        )
     
+    goals = habit.get("goals", {})
+    if target_user_id not in goals:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Goal not found for this user in this habit"
+        )
+    
+    user_goal = goals[target_user_id]
+    if user_goal.get("goal_type") != "completion":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This enpoints can only update completion goals"
+        )
+    
+    update_dict = {}
+    if update_data.goal_name is not None:
+        update_dict[f"goals.{target_user_id}.goal_name"] = update_data.goal_name
+    if update_data.goal_end_date is not None:
+        update_dict[f"goals.{target_user_id}.goal_end_date"] = update_data.goal_end_date
+    update_dict[f"goals.{target_user_id}.update_at"] = datetime.utcnow()
+
+    await db.habits.update_one(
+        {"_id": ObjectId(habit_id)}
+        {"$set": update_dict}
+    )
+
+    updated_habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+    updated_user_goal = UserGoal(**updated_habit["goals"][target_user_id])
+
+    return format_goal_response(
+        habit_id=habit_id,
+        user_id=target_user_id,
+        habit=updated_habit,
+        user_goal=updated_user_goal
+    )
 
 # DELETE GOAL
 
