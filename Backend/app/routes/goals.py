@@ -411,7 +411,7 @@ async def update_user_goal_completion(
     if target_user_id != current_user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            details="Can only update your own goals"
+            detail="Can only update your own goals"
         )
     
     goals = habit.get("goals", {})
@@ -433,10 +433,10 @@ async def update_user_goal_completion(
         update_dict[f"goals.{target_user_id}.goal_name"] = update_data.goal_name
     if update_data.goal_end_date is not None:
         update_dict[f"goals.{target_user_id}.goal_end_date"] = update_data.goal_end_date
-    update_dict[f"goals.{target_user_id}.update_at"] = datetime.utcnow()
+    update_dict[f"goals.{target_user_id}.updated_at"] = datetime.utcnow()
 
     await db.habits.update_one(
-        {"_id": ObjectId(habit_id)}
+        {"_id": ObjectId(habit_id)},
         {"$set": update_dict}
     )
 
