@@ -99,7 +99,7 @@ void main() {
 }
 `;
 
-const Particles: React.FC<ParticlesProps> = ({
+const whiteParticles: React.FC<ParticlesProps> = ({
   particleCount = 300,       // more stars
   particleSpread = 10,
   speed = 0.1,
@@ -246,4 +246,4 @@ const Particles: React.FC<ParticlesProps> = ({
   return <div ref={containerRef} className={`fixed top-0 left-0 w-full h-full -z-10 ${className}`} />;
 };
 
-export default Particles;
+export default whiteParticles;

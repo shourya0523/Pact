@@ -1,37 +1,43 @@
 import React from 'react'
-import { ScrollView, View, Text, TouchableOpacity } from 'react-native'
-import { useRouter } from "expo-router"
-import Particles from '@/components/ui/starsParticlesBackground'
-import HabitsBox from '@/components/dashboard-ui/habit-box'
+import { View, Text } from 'react-native'
+import { useRouter } from 'expo-router'
+import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
+import HabitBox from '@/components/ui/habitBox'
+import GreyButton from '@/components/ui/greyButton'
 
 export default function HabitViews() {
     const router = useRouter()
 
     return (
-        <View>
-        <Particles />
-            <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ alignItems: 'center' }}
-            >
-                <Text className="text-white text-[28px] m-4">ALL HABITS</Text>
-            
-                <TouchableOpacity
-                    className=" bg-white w-[85%] rounded-3xl m-2 p-6 items-center justify-center"
-                >
-                    <Text className="text-black text-2xl font-bold">Create a new Habit</Text>
-                </TouchableOpacity>
-
-                <View className="flex-1 relative">
-                    <View className="flex flex-wrap flex-row justify-between px-6">
-                        <HabitsBox name="Drinking water" percentage={75} />
-                        <HabitsBox name="Cycling" percentage={40} />
-                        <HabitsBox name="Walking" percentage={30} />
-                        <HabitsBox name="Gym" percentage={60} />
-                        <HabitsBox name="Sleeping Early" percentage={40} />
-                    </View>
-                </View>
-            </ScrollView>
+        <View className="flex-1 relative">
+            <WhiteParticles />
+            <Text className="font-wix text-white text-[38px] text-center">All Habits</Text>
+            <View className="items-center justify-center mt-4">
+                <HabitBox
+                    title="Study Habit"
+                    progress={0.5}
+                    streak={7}
+                />
+                <HabitBox
+                    title="Study Habit"
+                    progress={0.5}
+                    streak={7}
+                />
+                <HabitBox
+                    title="Study Habit"
+                    progress={0.5}
+                    streak={7}
+                />
+                <HabitBox
+                    title="Study Habit"
+                    progress={0.5}
+                    streak={7}
+                />
+                <GreyButton 
+                    text="INACTIVE HABITS"
+                    style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
+                />
             </View>
+        </View>
     )
 }
