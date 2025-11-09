@@ -42,7 +42,7 @@ const GoogleSignIn = () => {
       console.log('User info:', user);
       setUserInfo(user);
 
-      // Send to your backend
+      // Sending to backend
       await sendToBackend(token, user);
 
     } catch (error) {
@@ -55,8 +55,8 @@ const GoogleSignIn = () => {
 
   const sendToBackend = async (accessToken, user) => {
     try {
-      // TODO: Replace with your actual backend URL
-      // For now, this will fail but won't break the app
+      // TODO: Replace with actual backend URL
+      // this will fail but won't break the app
       const response = await fetch('http://localhost:8080/api/auth/google', {
         method: 'POST',
         headers: {
