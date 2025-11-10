@@ -7,7 +7,7 @@ from app.routes import auth, habits, users, streak_history
 from app.routes import goals
 
 from app.routes.auth import router as auth_router
-from Backend.app.routes.partnership_apis import router as partnership_router
+from app.routes.partnership_apis import router as partnership_router
 from app.routes.habits import router as habits_router
 import os
 from dotenv import load_dotenv
