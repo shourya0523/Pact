@@ -30,8 +30,12 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Environment variables - all .env files
+.env
+Backend/.env.test
+!.env.example
+!.env.sample
+
 
 # typescript
 *.tsbuildinfo
@@ -47,4 +51,8 @@ __pycache__
 venv/
 
 config
+
+pytest.ini
+
+.vscode/
 .env

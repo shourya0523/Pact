@@ -1,68 +1,103 @@
-import React from 'react'
-import { ScrollView, Text, View } from 'react-native'
-import { useRouter } from "expo-router"
-import Particles from "../../components/common/ui/starsParticlesBackground";
-import CircularButton from '@/components/ui/CircularButton';
-import HabitsBox from '@/components/dashboard-ui/habit-box'
-import ActivityBox from '@/components/dashboard-ui/activity-box'
+import React from "react";
+import { View, Text, ScrollView, FlatList } from "react-native";
+import { useRouter } from "expo-router";
+import PurpleParticles from "app/components/space/purpleStarsParticlesBackground";
 
-const latestActivities = [
-  { id: '1', title: 'Drinking 300ml water', description: 'About 3 minutes ago' },
-  { id: '2', title: 'Walking 20 minutes', description: 'About 7 minutes ago' },
-  { id: '3', title: 'Biking 10 miles', description: 'About 5 hours ago' },
-]
+export default function HomePage() {
+  const router = useRouter();
 
-export default function Home() {
-  const router = useRouter()
+  const streaks = [
+    { name: "Study Everyday", flame: 4 },
+    { name: "Reduce Screen Time", flame: 13 },
+    { name: "Workout", flame: 1 },
+    { name: "Wake Up Early", flame: 7 },
+  ];
+
+  const goals = [
+    { name: "Wake Up Early" },
+    { name: "Study Everyday" },
+    { name: "Workout" },
+  ];
+
+  const partnerProgress = [
+    "Jake checked in for Study Everyday!",
+    "Charles checked in for Wake Up Early!",
+    "Becky checked in for Workout!",
+  ];
 
   return (
-    <View>
-    <Particles />
+    <View className="flex-1 relative">
+      <PurpleParticles />
+
       <ScrollView
-        flex-1
+        className="flex-1 px-6 pt-12"
+        contentContainerStyle={{ paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ alignItems: 'center' }}
       >
-        <Text className="text-white text-[28px] m-4">TODAY</Text>
+        {/* Greeting */}
+        <Text className="text-white text-[36px] font-wix">Hello, Mark!</Text>
 
-        <View className="bg-white rounded-3xl items-start justify-center px-6 py-4 w-[90%] h-[125px] my-4 shadow">
-            <Text className="text-2xl font-bold text-gray-800">1 Day</Text>
-            <Text className="text-base text-gray-600 mt-1">Your current streak:</Text>
-        </View>
-
-        <View className="flex-1 relative">
-            <View className="flex flex-wrap flex-row justify-center">
-                <HabitsBox name="Drinking water" percentage={75} />
-                <HabitsBox name="Cycling" percentage={40} />
-                <HabitsBox name="Walking" percentage={30} />
-                <HabitsBox name="Gym" percentage={60} />
-                <View className="absolute bottom-0 right-4">
-                    <CircularButton />
-                </View>
-            </View>
-        </View>
-
-        <View className="w-full px-4 mt-6 ">
-          <View className="flex-row justify-between items-center px-6">
-            <Text className="text-lg font-semibold text-gray-800">Latest Activity</Text>
-            <Text
-              className="font-semibold text-sm"
+        {/* Streaks */}
+        <View className="mt-6">
+          <Text className="text-white text-xl font-semibold mb-3">Streaks</Text>
+          {streaks.map((item, index) => (
+            <View
+              key={index}
+              className="flex-row justify-between bg-[#2a0055]/60 rounded-xl p-3 mb-2"
             >
-              See more
-            </Text>
+              <Text className="text-white text-base">{item.name}</Text>
+              <Text className="text-white font-semibold">{item.flame}🔥</Text>
+            </View>
+          ))}
+        </View>
+
+        {/* Check In Section */}
+        <View className="mt-8">
+          <View className="flex-row justify-between items-center mb-3">
+            <Text className="text-white text-xl font-semibold">Check In</Text>
+            <Text className="text-gray-300 text-sm">View All</Text>
           </View>
 
-        <View className="mt-3 items-center">
-          {latestActivities.map((activity) => (
-            <ActivityBox
-              key={activity.id}
-              activityAction={activity.title}
-              activityTime={activity.description}
-            />
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            data={goals}
+            keyExtractor={(item) => item.name}
+            renderItem={({ item }) => (
+              <View className="bg-white/90 w-32 h-32 rounded-2xl justify-center items-center mr-4">
+                <Text className="font-semibold text-center text-black">
+                  {item.name}
+                </Text>
+              </View>
+            )}
+          />
+        </View>
+
+        {/* Partner Progress */}
+        <View className="mt-8">
+          <Text className="text-white text-xl font-semibold mb-3">
+            Partner Progress
+          </Text>
+          {partnerProgress.map((text, index) => (
+            <View
+              key={index}
+              className="bg-white/15 rounded-full p-3 mb-2 flex-row justify-between items-center"
+            >
+              <Text className="text-white text-sm">{text}</Text>
+              <Text className="text-[#00FF9C] font-bold">✓</Text>
+            </View>
           ))}
-          </View>
         </View>
       </ScrollView>
+
+      {/* Bottom Navigation */}
+      <View className="absolute bottom-0 w-full bg-[#2a0055]/80 py-4 flex-row justify-around items-center border-t border-white/20">
+        <Text className="text-white text-sm">Home</Text>
+        <Text className="text-white text-sm">Stats</Text>
+        <Text className="text-white text-sm">+</Text>
+        <Text className="text-white text-sm">Friends</Text>
+        <Text className="text-white text-sm">Settings</Text>
       </View>
-  )
+    </View>
+  );
 }

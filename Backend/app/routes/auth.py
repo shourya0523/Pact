@@ -16,6 +16,12 @@ async def signup(
     user: UserCreate,
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
+    """
+    Create new user account.
+    
+    After signup, user must complete profile setup via POST /users/me/profile-setup
+    Returns user with profile_completed=False
+    """
     # Check if user already exists
     existing_user = await db.users.find_one({"$or": [
         {"email": user.email},
@@ -28,12 +34,18 @@ async def signup(
             detail="User with this email or username already exists"
         )
 
-    # Create new user
+    # Create new user with profile fields as empty/incomplete
     user_dict = user.model_dump()
     user_dict["password"] = hash_password(user_dict["password"])
     user_dict["created_at"] = datetime.utcnow()
+    user_dict["updated_at"] = datetime.utcnow()
     user_dict["notification_preferences"] = {}
     user_dict["is_active"] = True
+    
+    # Profile setup fields - start empty
+    user_dict["display_name"] = ""
+    user_dict["profile_photo_url"] = ""
+    user_dict["profile_completed"] = False
 
     result = await db.users.insert_one(user_dict)
 
@@ -44,6 +56,9 @@ async def signup(
         id=str(created_user["_id"]),
         username=created_user["username"],
         email=created_user["email"],
+        display_name=created_user["display_name"],
+        profile_photo_url=created_user["profile_photo_url"],
+        profile_completed=created_user["profile_completed"],
         created_at=created_user["created_at"]
     )
 
@@ -53,6 +68,11 @@ async def login(
     credentials: UserLogin,
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
+    """
+    Login user and return access token.
+    
+    Returns profile_completed flag so frontend can route to profile setup if needed.
+    """
     # Find user by email
     user = await db.users.find_one({"email": credentials.email})
 
@@ -74,6 +94,9 @@ async def login(
             id=str(user["_id"]),
             username=user["username"],
             email=user["email"],
+            display_name=user.get("display_name", ""),
+            profile_photo_url=user.get("profile_photo_url", ""),
+            profile_completed=user.get("profile_completed", False),
             created_at=user["created_at"]
         )
     }
@@ -84,6 +107,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncIOMotorDatabase = Depends(get_database)
 ):
+    """Get current authenticated user's profile"""
     token = credentials.credentials
     payload = decode_access_token(token)
 
@@ -106,6 +130,9 @@ async def get_current_user(
         id=str(user["_id"]),
         username=user["username"],
         email=user["email"],
+        display_name=user.get("display_name", ""),
+        profile_photo_url=user.get("profile_photo_url", ""),
+        profile_completed=user.get("profile_completed", False),
         created_at=user["created_at"]
     )
 
@@ -139,9 +166,9 @@ async def test_login():
 
 
 @router.post("/test-login/{user_number}", tags=["Testing"])
-async def test_login_numbered(user_number: int):  # Renamed to avoid conflict
+async def test_login_numbered(user_number: int):
     """
-    Quick test login(mainly for partnership)
+    Quick test login (mainly for partnership testing)
 
     These users have a pre-existing partnership for testing.
     """

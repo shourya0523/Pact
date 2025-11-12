@@ -1,9 +1,23 @@
 import React from "react";
-import { Text, Image, View, TouchableOpacity } from "react-native";
+import { Text, Image, View, TouchableOpacity, Alert, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import GoogleSignIn from "../../../components/GoogleSignIn";
 
 export default function WelcomeScreen() {
     const router = useRouter();
+    const [showGoogleSignIn, setShowGoogleSignIn] = React.useState(false);
+
+    const handleGoogleSignIn = () => {
+        console.log("Google Sign-In button pressed!");
+        Alert.alert("Debug", "Button was pressed!");
+        setShowGoogleSignIn(true);
+    };
+
+    // If user wants to use Google Sign-In, show that component instead
+    if (showGoogleSignIn) {
+        console.log("Showing GoogleSignIn component");
+        return <GoogleSignIn />;
+    }
 
     return (
         <View className="flex-1 bg-[#291133]">
@@ -49,16 +63,54 @@ export default function WelcomeScreen() {
                     </View>
                 </View>
 
-                <TouchableOpacity 
-                    className="w-full py-5 bg-[#81849845] rounded-full items-center"
-                    activeOpacity={0.27}
-                    onPress={() => router.push("/screens/auth/GetStarted")}
-                >
-                    <Text className="text-white text-lg font-semibold tracking-wide">
-                        GET STARTED
-                    </Text>
-                </TouchableOpacity>
+                <View style={styles.buttonContainer}>
+                    <TouchableOpacity 
+                        className="w-full py-5 bg-[#81849845] rounded-full items-center mb-4"
+                        activeOpacity={0.27}
+                        onPress={() => router.push("/screens/auth/GetStarted")}
+                    >
+                        <Text className="text-white text-lg font-semibold tracking-wide">
+                            GET STARTED
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Google Sign-In Button - Using inline styles to ensure it's pressable */}
+                    <TouchableOpacity 
+                        style={styles.googleButton}
+                        activeOpacity={0.8}
+                        onPress={handleGoogleSignIn}
+                    >
+                        <Text style={styles.googleButtonText}>
+                            Sign in with Google
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                <Text className="text-white/70 text-sm text-center mt-6">
+                    By continuing, you agree to our Terms & Privacy Policy
+                </Text>
             </View>
         </View>
     )
 }
+
+const styles = StyleSheet.create({
+    buttonContainer: {
+        width: '100%',
+        zIndex: 10,
+    },
+    googleButton: {
+        width: '100%',
+        paddingVertical: 20,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    googleButtonText: {
+        color: '#291133',
+        fontSize: 18,
+        fontWeight: '600',
+        letterSpacing: 1,
+    }
+});

@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import Particles from '@/components/ui/starsParticlesBackground';
+import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground';
 import HabitShadowCircle from '@/components/ui/habitShadowCircle';
 import GreyButton from '@/components/ui/greyButton';
 import BackwardButton from '@/components/ui/backwardButton';
+import OrComponent from '@/components/ui/or';
 import { useRouter } from 'expo-router';
 
 export default function ChooseHabitCategory() {
@@ -22,7 +23,7 @@ export default function ChooseHabitCategory() {
 
   return (
     <View className="flex-1 relative">
-      <Particles />
+      <WhiteParticles />
       
       <View className="flex-1 px-5 pt-20 pb-5">
         <BackwardButton />
@@ -31,40 +32,33 @@ export default function ChooseHabitCategory() {
           Choose from Predefined Productivity Habits
         </Text>
         
-        <View className="flex-1 justify-center items-center">
-          <View className="flex-row justify-center mb-12 gap-8">
+          <View className="flex-row flex-wrap justify-center mt-12">
             <HabitShadowCircle 
-              label="Study Everyday"
+              label="Study everyday"
               onPress={() => handleCategoryPress('productivity')}
             />
             <HabitShadowCircle
-              label="Reduce Screen Time"
+              label="Reduce screen time"
               onPress={() => handleCategoryPress('fitness')}
             />
-          </View>
-          <View className="flex-row justify-center mb-12 gap-8">
             <HabitShadowCircle
-              label="Wake up Early"
+              label="Wake up early"
               onPress={() => handleCategoryPress('selfcare')}
             />
             <HabitShadowCircle
-              label="Stop Procrastinating"
+              label="Stop procrastinating"
               onPress={() => handleCategoryPress('selfcare')}
             />
           </View>
-        </View>
         
         <View className="mt-auto">
-          <View className="flex-row justify-center items-center mb-6">
-            <View className="flex-1 h-[1px] bg-white" />
-            <Text className="mx-4 text-white font-wix text-sm">OR</Text>
-            <View className="flex-1 h-[1px] bg-white" />
-          </View>
+          <OrComponent />
           
           <View className="items-center">
             <GreyButton
-                onPress={chooseHabitPress}
-                text="CREATE YOUR OWN HABIT"
+              onPress={chooseHabitPress}
+              text="CREATE YOUR OWN HABIT"
+              style={{ marginTop: 40, marginBottom: 40 }}
             />
           </View>
         </View>

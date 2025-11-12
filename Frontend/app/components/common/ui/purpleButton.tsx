@@ -1,13 +1,13 @@
 import React from 'react'
 import { Pressable, Text } from 'react-native'
 
-interface greyButtonProps {
+interface purpleGreyButtonProps {
     onPress: () => void;
     text: string;
     style?: object;
 }
 
-const greyButton: React.FC<greyButtonProps> = ({
+const purpleGreyButton: React.FC<purpleGreyButtonProps> = ({
     onPress,
     text,
     style
@@ -17,9 +17,9 @@ const greyButton: React.FC<greyButtonProps> = ({
             onPress={onPress}
             className="rounded-[30px] flex-row items-center justify-center"
             style={[{ 
-                backgroundColor: "rgba(129, 132, 152, 0.27)", 
-                width: '440px',
-                height: '65px'
+                backgroundColor: "rgba(210, 86, 217, 0.27)",
+                width: '160px',
+                height: '55px'
             }, style]} 
         >
             <Text className="text-[16px] font-wix text-white text-center">
@@ -29,4 +29,4 @@ const greyButton: React.FC<greyButtonProps> = ({
     )
 }
 
-export default greyButton;
+export default purpleGreyButton;
