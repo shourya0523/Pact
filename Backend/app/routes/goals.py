@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
 
 from app.dependencies.auth import get_current_user_id
@@ -11,7 +11,8 @@ from app.models.goals import (
     UpdateGoalRequest,
     UserGoalResponse,
     GoalType,
-    GoalStatus
+    GoalStatus,
+    TimeUnit
 )
 from config.database import get_database
 
@@ -94,8 +95,225 @@ async def verify_habit_access(
     return habit
 
 
+def calculate_end_date(start_date: datetime, duration_count: int, duration_unit: TimeUnit) -> datetime:
+    """Calculate goal end date based on duration."""
+    if duration_unit == TimeUnit.DAY:
+        return start_date + timedelta(days=duration_count)
+    elif duration_unit == TimeUnit.WEEK:
+        return start_date + timedelta(weeks=duration_count)
+    elif duration_unit == TimeUnit.MONTH:
+        return start_date + timedelta(days=duration_count * 30)
+    return start_date
+
+
 # ============================================================================
-# CREATE GOAL
+# CREATE FREQUENCY GOAL
+# ============================================================================
+
+@router.post(
+    "/habits/{habit_id}/users/{target_user_id}/goal/frequency",
+    response_model=UserGoalResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a frequency goal for a user",
+    description="Create a frequency-based goal (e.g., '3x per week for 40 weeks'). Automatically calculates end date and total check-ins required."
+)
+async def create_frequency_goal(
+        habit_id: str,
+        target_user_id: str,
+        goal_data: SetGoalRequest,
+        current_user_id: str = Depends(get_current_user_id),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Create a frequency goal for a user in a habit.
+
+    - **habit_id**: ID of the habit
+    - **target_user_id**: ID of the user for whom the goal is being created
+    - **goal_data**: Must include frequency_count, frequency_unit, duration_count, duration_unit
+
+    Example: "Study 3 times per week for 40 weeks"
+    - frequency_count: 3
+    - frequency_unit: "week"
+    - duration_count: 40
+    - duration_unit: "week"
+
+    Returns the created goal with progress tracking fields.
+    """
+    # Verify habit access
+    habit = await verify_habit_access(db, habit_id, current_user_id)
+
+    # Verify target user is part of the habit
+    if habit.get("partnership_id"):
+        partnership = await db.partnerships.find_one({
+            "_id": ObjectId(habit["partnership_id"]),
+            "$or": [
+                {"user_id_1": ObjectId(target_user_id)},
+                {"user_id_2": ObjectId(target_user_id)}
+            ]
+        })
+
+        if not partnership:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Target user is not part of this habit's partnership"
+            )
+    else:
+        # For drafts, only creator can set goals
+        if target_user_id != current_user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Can only set goals for yourself in draft habits"
+            )
+
+    # Check if user already has a goal for this habit
+    goals = habit.get("goals", {})
+    if target_user_id in goals:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User already has a goal for this habit. Use PUT to update."
+        )
+
+    # Validate frequency goal requirements
+    if not all([
+        goal_data.frequency_count,
+        goal_data.frequency_unit,
+        goal_data.duration_count,
+        goal_data.duration_unit
+    ]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Frequency goals require: frequency_count, frequency_unit, duration_count, duration_unit"
+        )
+
+    # Validate matching units
+    if goal_data.frequency_unit != goal_data.duration_unit:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"frequency_unit ({goal_data.frequency_unit}) must match duration_unit ({goal_data.duration_unit})"
+        )
+
+    # Calculate end date
+    start_date = datetime.utcnow()
+    end_date = calculate_end_date(start_date, goal_data.duration_count, goal_data.duration_unit)
+
+    # Create UserGoal object (FREQUENCY type)
+    user_goal = UserGoal(
+        goal_type=GoalType.FREQUENCY,
+        goal_name=goal_data.goal_name,
+        frequency_count=goal_data.frequency_count,
+        frequency_unit=goal_data.frequency_unit,
+        duration_count=goal_data.duration_count,
+        duration_unit=goal_data.duration_unit,
+        goal_start_date=start_date,
+        goal_end_date=end_date,
+        goal_status=GoalStatus.ACTIVE,
+        created_at=start_date,
+        updated_at=start_date
+    )
+
+    # Update habit with new goal
+    await db.habits.update_one(
+        {"_id": ObjectId(habit_id)},
+        {
+            "$set": {
+                f"goals.{target_user_id}": user_goal.model_dump(),
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+
+    # Fetch updated habit
+    updated_habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+
+    return format_goal_response(
+        habit_id=habit_id,
+        user_id=target_user_id,
+        habit=updated_habit,
+        user_goal=user_goal
+    )
+
+
+# ============================================================================
+# UPDATE FREQUENCY GOAL
+# ============================================================================
+
+@router.put(
+    "/habits/{habit_id}/users/{target_user_id}/goal/frequency",
+    response_model=UserGoalResponse,
+    summary="Update a frequency goal",
+    description="Update a frequency goal's name or end date. Cannot change frequency/duration values after creation."
+)
+async def update_frequency_goal(
+        habit_id: str,
+        target_user_id: str,
+        update_data: UpdateGoalRequest,
+        current_user_id: str = Depends(get_current_user_id),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Update a frequency goal for a user.
+
+    - **habit_id**: ID of the habit
+    - **target_user_id**: ID of the user whose goal to update
+    - **update_data**: Fields to update (goal_name, goal_end_date)
+
+    Note: Cannot change frequency_count, duration_count, or units after creation.
+    """
+    # Verify habit access
+    habit = await verify_habit_access(db, habit_id, current_user_id)
+
+    # Only allow users to update their own goals
+    if target_user_id != current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Can only update your own goals"
+        )
+
+    # Check if goal exists
+    goals = habit.get("goals", {})
+    if target_user_id not in goals:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Goal not found for this user in this habit"
+        )
+
+    # Verify it's a frequency goal
+    existing_goal = UserGoal(**goals[target_user_id])
+    if existing_goal.goal_type != GoalType.FREQUENCY:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is only for frequency goals. Use /goal/completion for completion goals."
+        )
+
+    # Prepare update
+    update_dict = {}
+    if update_data.goal_name is not None:
+        update_dict[f"goals.{target_user_id}.goal_name"] = update_data.goal_name
+    if update_data.goal_end_date is not None:
+        update_dict[f"goals.{target_user_id}.goal_end_date"] = update_data.goal_end_date
+
+    update_dict[f"goals.{target_user_id}.updated_at"] = datetime.utcnow()
+
+    # Update habit
+    await db.habits.update_one(
+        {"_id": ObjectId(habit_id)},
+        {"$set": update_dict}
+    )
+
+    # Fetch updated habit
+    updated_habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+    user_goal = UserGoal(**updated_habit["goals"][target_user_id])
+
+    return format_goal_response(
+        habit_id=habit_id,
+        user_id=target_user_id,
+        habit=updated_habit,
+        user_goal=user_goal
+    )
+
+
+# ============================================================================
+# CREATE GENERIC GOAL (FOR COMPLETION GOALS - YOUR TEAMMATE'S ENDPOINT)
 # ============================================================================
 
 @router.post(
@@ -103,7 +321,7 @@ async def verify_habit_access(
     response_model=UserGoalResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a new goal for a user in a habit",
-    description="Create a new goal (frequency or completion type) for a specific user within a habit. Each user can only have one active goal per habit."
+    description="Create a new goal (frequency or completion type) for a specific user within a habit. Use /goal/frequency for frequency goals."
 )
 async def create_user_goal(
         habit_id: str,
@@ -356,7 +574,9 @@ async def get_my_goals(
     return responses
 
 
-# UPDATE GOAL
+# ============================================================================
+# UPDATE GENERIC GOAL
+# ============================================================================
 
 @router.put(
     "/habits/{habit_id}/users/{target_user_id}/goal",
@@ -425,7 +645,9 @@ async def update_user_goal(
     )
 
 
+# ============================================================================
 # DELETE GOAL
+# ============================================================================
 
 @router.delete(
     "/habits/{habit_id}/users/{target_user_id}/goal",
@@ -477,7 +699,9 @@ async def delete_user_goal(
     return None
 
 
+# ============================================================================
 # GOAL STATUS MANAGEMENT
+# ============================================================================
 
 @router.patch(
     "/habits/{habit_id}/users/{target_user_id}/goal/status",

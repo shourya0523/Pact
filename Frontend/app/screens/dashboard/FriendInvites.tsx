@@ -1,6 +1,6 @@
 import React from 'react'
 import { Image, View, Text, TouchableOpacity } from 'react-native'
-import GradientBackground from '@/components/ui/starsParticlesBackground'
+import GradientBackground from 'app/components/space/whiteStarsParticlesBackground'
 import { useRouter } from 'expo-router'
 
 export default function FriendInvites() {
