@@ -1,23 +1,36 @@
 import React, { useState } from 'react'
-import { View, Text, TextInput } from 'react-native'
+import { View, Text, TextInput, Image } from 'react-native'
 import { useRouter } from 'expo-router'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton';
 import LightGreyButton from '@/components/ui/lightGreyButton'
 import PurpleButton from '@/components/ui/purpleButton'
 import GoalType from '@/components/popups/goal-set'
+import InvitePartners from '@/components/popups/invite-partner'
 
 export default function StudyHabitCreation() {
     const router = useRouter()
     const [goalPopupVisible, setGoalPopupVisible] = useState(false)
     const [goalType, setGoalType] = useState<'completion' | 'frequency' | null>(null)
-
+    const [invitePopupVisible, setInvitePopupVisible] = useState(false)
 
     return (
         <View className="flex-1 relative">
             <WhiteParticles />
+            <Image
+                source={require('app/images/space/spark.png')}
+                className="absolute bottom-0 right-0"
+                style={{ height: 300, right: 165 }}
+                resizeMode="cover"
+            />
+            <Image
+                source={require('app/images/space/spark.png')}
+                className="absolute bottom-0 right-0"
+                style={{ height: 380, left: 260, bottom: 600 }}
+                resizeMode="cover"
+            />
             <View className="flex-1 justify-center items-center">
-                <Text className="font-wix text-white text-[38px] text-center">Create Habit</Text>
+                <Text className="font-wix text-white text-[38px] mt-12 text-center">Create Habit</Text>
                 <TextInput
                     className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-12"
                     placeholder="Study everyday"
@@ -52,7 +65,7 @@ export default function StudyHabitCreation() {
                         Invite Partner!
                         </Text>
                         <PurpleButton 
-                            onPress={() => router.push('/screens/dashboard/habitCreated')}
+                            onPress={() => setInvitePopupVisible(true)}
                             text="INVITE"
                         />
                     </View>
@@ -101,7 +114,14 @@ export default function StudyHabitCreation() {
                 onClose={() => setGoalPopupVisible(false)}
                 onSelect={(type) => {
                 setGoalType(type)
-                console.log('Selected goal type:', type)
+                }}
+            />
+
+            <InvitePartners
+                visible={invitePopupVisible}
+                onClose={() => setInvitePopupVisible(false)}
+                onSelect={(type) => {
+                setGoalType(type)
                 }}
             />
         </View>

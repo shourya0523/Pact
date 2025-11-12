@@ -1,6 +1,7 @@
 import React from 'react'
-import { View, Text, TextInput, Pressable } from 'react-native'
+import { View, Text, TextInput } from 'react-native'
 import { useRouter } from 'expo-router'
+import BackwardButton from '@/components/ui/backwardButton'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton';
 
@@ -10,43 +11,64 @@ export default function Goals() {
     return (
         <View className="flex-1 relative">
             <WhiteParticles />
-            <View className="flex-1 justify-center items-center">
-                <Text className="font-wix text-white text-[38px] text-center">Create Completion Goal</Text>
-            <TextInput
-                className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-16"
-                placeholder="Goal name"
-                placeholderTextColor="#3F414E"
-                style={{ paddingHorizontal: 20 }}
-            />
-            <Text className="font-wix text-white text-[24px] text-center mt-10">Description</Text>
+
+            {/* Back button */}
+            <View className="absolute mt-6 left-8 z-50">
+                <BackwardButton />
+            </View>
+
+            {/* Main content */}
+            <View className="flex-1 justify-start items-center pt-20 px-6">
+                {/* Title */}
+                <Text className="font-wix text-white text-[38px] text-center max-w-[80%]">
+                    Create Completion Goal
+                </Text>
+
+                {/* Goal Name */}
+                <TextInput
+                    className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-12"
+                    placeholder="Goal name"
+                    placeholderTextColor="#3F414E"
+                    style={{ paddingHorizontal: 20 }}
+                />
+
+                {/* Description */}
+                <Text className="font-wix text-white text-[24px] text-center mt-8 max-w-[80%]">
+                    Description
+                </Text>
                 <TextInput
                     className="w-[80%] h-[120px] bg-white/85 rounded-[20px] text-[16px] font-wix mt-4"
-                    placeholder="Habit descripton"
+                    placeholder="Habit description"
                     placeholderTextColor="#3F414E"
                     multiline
                     textAlignVertical="top"
                     style={{ padding: 20 }}
                 />
-            
-                <Text className="font-wix text-white text-[24px] text-center mt-8">Specify Completion Value</Text>
+
+                {/* Completion Value */}
+                <Text className="font-wix text-white text-[24px] text-center mt-8 max-w-[80%]">
+                    Specify Completion Value
+                </Text>
                 <TextInput
-                    className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-8"
-                    placeholder="Goal name"
+                    className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-4"
+                    placeholder="Enter value"
                     placeholderTextColor="#3F414E"
                     style={{ paddingHorizontal: 20 }}
                 />
-                <View className="flex-row justify-center mt-20">
-                    <GreyButton
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
-                        text="CREATE"
-                        style={{ marginRight: 10, width: '190px', height: '65px' }}
-                    />
-                    <GreyButton
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
-                        text="SAVE"
-                        style={{ width: '190px', height: '65px'}}
-                    />
-                </View>
+            </View>
+
+            {/* Buttons fixed at bottom */}
+            <View className="absolute bottom-12 w-full px-6 flex-row justify-center space-x-4">
+                <GreyButton
+                    onPress={() => router.push('/screens/dashboard/habitCreated')}
+                    text="CREATE"
+                    style={{ width: 190, height: 65 }}
+                />
+                <GreyButton
+                    onPress={() => router.push('/screens/dashboard/habitCreated')}
+                    text="SAVE"
+                    style={{ width: 190, height: 65 }}
+                />
             </View>
         </View>
     )

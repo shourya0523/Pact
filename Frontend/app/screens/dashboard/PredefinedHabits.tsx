@@ -10,50 +10,59 @@ import { useRouter } from 'expo-router';
 export default function ChooseHabitCategory() {
   const router = useRouter();
 
-  /*const handleCategoryPress = (category: string) => {
+  const handleCategoryPress = (category: string) => {
     router.push({
-      pathname: '/PredefinedHabits',
-      params: { category }
+      pathname: '/screens/dashboard/predefinedHabits',
+      params: { category },
     });
-  };*/
+  };
 
   const chooseHabitPress = () => {
     router.push('/screens/dashboard/createHabit');
   };
 
+  const habits = [
+    { label: 'Study everyday', category: 'productivity' },
+    { label: 'Reduce screen time', category: 'fitness' },
+    { label: 'Wake up early', category: 'selfcare' },
+    { label: 'Stop procrastinating', category: 'selfcare' },
+  ];
+
   return (
-    <View className="flex-1 relative">
+    <View className="flex-1 relative bg-transparent">
       <WhiteParticles />
       
-      <View className="flex-1 px-5 pt-20 pb-5">
+      <View className="absolute mt-6 left-8 z-50">
         <BackwardButton />
+      </View>
 
-        <Text className="font-wix text-[32px] text-center text-white mb-8 leading-tight">
+      <View className="flex-1 px-5 pt-20 pb-5">
+        <Text className="font-wix text-[38px] text-center text-white mt-6 leading-tight">
           Choose from Predefined Productivity Habits
         </Text>
-        
-          <View className="flex-row flex-wrap justify-center mt-12">
-            <HabitShadowCircle 
-              label="Study everyday"
-              onPress={() => handleCategoryPress('productivity')}
-            />
-            <HabitShadowCircle
-              label="Reduce screen time"
-              onPress={() => handleCategoryPress('fitness')}
-            />
-            <HabitShadowCircle
-              label="Wake up early"
-              onPress={() => handleCategoryPress('selfcare')}
-            />
-            <HabitShadowCircle
-              label="Stop procrastinating"
-              onPress={() => handleCategoryPress('selfcare')}
-            />
-          </View>
-        
+
+        {/* Automatic grid layout */}
+        <View className="flex-row flex-wrap justify-center mt-10">
+          {habits.map((habit, index) => (
+            <View
+              key={index}
+              className="m-4" // controls spacing
+              style={{
+                width: '40%', // fits 2 per row roughly
+                alignItems: 'center',
+              }}
+            >
+              <HabitShadowCircle
+                label={habit.label}
+                onPress={() => handleCategoryPress(habit.category)}
+              />
+            </View>
+          ))}
+        </View>
+
         <View className="mt-auto">
           <OrComponent />
-          
+
           <View className="items-center">
             <GreyButton
               onPress={chooseHabitPress}
