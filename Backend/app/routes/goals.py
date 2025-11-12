@@ -644,6 +644,41 @@ async def update_user_goal(
         user_goal=user_goal
     )
 
+@router.put(
+     "/habits/{habit_id}/users/{target_user_id}/goal/completion",
+    response_model=UserGoalResponse,
+    summary="Update a user's goal",
+    description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."   
+)
+async def update_user_goal_completion(
+    habit_id: str,
+    target_user_id: str,
+    update_data: UpdateGoalRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    habit = await verify_habit_access(db, habit_id, current_user_id)
+    
+    goals = habit.get("goals", {})
+    if target_user_id not in goals:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Goal not found for this user in this habit"
+        )
+    
+    if goals[target_user_id].get("goal_type") != "completion":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint can only update completion goals"
+        )
+
+    return await update_user_goal(
+        habit_id=habit_id,
+        target_user_id=target_user_id,
+        update_data=update_data,
+        current_user_id=current_user_id,
+        db=db
+    )
 
 # ============================================================================
 # DELETE GOAL

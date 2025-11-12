@@ -835,6 +835,133 @@ async def test_update_nonexistent_goal(client: AsyncClient, auth_headers, test_d
     assert response.status_code == 404
 
 # ============================================================================
+# UPDATE COMPLETION GOAL ENDPOINT TESTS
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_update_completion_goal_name(client: AsyncClient, auth_headers, test_db, test_user, test_partnership_id):
+    """Test updating a completion goal's name."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    # Create completion goal
+    await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal",
+        json={"goal_type": "completion", "goal_name": "Old Name"},
+        headers=auth_headers
+    )
+
+    # Update goal name
+    response = await client.put(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json={"goal_name": "New Name"},
+        headers=auth_headers
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["goal_name"] == "New Name"
+    assert data["goal_type"] == "completion"
+
+
+@pytest.mark.asyncio
+async def test_update_completion_goal_end_date(client: AsyncClient, auth_headers, test_db, test_user, test_partnership_id):
+    """Test updating a completion goal's end date."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    # Create goal
+    await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal",
+        json={"goal_type": "completion", "goal_name": "Old Name"},
+        headers=auth_headers
+    )
+
+    # Update end date
+    new_end_date = "2025-12-31T00:00:00"
+    response = await client.put(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json={"goal_end_date": new_end_date},
+        headers=auth_headers
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["goal_end_date"] == new_end_date
+    assert data["goal_type"] == "completion"
+
+
+@pytest.mark.asyncio
+async def test_update_completion_goal_unauthorized(client: AsyncClient, auth_headers, test_db, test_user, second_test_user,
+                                                   test_partnership_id):
+    """Test updating another user's completion goal (should fail)."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    # Create completion goal for second user
+    await test_db.habits.update_one(
+        {"_id": ObjectId(habit_id)},
+        {"$set": {f"goals.{str(second_test_user['_id'])}": {
+            "goal_type": "completion",
+            "goal_name": "Other User Goal",
+            "goal_status": "active",
+            "goal_start_date": datetime.utcnow(),
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }}}
+    )
+
+    # Try to update as first user
+    response = await client.put(
+        f"/api/goals/habits/{habit_id}/users/{str(second_test_user['_id'])}/goal/completion",
+        json={"goal_name": "Hacked Name"},
+        headers=auth_headers
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_update_nonexistent_completion_goal(client: AsyncClient, auth_headers, test_db, test_user, test_partnership_id):
+    """Test updating a completion goal that doesn't exist."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    response = await client.put(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json={"goal_name": "New Name"},
+        headers=auth_headers
+    )
+
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_update_completion_goal_wrong_type(client: AsyncClient, auth_headers, test_db, test_user, test_partnership_id):
+    """Test that updating a non-completion goal via completion endpoint fails."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    # Create a frequency goal
+    await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal",
+        json={
+            "goal_type": "frequency",
+            "goal_name": "Frequency Goal",
+            "frequency_count": 3,
+            "frequency_unit": "week",
+            "duration_count": 4,
+            "duration_unit": "week"
+        },
+        headers=auth_headers
+    )
+
+    # Attempt to update via completion endpoint
+    response = await client.put(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json={"goal_name": "New Name"},
+        headers=auth_headers
+    )
+
+    assert response.status_code == 400
+    assert "only update completion goals" in response.json()["detail"]
+
+# ============================================================================
 # DELETE GOAL TESTS
 # ============================================================================
 
