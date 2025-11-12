@@ -1,0 +1,69 @@
+{
+  "streaks": {
+    "validator": {
+      "$jsonSchema": {
+        "bsonType": "object",
+        "required": ["habit_id", "partnership_id", "current_streak"],
+        "properties": {
+          "_id": {
+            "bsonType": "objectId",
+            "description": "PK: Unique streak record"
+          },
+          "habit_id": {
+            "bsonType": "objectId",
+            "description": "FK → habits._id; one streak doc per habit"
+          },
+          "partnership_id": {
+            "bsonType": "objectId",
+            "description": "FK → partnerships._id; used for auth/queries"
+          },
+          "current_streak": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "Consecutive days BOTH partners completed (live value)"
+          },
+          "longest_streak": {
+            "bsonType": "int",
+            "minimum": 0,
+            "description": "All-time longest streak for this habit (live value)"
+          },
+          "streak_started_at": {
+            "bsonType": ["date", "null"],
+            "description": "Date when the current streak started; null if inactive"
+          },
+          "last_both_completed_date": {
+            "bsonType": ["date", "null"],
+            "description": "Most recent calendar date BOTH completed (date-only semantics)"
+          },
+          "updated_at": {
+            "bsonType": "date",
+            "description": "When this streak document was last recalculated"
+          }
+        }
+      }
+    },
+    "indexes": [
+      {
+        "key": {"habit_id": 1},
+        "unique": true,
+        "name": "habit_unique",
+        "description": "Guarantee one streak record per habit"
+      },
+      {
+        "key": {"partnership_id": 1, "habit_id": 1},
+        "name": "partnership_habit_lookup",
+        "description": "Fast fetch by partnership + habit"
+      },
+      {
+        "key": {"current_streak": -1},
+        "name": "current_streak_leaderboard",
+        "description": "Sort by current streak for dashboards"
+      },
+      {
+        "key": {"longest_streak": -1},
+        "name": "longest_streak_leaderboard",
+        "description": "Sort by longest streak for leaderboards"
+      }
+    ]
+  }
+}
