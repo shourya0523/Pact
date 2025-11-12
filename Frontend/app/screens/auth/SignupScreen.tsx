@@ -41,7 +41,19 @@ export default function SignupScreen() {
             console.log(data);
 
             if (response.ok) {
-                router.push("/screens/auth/WelcomeScreen");
+                // Store the access token if returned (optional)
+                // await AsyncStorage.setItem('access_token', data.access_token);
+                
+                Alert.alert(
+                    "Success!",
+                    "Account created successfully!",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => router.replace("/screens/auth/GetStarted")
+                        }
+                    ]
+                );
             } else {
                 Alert.alert("Signup failed", data.detail || "Error creating account");
             }

@@ -12,6 +12,11 @@ export default function LoginScreen() {
     const [password, setPassword] = useState("");
 
     const handleLogIn = async () => {
+        // Skip authentication for now - go straight to habit setup
+        console.log('Bypassing login, going to habit setup');
+        router.replace("/screens/onboarding/HabitSetupScreen");
+        
+        /* TODO: Re-enable authentication later
         const BASE_URL = await getBaseUrl();
         try {
             const response = await fetch(`${BASE_URL}/auth/login`, {
@@ -26,15 +31,29 @@ export default function LoginScreen() {
             });
 
             if (response.ok) {
-                router.push("/screens/main/DashboardScreen");
+                const data = await response.json();
+                // Store the access token
+                // await AsyncStorage.setItem('access_token', data.access_token);
+                
+                Alert.alert(
+                    "Welcome back!",
+                    "Successfully logged in",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => router.replace("/screens/onboarding/HabitSetupScreen")
+                        }
+                    ]
+                );
             } else {
                 const errorData = await response.json();
-                Alert.alert("Signup failer", errorData.detail || "Error creating account");
+                Alert.alert("Login failed", errorData.detail || "Incorrect email or password");
             }
         } catch (error) {
             console.error(error);
             Alert.alert("Network error", "Could not connect to server");
         }
+        */
     }
 
     return (

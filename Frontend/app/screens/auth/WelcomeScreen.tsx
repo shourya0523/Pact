@@ -67,7 +67,7 @@ export default function WelcomeScreen() {
                     <TouchableOpacity 
                         className="w-full py-5 bg-[#81849845] rounded-full items-center mb-4"
                         activeOpacity={0.27}
-                        onPress={() => router.push("/screens/auth/GetStarted")}
+                        onPress={() => router.push("/screens/auth/SignupScreen")}
                     >
                         <Text className="text-white text-lg font-semibold tracking-wide">
                             GET STARTED
@@ -89,6 +89,24 @@ export default function WelcomeScreen() {
                 <Text className="text-white/70 text-sm text-center mt-6">
                     By continuing, you agree to our Terms & Privacy Policy
                 </Text>
+
+                {/* Sign In Link for Returning Users */}
+                <TouchableOpacity
+                    style={styles.signInButton}
+                    onPress={() => router.push("/screens/auth/LoginScreen")}
+                >
+                    <Text style={styles.signInText}>
+                        Already have an account? <Text style={styles.signInTextBold}>Sign In</Text>
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Development Test Login Link */}
+                <TouchableOpacity
+                    style={styles.testLoginButton}
+                    onPress={() => router.push("/screens/auth/TestLogin")}
+                >
+                    <Text style={styles.testLoginText}>🔧 Test Login (Dev)</Text>
+                </TouchableOpacity>
             </View>
         </View>
     )
@@ -112,5 +130,27 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '600',
         letterSpacing: 1,
+    },
+    signInButton: {
+        marginTop: 16,
+        padding: 12,
+    },
+    signInText: {
+        color: 'rgba(255, 255, 255, 0.7)',
+        fontSize: 14,
+        textAlign: 'center',
+    },
+    signInTextBold: {
+        color: 'white',
+        fontWeight: '700',
+    },
+    testLoginButton: {
+        marginTop: 20,
+        padding: 12,
+    },
+    testLoginText: {
+        color: 'rgba(255, 255, 255, 0.5)',
+        fontSize: 12,
+        textAlign: 'center',
     }
 });

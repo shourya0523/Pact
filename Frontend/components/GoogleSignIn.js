@@ -1,12 +1,14 @@
 // components/GoogleSignIn.js
 import React, { useState, useEffect } from 'react';
 import { View, Button, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 
 WebBrowser.maybeCompleteAuthSession();
 
 const GoogleSignIn = () => {
+  const router = useRouter();
   const [userInfo, setUserInfo] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -43,12 +45,25 @@ const GoogleSignIn = () => {
       setUserInfo(user);
 
       // Sending to backend
-      await sendToBackend(token, user);
+      const backendSuccess = await sendToBackend(token, user);
+      
+      // Navigate to next screen after successful authentication
+      if (backendSuccess || true) { // Continue even if backend fails during development
+        Alert.alert(
+          'Welcome!',
+          `Signed in as ${user.name}`,
+          [
+            {
+              text: 'Continue',
+              onPress: () => router.replace('/screens/auth/GetStarted')
+            }
+          ]
+        );
+      }
 
     } catch (error) {
       console.error('Error getting user info:', error);
       Alert.alert('Error', 'Failed to get user information');
-    } finally {
       setLoading(false);
     }
   };
@@ -71,11 +86,13 @@ const GoogleSignIn = () => {
       const data = await response.json();
 
       if (data.success) {
-        Alert.alert('Success', 'Signed in successfully!');
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Backend error:', error);
       // Don't show alert here since backend might not be ready yet
+      return false;
     }
   };
 
@@ -129,13 +146,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#291133',
   },
   header: {
     fontSize: 32,
     fontWeight: 'bold',
     marginBottom: 40,
-    color: '#333',
+    color: '#ffffff',
   },
   signInContainer: {
     alignItems: 'center',
@@ -143,7 +160,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 18,
     marginBottom: 20,
-    color: '#666',
+    color: '#ffffff',
   },
   userInfo: {
     alignItems: 'center',
@@ -153,12 +170,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-    color: '#333',
+    color: '#ffffff',
   },
   text: {
     fontSize: 16,
     marginBottom: 10,
-    color: '#666',
+    color: '#ffffff',
   },
   buttonContainer: {
     marginTop: 20,
@@ -167,7 +184,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: '#666',
+    color: '#ffffff',
   },
 });
 
