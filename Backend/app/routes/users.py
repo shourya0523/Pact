@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.models.user import UserResponse
+from app.models.user import UserResponse, ProfileSetupRequest
 from app.utils.security import decode_access_token
 from config.database import get_database
 from bson import ObjectId
@@ -17,10 +17,84 @@ security = HTTPBearer()
 
 
 class UserUpdate(BaseModel):
+    """Schema for updating user profile after initial setup"""
     display_name: Optional[str] = None
-    bio: Optional[str] = None
     profile_photo_url: Optional[str] = None
-    phone_number: Optional[str] = None
+
+
+@router.post("/me/profile-setup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def setup_user_profile(
+    profile_data: ProfileSetupRequest,
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Complete initial profile setup after signup.
+    
+    Sets display_name, profile_photo_url, and marks profile as completed.
+    This should be called once after user signs up.
+    """
+    # 1. Get the JWT token and decode
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
+    # 2. Get user ID from token
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
+    # 3. Connect to database
+    db = get_database()
+    
+    # 4. Find the user
+    user = await db.users.find_one({"_id": ObjectId(user_id)})
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # 5. Check if profile already completed (optional - can allow re-setup)
+    if user.get("profile_completed", False):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Profile already completed. Use PUT /users/me to update."
+        )
+    
+    # 6. Update user with profile data
+    update_data = {
+        "display_name": profile_data.display_name,
+        "profile_photo_url": profile_data.profile_photo_url,
+        "profile_completed": True,
+        "updated_at": datetime.utcnow()
+    }
+    
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$set": update_data}
+    )
+    
+    # 7. Get updated user
+    updated_user = await db.users.find_one({"_id": ObjectId(user_id)})
+    
+    # 8. Return complete profile
+    return UserResponse(
+        id=str(updated_user["_id"]),
+        username=updated_user["username"],
+        email=updated_user["email"],
+        display_name=updated_user["display_name"],
+        profile_photo_url=updated_user["profile_photo_url"],
+        profile_completed=updated_user["profile_completed"],
+        created_at=updated_user["created_at"]
+    )
 
 
 @router.put("/me", response_model=UserResponse)
@@ -28,6 +102,11 @@ async def update_user_profile(
     user_update: UserUpdate,
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
+    """
+    Update user profile (for changes after initial setup).
+    
+    Can update display_name and/or profile_photo_url.
+    """
     # 1. Get the JWT token
     token = credentials.credentials
     
@@ -62,12 +141,8 @@ async def update_user_profile(
     update_data = {}
     if user_update.display_name is not None:
         update_data["display_name"] = user_update.display_name
-    if user_update.bio is not None:
-        update_data["bio"] = user_update.bio
     if user_update.profile_photo_url is not None:
         update_data["profile_photo_url"] = user_update.profile_photo_url
-    if user_update.phone_number is not None:
-        update_data["phone_number"] = user_update.phone_number
     
     # Add updated timestamp
     update_data["updated_at"] = datetime.utcnow()
@@ -86,15 +161,19 @@ async def update_user_profile(
         id=str(updated_user["_id"]),
         username=updated_user["username"],
         email=updated_user["email"],
+        display_name=updated_user.get("display_name", ""),
+        profile_photo_url=updated_user.get("profile_photo_url", ""),
+        profile_completed=updated_user.get("profile_completed", False),
         created_at=updated_user["created_at"]
     )
+
 
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Get current user profile"""
+    """Get current user profile with all fields"""
     # 1. Get the JWT token
     token = credentials.credentials
     
@@ -125,11 +204,14 @@ async def get_current_user_profile(
             detail="User not found"
         )
     
-    # 6. Return the user
+    # 6. Return the complete user profile
     return UserResponse(
         id=str(user["_id"]),
         username=user["username"],
         email=user["email"],
+        display_name=user.get("display_name", ""),
+        profile_photo_url=user.get("profile_photo_url", ""),
+        profile_completed=user.get("profile_completed", False),
         created_at=user["created_at"]
     )
 
@@ -227,7 +309,6 @@ async def get_user_partnerships(
         ],
         "total_partnerships": len(partnerships)
     }
-
 
 @router.get("/me/notifications")
 async def get_notification_preferences(
