@@ -212,6 +212,383 @@ async def test_create_goal_unauthorized_access(client: AsyncClient, auth_headers
 
 
 # ============================================================================
+# CREATE COMPLETION GOAL ENDPOINT TESTS
+# ============================================================================
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_via_endpoint_success(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user,
+    test_partnership_id
+):
+    """Test creating a completion goal via dedicated endpoint successfully."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Complete 30 day leetcode"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["goal_type"] == "completion"
+    assert data["goal_name"] == "Complete 30 day leetcode"
+    assert data["frequency_count"] is None
+    assert data["frequency_unit"] is None
+    assert data["duration_count"] is None
+    assert data["duration_unit"] is None
+    assert data["goal_status"] == "active"
+    assert data["goal_progress"] == 0
+    assert data["is_completed"] is False
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_ignores_frequency_fields(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user,
+    test_partnership_id
+):
+    """Test that completion endpoint ignores frequency fields even if provided."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    # User mistakenly includes frequency fields
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Test completion goal",
+        "frequency_count": 5,  # Should be ignored
+        "frequency_unit": "week",  # Should be ignored
+        "duration_count": 4,  # Should be ignored
+        "duration_unit": "week"  # Should be ignored
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["goal_type"] == "completion"
+    # Verify all frequency fields are None
+    assert data["frequency_count"] is None
+    assert data["frequency_unit"] is None
+    assert data["duration_count"] is None
+    assert data["duration_unit"] is None
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_minimal_data(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user,
+    test_partnership_id
+):
+    """Test creating completion goal with only required field (goal_name)."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "test minimal completion goal"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["goal_name"] == "test minimal completion goal"
+    assert data["goal_type"] == "completion"
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_invalid_habit_id(
+    client: AsyncClient, 
+    auth_headers, 
+    test_user
+):
+    """Test creating completion goal with invalid habit ID format."""
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Complete challenge"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/invalid_id/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 400
+    assert "Invalid habit ID format" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_habit_not_found(
+    client: AsyncClient, 
+    auth_headers, 
+    test_user
+):
+    """Test creating completion goal for non-existent habit."""
+    fake_habit_id = str(ObjectId())
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Complete challenge"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{fake_habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 404
+    assert "Habit not found" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_duplicate(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user, 
+    test_partnership_id
+):
+    """Test creating duplicate completion goal for same user/habit."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Complete 30 days"
+    }
+
+    # Create first completion goal
+    response1 = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+    assert response1.status_code == 201
+
+    # Try to create duplicate
+    response2 = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response2.status_code == 400
+    assert "already has a goal" in response2.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_unauthorized_access(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    second_test_user
+):
+    """Test creating completion goal for habit user doesn't have access to."""
+    # Create habit for second user only
+    habit_data = {
+        "habit_name": "Private Habit",
+        "created_by": str(second_test_user["_id"]),
+        "goals": {}
+    }
+    result = await test_db.habits.insert_one(habit_data)
+    habit_id = str(result.inserted_id)
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Unauthorized completion"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(second_test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_draft_habit(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user
+):
+    """Test creating completion goal for draft habit (only creator)."""
+    # Create draft habit
+    habit_data = {
+        "habit_name": "Draft Habit",
+        "created_by": str(test_user["_id"]),
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "goals": {}
+    }
+    result = await test_db.habits.insert_one(habit_data)
+    habit_id = str(result.inserted_id)
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Complete draft goal"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["goal_type"] == "completion"
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_wrong_user_draft_habit(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user,
+    second_test_user
+):
+    """Test creating completion goal for another user in draft habit (should fail)."""
+    # Create draft habit for test_user
+    habit_data = {
+        "habit_name": "Draft Habit",
+        "created_by": str(test_user["_id"]),
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
+        "goals": {}
+    }
+    result = await test_db.habits.insert_one(habit_data)
+    habit_id = str(result.inserted_id)
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Unauthorized goal"
+    }
+
+    # Try to create goal for second_test_user
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(second_test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 403
+    assert "Can only set goals for yourself in draft habits" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_missing_goal_name(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user,
+    test_partnership_id
+):
+    """Test creating completion goal without required goal_name field."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    goal_data = {}  # Missing goal_name
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 422  # Validation error
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_target_user_not_in_partnership(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user,
+    test_partnership_id
+):
+    """Test creating completion goal for user not in partnership."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+    
+    # Create a third user not in the partnership
+    third_user = await test_db.users.insert_one({
+        "email": "third@example.com",
+        "username": "thirduser"
+    })
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Unauthorized user goal"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(third_user.inserted_id)}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 400
+    assert "not part of this habit's partnership" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_create_completion_goal_response_structure(
+    client: AsyncClient, 
+    auth_headers, 
+    test_db, 
+    test_user,
+    test_partnership_id
+):
+    """Test that completion goal response has all expected fields."""
+    habit_id = await test_habit_with_partnership(test_db, test_partnership_id)
+
+    goal_data = {
+        "goal_type": "completion",
+        "goal_name": "Test completion structure"
+    }
+
+    response = await client.post(
+        f"/api/goals/habits/{habit_id}/users/{str(test_user['_id'])}/goal/completion",
+        json=goal_data,
+        headers=auth_headers
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    
+    # Verify all expected fields are present
+    expected_fields = [
+        "user_id", "habit_id", "habit_name", "goal_type", "goal_name",
+        "frequency_count", "frequency_unit", "duration_count", "duration_unit",
+        "goal_progress", "count_checkins", "total_checkins_required",
+        "progress_percentage", "is_completed", "checked_in", "goal_status",
+        "goal_start_date", "goal_end_date", "created_at", "updated_at"
+    ]
+    
+    for field in expected_fields:
+        assert field in data
+
+# ============================================================================
 # READ GOAL TESTS
 # ============================================================================
 
@@ -456,7 +833,6 @@ async def test_update_nonexistent_goal(client: AsyncClient, auth_headers, test_d
     )
 
     assert response.status_code == 404
-
 
 # ============================================================================
 # DELETE GOAL TESTS
