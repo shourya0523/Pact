@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useRouter } from 'expo-router';
 import { Text, Image, View, TouchableOpacity, TextInput, StyleSheet } from "react-native";
+//testing testing
 
 export default function LinkScreen(): React.JSX.Element {
     const router = useRouter();
