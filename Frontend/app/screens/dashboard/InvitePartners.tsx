@@ -1,5 +1,5 @@
 import React from 'react'
-import { View, Text, TextInput } from 'react-native'
+import { View, Text, TextInput, Image } from 'react-native'
 import { useRouter } from 'expo-router'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton'

@@ -1,6 +1,8 @@
 import React from 'react'
 import { View, ScrollView, Text } from 'react-native'
 import { useRouter } from 'expo-router'
+import ProgressCircle from 'app/components/habit/ProgressCircle'
+import BackwardButton from '@/components/ui/backwardButton'
 import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground'
 import HabitBox from '@/components/ui/habitBox'
 import GreyButton from '@/components/ui/greyButton'
@@ -9,6 +11,10 @@ export default function HabitDetails() {
   return (
     <View className="flex-1 relative">
       <PurpleParticles />
+
+      <View className="absolute mt-6 left-8 z-50">
+        <BackwardButton />
+      </View>
 
       <ScrollView
         className="flex-1 px-5"
@@ -30,24 +36,42 @@ export default function HabitDetails() {
           />
         </View>
 
-        <View className="flex-row justify-center items-center mt-8">
-          {/* Left goal box */}
-          <View className="bg-white rounded-2xl p-4 w-36 h-28 justify-center items-center">
-            <Text className="font-bold text-lg mb-2">GOAL:</Text>
-            <Text className="text-center text-sm">
-              Study algo for at least an hour everyday
-            </Text>
-          </View>
+        <View className="flex-row justify-center items-start mt-4 space-x-6">
+  {/* Goal 1 */}
+  <View className="flex-col items-center">
+    {/* Progress Circle */}
+   <ProgressCircle progress={80} size={80}  />
+    {/* Goal Box below */}
+    <View className="bg-white rounded-2xl p-4 w-40 h-28 mt-4 justify-center items-center">
+      <Text className="font-bold text-lg mb-2 text-center">GOAL:</Text>
+      <Text className="text-center text-sm">
+        Study algo for at least an hour everyday
+      </Text>
+    </View>
+  </View>
 
-          <View className="w-[2px] h-24 bg-white mx-5" />
+  {/* Vertical Divider */}
+  <View
+    className="w-[2px] bg-white"
+    style={{
+      height: 240, // enough to span circles + goal boxes
+    }}
+  />
 
-          <View className="bg-white rounded-2xl p-4 w-36 h-28 justify-center items-center">
-            <Text className="font-bold text-lg mb-2">GOAL:</Text>
-            <Text className="text-center text-sm">
-              Do 5 mock MCAT questions everyday
-            </Text>
-          </View>
-        </View>
+  {/* Goal 2 */}
+  <View className="flex-col items-center">
+    {/* Progress Circle */}
+    <ProgressCircle progress={60} size={80}  opacityRingColor="rgba(255,255,255,0.1)" />
+    {/* Goal Box below */}
+    <View className="bg-white rounded-2xl p-4 w-40 h-28 mt-4 justify-center items-center">
+      <Text className="font-bold text-lg mb-2 text-center">GOAL:</Text>
+      <Text className="text-center text-sm">
+        Do 5 mock MCAT questions everyday
+      </Text>
+    </View>
+  </View>
+</View>
+
 
         <View className="bg-[#2a0055] rounded-2xl p-4 mt-8">
           <Text className="text-white text-center text-xl mb-4">

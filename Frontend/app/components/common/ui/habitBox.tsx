@@ -1,5 +1,7 @@
 import React from 'react'
-import { View, Text,  Image, ImageSourcePropType } from 'react-native'
+import { View, Text, Image, ImageSourcePropType } from 'react-native'
+import ProgressCircle from 'app/components/habit/ProgressCircle';
+import StreakIndicator from 'app/components/habit/StreakIndicator';
 
 interface HabitBoxProps {
     title: string;
@@ -19,7 +21,7 @@ const HabitBox: React.FC<HabitBoxProps> = ({
   partnerName = 'Partner',
 }) => {
   return (
-    <View className="flex-row items-center justify-between bg-[#FFFFFF] rounded-2xl px-4 py-3 w-[80%] mt-4 h-[120px]">
+    <View className="flex-row items-center justify-between bg-white/90 rounded-2xl px-4 py-3 w-[80%] mt-4 h-[110px]">
       <View className="items-center">
         {leftAvatar && (
           <Image
@@ -31,15 +33,22 @@ const HabitBox: React.FC<HabitBoxProps> = ({
             className="w-10 h-10 rounded-full"
           />
         )}
-        <Text className="text-white text-[16px] mt-1">You</Text>
+        <Text className="text-black text-[16px] mt-1">You</Text>
       </View>
 
       <View className="flex-1 items-center">
-        <Text className="text-white text-[20px] font-semibold mb-1">{title}</Text>
-        <Text className="text-white text-xs">
-          Progress: {Math.round((progress || 0) * 100)}%
-        </Text>
-        <Text className="text-white text-xs mt-1">🔥 {streak} day streak</Text>
+        <Text className="text-black text-[24px] mb-2">{title}</Text>
+        <View className="flex-row items-center space-x-4">
+          <ProgressCircle progress={progress * 100} size={50} strokeWidth={8} />
+          <StreakIndicator
+            currentStreak={streak}
+            isActive={streak > 0}
+            flameSize={36}
+            numberSize={24}      
+            numberColor="black"  
+            spacing={0}     
+          />
+        </View>
       </View>
 
       <View className="items-center">
@@ -53,10 +62,10 @@ const HabitBox: React.FC<HabitBoxProps> = ({
             className="w-10 h-10 rounded-full"
           />
         )}
-        <Text className="text-white text-[16px] mt-1">{partnerName}</Text>
+        <Text className="text-black text-[16px] mt-1">{partnerName}</Text>
       </View>
     </View>
   )
 }
 
-export default HabitBox
+export default HabitBox;
