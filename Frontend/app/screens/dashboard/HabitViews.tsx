@@ -1,14 +1,144 @@
-import React from 'react'
-import { View, Text, Image, TouchableOpacity } from 'react-native'
+import React, { useEffect, useState } from 'react'
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getBaseUrl } from '../../../config'
 import HomeUI from "@/components/ui/home-ui";
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import HabitBox from '@/components/ui/habitBox'
 import GreyButton from '@/components/ui/greyButton'
 import { Ionicons } from '@expo/vector-icons'
 
+interface Habit {
+    id: string;
+    habit_name: string;
+    status: string;
+    count_checkins: number;
+    current_streak?: number;
+}
+
 export default function HabitViews() {
     const router = useRouter()
+    const [habits, setHabits] = useState<Habit[]>([])
+    const [partnershipInfo, setPartnershipInfo] = useState<any>(null)
+    const [loading, setLoading] = useState(true)
+
+    useEffect(() => {
+        fetchHabits()
+        fetchPartnership()
+    }, [])
+
+    const fetchPartnership = async () => {
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            if (!token) return
+
+            const BASE_URL = await getBaseUrl()
+            const response = await fetch(`${BASE_URL}/api/partnerships/current`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                setPartnershipInfo(data)
+            }
+        } catch (err) {
+            console.error('Fetch partnership error:', err)
+        }
+    }
+
+    const fetchHabits = async () => {
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            
+            if (!token) {
+                Alert.alert("Not Authenticated", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            const BASE_URL = await getBaseUrl()
+            console.log('🔍 Fetching habits from:', `${BASE_URL}/api/habits`)
+            console.log('🔑 Token:', token.substring(0, 20) + '...')
+            
+            const response = await fetch(`${BASE_URL}/api/habits`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            console.log('📡 Response status:', response.status)
+
+            if (response.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            if (response.ok) {
+                const data = await response.json()
+                console.log('✅ Fetched habits:', data)
+                console.log('📊 Number of habits:', data.length)
+                
+                // Debug each habit
+                data.forEach((habit: any, index: number) => {
+                    console.log(`Habit ${index + 1}:`, {
+                        name: habit.habit_name,
+                        status: habit.status,
+                        id: habit.id
+                    })
+                })
+                
+                setHabits(data)
+                
+                // Alert if no habits found
+                if (data.length === 0) {
+                    setTimeout(() => {
+                        Alert.alert(
+                            "No Habits Found",
+                            "You don't have any habits yet. Create one to get started!",
+                            [{ text: "OK" }]
+                        )
+                    }, 500)
+                }
+            } else {
+                const errorData = await response.json()
+                console.error('❌ Failed to fetch habits:', errorData)
+                Alert.alert("Error", errorData.detail || "Failed to fetch habits")
+                setHabits([])
+            }
+        } catch (err) {
+            console.error('💥 Fetch habits error:', err)
+            setHabits([])
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const activeHabits = habits.filter(h => h.status === 'active')
+    const inactiveHabits = habits.filter(h => h.status !== 'active')
+    
+    console.log('📊 Total habits:', habits.length)
+    console.log('✅ Active habits:', activeHabits.length)
+    console.log('❌ Inactive habits:', inactiveHabits.length)
+
+    if (loading) {
+        return (
+            <View className="flex-1 relative">
+                <WhiteParticles />
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#ffffff" />
+                    <Text className="text-white mt-4">Loading Habits...</Text>
+                </View>
+            </View>
+        )
+    }
 
     return (
         <View className="flex-1 relative">
@@ -23,32 +153,53 @@ export default function HabitViews() {
             
             <Text className="font-wix text-white text-[38px] text-center mt-16">All Habits</Text>
             
+            {/* Partnership Info */}
+            {partnershipInfo && (
+                <View className="bg-white/10 rounded-2xl p-4 mx-6 mt-4">
+                    <Text className="text-white text-lg font-semibold text-center mb-1">
+                        Partnership with {partnershipInfo.partner.username}
+                    </Text>
+                    <View className="flex-row justify-around mt-2">
+                        <View className="items-center">
+                            <Text className="text-white/70 text-xs">Active Habits</Text>
+                            <Text className="text-white font-bold text-lg">{partnershipInfo.habits?.length || 0}</Text>
+                        </View>
+                        <View className="items-center">
+                            <Text className="text-white/70 text-xs">Current Streak</Text>
+                            <Text className="text-white font-bold text-lg">{partnershipInfo.current_streak || 0} 🔥</Text>
+                        </View>
+                        <View className="items-center">
+                            <Text className="text-white/70 text-xs">Days Together</Text>
+                            <Text className="text-white font-bold text-lg">{partnershipInfo.partnership_age_days || 0}</Text>
+                        </View>
+                    </View>
+                </View>
+            )}
+            
             <View className="items-center justify-center mt-4 mb-10">
-                <HabitBox
-                    title="Study Habit"
-                    progress={0.5}
-                    streak={7}
-                />
-                <HabitBox
-                    title="Workout Habit"
-                    progress={0.3}
-                    streak={4}
-                />
-                <HabitBox
-                    title="Reading Habit"
-                    progress={0.8}
-                    streak={12}
-                />
-                <HabitBox
-                    title="Meditation Habit"
-                    progress={0.6}
-                    streak={9}
-                />
-                <GreyButton 
-                    text="INACTIVE HABITS"
-                    style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
-                />
-
+                {activeHabits.length > 0 ? (
+                    activeHabits.map((habit) => (
+                        <HabitBox
+                            key={habit.id}
+                            title={habit.habit_name}
+                            progress={habit.count_checkins ? habit.count_checkins / 100 : 0}
+                            streak={habit.current_streak || 0}
+                        />
+                    ))
+                ) : (
+                    <View className="py-8">
+                        <Text className="text-white/60 text-center text-lg">No active habits yet</Text>
+                        <Text className="text-white/40 text-center mt-2">Create your first habit below!</Text>
+                    </View>
+                )}
+                
+                {inactiveHabits.length > 0 && (
+                    <GreyButton 
+                        text="INACTIVE HABITS"
+                        onPress={() => console.log('Show inactive habits')}
+                        style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
+                    />
+                )}
             
                 <TouchableOpacity
                     className="mt-6 bg-white/50 rounded-full p-4 shadow-lg"

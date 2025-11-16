@@ -1,6 +1,8 @@
-import React, { useState } from 'react'
-import { View, Text, TextInput, Image } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, TextInput, Image, Alert, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getBaseUrl } from '../../../config'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton';
 import LightGreyButton from '@/components/ui/lightGreyButton'
@@ -10,9 +12,134 @@ import InvitePartners from '@/components/popups/invite-partner'
 
 export default function StudyHabitCreation() {
     const router = useRouter()
+    
+    // Form state
+    const [habitName, setHabitName] = useState('')
+    const [habitType, setHabitType] = useState<'build' | 'break'>('build')
+    const [description, setDescription] = useState('')
+    const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily')
+    const [partnershipId, setPartnershipId] = useState<string | null>(null)
+    const [loading, setLoading] = useState(false)
+    
+    // Popup state
     const [goalPopupVisible, setGoalPopupVisible] = useState(false)
     const [goalType, setGoalType] = useState<'completion' | 'frequency' | null>(null)
     const [invitePopupVisible, setInvitePopupVisible] = useState(false)
+
+    useEffect(() => {
+        fetchPartnership()
+    }, [])
+
+    const fetchPartnership = async () => {
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            if (!token) return
+
+            const BASE_URL = await getBaseUrl()
+            const response = await fetch(`${BASE_URL}/api/partnerships/current`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (response.ok) {
+                const data = await response.json()
+                console.log('Partnership data:', data)
+                if (data && data.id) {
+                    setPartnershipId(data.id)
+                    console.log('Partnership ID set:', data.id)
+                }
+            } else {
+                console.log('No partnership found')
+            }
+        } catch (err) {
+            console.error('Error fetching partnership:', err)
+        }
+    }
+
+    const handleCreate = async () => {
+        if (!habitName.trim()) {
+            Alert.alert("Missing Habit Name", "Please enter a habit name.")
+            return
+        }
+
+        if (!partnershipId) {
+            Alert.alert(
+                "No Partnership",
+                "You need a partner to create habits. Would you like to invite one?",
+                [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Invite Partner", onPress: () => router.push('/screens/dashboard/InvitePartners') }
+                ]
+            )
+            return
+        }
+
+        setLoading(true)
+
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            
+            if (!token) {
+                Alert.alert("Not Authenticated", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            const BASE_URL = await getBaseUrl()
+            
+            const habitData = {
+                habit_name: habitName.trim(),
+                habit_type: habitType,
+                category: 'productivity',
+                description: description.trim() || undefined,
+                frequency: frequency,
+                partnership_id: partnershipId
+            }
+
+            console.log('Creating habit with data:', habitData)
+
+            const response = await fetch(`${BASE_URL}/api/habits`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(habitData)
+            })
+
+            const data = await response.json()
+            console.log('Response:', data)
+
+            if (response.ok) {
+                const createdHabit = await response.json()
+                console.log('✅ Habit created successfully:', createdHabit)
+                
+                Alert.alert(
+                    "Habit Created! ✅",
+                    `"${habitName}" has been created and is pending partner approval.\n\nIt will appear in your habits once your partner approves it.`,
+                    [{
+                        text: "View Habits",
+                        onPress: () => router.replace("/screens/dashboard/HabitViews")
+                    }]
+                )
+            } else {
+                console.error('Creation failed:', data)
+                Alert.alert("Creation Failed", data.detail || "Unable to create habit.")
+            }
+        } catch (err: any) {
+            console.error('Habit creation error:', err)
+            Alert.alert("Error", "Unable to create habit. Please check your connection.")
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleSave = () => {
+        Alert.alert("Draft Saved", "Habit saved as draft (feature coming soon!)")
+    }
 
     return (
         <View className="flex-1 relative">
@@ -36,18 +163,27 @@ export default function StudyHabitCreation() {
                     placeholder="Study everyday"
                     placeholderTextColor="#3F414E"
                     style={{ paddingHorizontal: 20 }}
+                    value={habitName}
+                    onChangeText={setHabitName}
+                    editable={!loading}
                 />
                 <Text className="font-wix text-white text-[24px] text-center mt-4">Habit Type</Text>
                 <View className="flex-row justify-center space-x-8 mt-4">
                     <LightGreyButton 
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={() => setHabitType('build')}
                         text="Build"
-                        style={{ width: '140px' }}
+                        style={{ 
+                            width: '140px',
+                            backgroundColor: habitType === 'build' ? 'white' : 'rgba(129, 132, 152, 0.4)'
+                        }}
                     />
                     <LightGreyButton 
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={() => setHabitType('break')}
                         text="Break"
-                        style={{ width: '140px', backgroundColor: "rgba(129, 132, 152, 0.4)" }}
+                        style={{ 
+                            width: '140px', 
+                            backgroundColor: habitType === 'break' ? 'white' : 'rgba(129, 132, 152, 0.4)'
+                        }}
                     />
                 </View>
                 <Text className="font-wix text-white text-[24px] text-center mt-4">Description</Text>
@@ -58,6 +194,9 @@ export default function StudyHabitCreation() {
                     multiline
                     textAlignVertical="top"
                     style={{ padding: 20 }}
+                    value={description}
+                    onChangeText={setDescription}
+                    editable={!loading}
                 />
                 <View className="flex-row justify-center space-x-16 mt-4">
                     <View className="items-center">
@@ -69,7 +208,6 @@ export default function StudyHabitCreation() {
                             text="INVITE"
                         />
                     </View>
-
                     <View className="items-center">
                         <Text className="font-wix text-white text-[24px] text-center mb-8">
                             Set Goal
@@ -83,45 +221,58 @@ export default function StudyHabitCreation() {
                 <Text className="font-wix text-white text-[24px] text-center mt-6">Repeat</Text>
                 <View className="flex-row justify-center space-x-4 mt-10">
                     <LightGreyButton 
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={() => setFrequency('daily')}
                         text="Daily"
+                        style={{
+                            backgroundColor: frequency === 'daily' ? 'white' : 'rgba(129, 132, 152, 0.4)'
+                        }}
                     />
                     <LightGreyButton 
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={() => setFrequency('weekly')}
                         text="Weekly"
+                        style={{
+                            backgroundColor: frequency === 'weekly' ? 'white' : 'rgba(129, 132, 152, 0.4)'
+                        }}
                     />
                     <LightGreyButton 
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={() => setFrequency('monthly')}
                         text="Monthly"
+                        style={{
+                            backgroundColor: frequency === 'monthly' ? 'white' : 'rgba(129, 132, 152, 0.4)'
+                        }}
                     />
                 </View>
                 <View className="flex-row justify-center mt-20 mb-10">
                     <GreyButton
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
-                        text="CREATE"
+                        onPress={handleCreate}
+                        text={loading ? "CREATING..." : "CREATE"}
                         style={{ marginRight: 14, width: '200px', height: '65px' }}
                     />
                     <GreyButton
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={handleSave}
                         text="SAVE"
                         style={{ width: '200px', height: '65px'}}
                     />
                 </View>
+                
+                {loading && (
+                    <ActivityIndicator size="large" color="#ffffff" />
+                )}
             </View>
-
             <GoalType
                 visible={goalPopupVisible}
                 onClose={() => setGoalPopupVisible(false)}
                 onSelect={(type) => {
                 setGoalType(type)
+                setGoalPopupVisible(false)
                 }}
             />
-
             <InvitePartners
                 visible={invitePopupVisible}
                 onClose={() => setInvitePopupVisible(false)}
                 onSelect={(type) => {
                 setGoalType(type)
+                setInvitePopupVisible(false)
                 }}
             />
         </View>

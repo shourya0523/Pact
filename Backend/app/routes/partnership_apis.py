@@ -81,7 +81,7 @@ async def get_current_partnership(
 
     # Get associated habits
     habits = await db.habits.find({
-        "partnership_id": partnership["_id"],
+        "partnership_id": str(partnership["_id"]),
         "is_active": True
     }).to_list(100)
 
@@ -312,7 +312,7 @@ async def update_partnership_status(
     elif new_status == "broken":
         # When ending partnership, save streak to history
         habits = await db.habits.find({
-            "partnership_id": partnership["_id"],
+            "partnership_id": str(partnership["_id"]),
             "is_active": True
         }).to_list(100)
 
@@ -399,7 +399,7 @@ async def get_partnership_stats(
 
     # Get habits
     habits = await db.habits.find({
-        "partnership_id": partnership["_id"]
+        "partnership_id": str(partnership["_id"])
     }).to_list(100)
 
     # Calculate statistics
@@ -577,7 +577,7 @@ async def end_partnership(
 
     # Get habits to save streak history
     habits = await db.habits.find({
-        "partnership_id": partnership["_id"],
+        "partnership_id": str(partnership["_id"]),
         "is_active": True
     }).to_list(100)
 
