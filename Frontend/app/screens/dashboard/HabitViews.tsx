@@ -20,35 +20,11 @@ interface Habit {
 export default function HabitViews() {
     const router = useRouter()
     const [habits, setHabits] = useState<Habit[]>([])
-    const [partnershipInfo, setPartnershipInfo] = useState<any>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         fetchHabits()
-        fetchPartnership()
     }, [])
-
-    const fetchPartnership = async () => {
-        try {
-            const token = await AsyncStorage.getItem('access_token')
-            if (!token) return
-
-            const BASE_URL = await getBaseUrl()
-            const response = await fetch(`${BASE_URL}/api/partnerships/current`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            })
-
-            if (response.ok) {
-                const data = await response.json()
-                setPartnershipInfo(data)
-            }
-        } catch (err) {
-            console.error('Fetch partnership error:', err)
-        }
-    }
 
     const fetchHabits = async () => {
         try {
@@ -143,7 +119,6 @@ export default function HabitViews() {
     return (
         <View className="flex-1 relative">
             <WhiteParticles />
-            <HomeUI />
             <Image
                 source={require('app/images/space/galaxy.png')}
                 className="absolute bottom-0 right-0"
@@ -153,38 +128,27 @@ export default function HabitViews() {
             
             <Text className="font-wix text-white text-[38px] text-center mt-16">All Habits</Text>
             
-            {/* Partnership Info */}
-            {partnershipInfo && (
-                <View className="bg-white/10 rounded-2xl p-4 mx-6 mt-4">
-                    <Text className="text-white text-lg font-semibold text-center mb-1">
-                        Partnership with {partnershipInfo.partner.username}
-                    </Text>
-                    <View className="flex-row justify-around mt-2">
-                        <View className="items-center">
-                            <Text className="text-white/70 text-xs">Active Habits</Text>
-                            <Text className="text-white font-bold text-lg">{partnershipInfo.habits?.length || 0}</Text>
-                        </View>
-                        <View className="items-center">
-                            <Text className="text-white/70 text-xs">Current Streak</Text>
-                            <Text className="text-white font-bold text-lg">{partnershipInfo.current_streak || 0} 🔥</Text>
-                        </View>
-                        <View className="items-center">
-                            <Text className="text-white/70 text-xs">Days Together</Text>
-                            <Text className="text-white font-bold text-lg">{partnershipInfo.partnership_age_days || 0}</Text>
-                        </View>
-                    </View>
-                </View>
-            )}
-            
             <View className="items-center justify-center mt-4 mb-10">
                 {activeHabits.length > 0 ? (
                     activeHabits.map((habit) => (
-                        <HabitBox
+                        <TouchableOpacity
                             key={habit.id}
-                            title={habit.habit_name}
-                            progress={habit.count_checkins ? habit.count_checkins / 100 : 0}
-                            streak={habit.current_streak || 0}
-                        />
+                            onPress={() => {
+                                console.log('Navigating to habit:', habit.id, habit.habit_name)
+                                router.push({
+                                    pathname: '/screens/dashboard/habitDetails',
+                                    params: { habitId: habit.id }
+                                })
+                            }}
+                            activeOpacity={0.8}
+                            className="w-full items-center"
+                        >
+                            <HabitBox
+                                title={habit.habit_name}
+                                progress={habit.count_checkins ? habit.count_checkins / 100 : 0}
+                                streak={habit.current_streak || 0}
+                            />
+                        </TouchableOpacity>
                     ))
                 ) : (
                     <View className="py-8">
@@ -208,6 +172,8 @@ export default function HabitViews() {
                     <Ionicons name="add" size={32} color="white" />
                 </TouchableOpacity>
             </View>
+            
+            <HomeUI />
         </View>
     )
 }
