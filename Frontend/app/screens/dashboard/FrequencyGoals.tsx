@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import BackwardButton from '@/components/ui/backwardButton'
-import GreyButton from '@/components/ui/greyButton';
+import GreyButton from '@/components/ui/greyButton'
 
 export default function FrequencyGoals() {
     const router = useRouter()
@@ -16,7 +16,52 @@ export default function FrequencyGoals() {
     const [description, setDescription] = useState('')
     const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily')
     const [frequencyAmount, setFrequencyAmount] = useState('')
+    const [durationAmount, setDurationAmount] = useState('4')
     const [loading, setLoading] = useState(false)
+    const [habitName, setHabitName] = useState('')
+    const [existingGoal, setExistingGoal] = useState<any>(null)
+
+    // Fetch habit details and check for existing goal on mount
+    useEffect(() => {
+        fetchHabitAndGoal()
+    }, [])
+
+    const fetchHabitAndGoal = async () => {
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            const userData = await AsyncStorage.getItem('user_data')
+            
+            if (!token || !userData) return
+
+            const user = JSON.parse(userData)
+            const BASE_URL = await getBaseUrl()
+
+            // Check if user already has a goal for this habit
+            const goalResponse = await fetch(
+                `${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                }
+            )
+
+            if (goalResponse.ok) {
+                const goalData = await goalResponse.json()
+                setExistingGoal(goalData)
+                Alert.alert(
+                    "Goal Already Exists",
+                    "You already have a goal for this habit. Please edit or delete it first.",
+                    [{
+                        text: "Go Back",
+                        onPress: () => router.back()
+                    }]
+                )
+            }
+        } catch (err) {
+            console.log('No existing goal found or error fetching:', err)
+        }
+    }
 
     const handleCreate = async () => {
         // Validation
@@ -27,6 +72,11 @@ export default function FrequencyGoals() {
 
         if (!frequencyAmount || isNaN(Number(frequencyAmount)) || Number(frequencyAmount) < 1) {
             Alert.alert("Invalid Amount", "Please enter a valid frequency amount (e.g., 3).")
+            return
+        }
+
+        if (!durationAmount || isNaN(Number(durationAmount)) || Number(durationAmount) < 1) {
+            Alert.alert("Invalid Duration", "Please enter a valid duration (e.g., 4).")
             return
         }
 
@@ -50,6 +100,12 @@ export default function FrequencyGoals() {
             const user = JSON.parse(userData)
             const BASE_URL = await getBaseUrl()
             
+            // DEBUG LOGGING
+            console.log('🐛 DEBUG INFO:')
+            console.log('habitId:', habitId)
+            console.log('user.id:', user.id)
+            console.log('BASE_URL:', BASE_URL)
+            
             // Map frequency to backend format
             const frequencyUnitMap = {
                 'daily': 'day',
@@ -57,12 +113,13 @@ export default function FrequencyGoals() {
                 'monthly': 'month'
             }
 
+            // NOTE: Description field is stored locally only - API doesn't accept it yet
             const goalData = {
                 goal_type: "frequency",
                 goal_name: goalName.trim(),
                 frequency_count: Number(frequencyAmount),
                 frequency_unit: frequencyUnitMap[frequency],
-                duration_count: 4, // Default: 4 weeks/months/days
+                duration_count: Number(durationAmount),
                 duration_unit: frequencyUnitMap[frequency]
             }
 
@@ -80,6 +137,7 @@ export default function FrequencyGoals() {
             const data = await response.json()
 
             if (response.ok) {
+                // TODO: Save description locally if needed for future feature
                 Alert.alert(
                     "Goal Created! 🎯",
                     `"${goalName}" has been set successfully!`,
@@ -89,11 +147,13 @@ export default function FrequencyGoals() {
                     }]
                 )
             } else {
-                Alert.alert("Creation Failed", data.detail || "Unable to create goal.")
+                const errorMessage = data.detail || data.message || "Unable to create goal."
+                console.error('API Error:', data)
+                Alert.alert("Creation Failed", errorMessage)
             }
         } catch (err: any) {
             console.error('Goal creation error:', err)
-            Alert.alert("Error", "Unable to create goal. Please check your connection.")
+            Alert.alert("Error", err.message || "Unable to create goal. Please check your connection.")
         } finally {
             setLoading(false)
         }
@@ -150,7 +210,7 @@ export default function FrequencyGoals() {
                 <Text className="font-wix text-white text-[24px] text-center mt-8 max-w-[80%]">
                     Select Frequency
                 </Text>
-                <View className="flex-row justify-center space-x-6 mt-6">
+                <View className="flex-row justify-center mt-6" style={{ gap: 24 }}>
                     {['Daily', 'Weekly', 'Monthly'].map((freq) => {
                         const isSelected = frequency === freq.toLowerCase()
                         return (
@@ -187,6 +247,21 @@ export default function FrequencyGoals() {
                     editable={!loading}
                 />
 
+                {/* Duration Amount */}
+                <Text className="font-wix text-white text-[24px] text-center mt-8 max-w-[80%]">
+                    Duration Amount
+                </Text>
+                <TextInput
+                    className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-4"
+                    placeholder="Enter duration (e.g., 4)"
+                    placeholderTextColor="#3F414E"
+                    style={{ paddingHorizontal: 20 }}
+                    value={durationAmount}
+                    onChangeText={setDurationAmount}
+                    keyboardType="numeric"
+                    editable={!loading}
+                />
+
                 {loading && (
                     <View className="mt-6">
                         <ActivityIndicator size="large" color="#ffffff" />
@@ -195,16 +270,18 @@ export default function FrequencyGoals() {
             </View>
 
             {/* Buttons fixed at bottom */}
-            <View className="absolute bottom-12 w-full px-6 flex-row justify-center space-x-4">
+            <View className="absolute bottom-12 w-full px-6 flex-row justify-center" style={{ gap: 16 }}>
                 <GreyButton
                     onPress={handleCreate}
                     text={loading ? "CREATING..." : "CREATE"}
                     style={{ width: 190, height: 65 }}
+                    disabled={loading}
                 />
                 <GreyButton
                     onPress={handleSave}
                     text="SAVE"
                     style={{ width: 190, height: 65 }}
+                    disabled={loading}
                 />
             </View>
         </View>

@@ -7,21 +7,21 @@ export default function HomeUI() {
 
     return (
         <View className="absolute bottom-0 w-full bg-white/20 flex-row justify-around items-center py-3 z-50">
-        <TouchableOpacity onPress={() => router.push('screens/dashboard/Home')}>
+        <TouchableOpacity onPress={() => router.push('/screens/dashboard/Home')}>
             <Image
                 source={require('app/images/home-ui/Home.png')}
                 className="w-8 h-8"
                 resizeMode="contain"
             />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/stats')}>
+        <TouchableOpacity onPress={() => router.push('/screens/dashboard/habitViews')}>
             <Image
             source={require('app/images/home-ui/Stat.png')}
             className="w-8 h-8"
             resizeMode="contain"
             />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/status-list')}>
+        <TouchableOpacity onPress={() => router.push('/screens/dashboard/')}>
             <Image
             source={require('app/images/home-ui/Status_list.png')}
             className="w-8 h-8"

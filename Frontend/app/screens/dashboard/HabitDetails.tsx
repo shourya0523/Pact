@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, ScrollView, Text, ActivityIndicator, Alert, RefreshControl } from 'react-native'
+import { View, ScrollView, Text, ActivityIndicator, Alert, RefreshControl, TouchableOpacity, Modal } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -38,8 +38,10 @@ export default function HabitDetails() {
   const [logs, setLogs] = useState<HabitLog[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [showGoalTypeModal, setShowGoalTypeModal] = useState(false)
 
   useEffect(() => {
+    console.log('🔍 HabitDetails mounted with habitId:', habitId)
     if (habitId) {
       fetchHabitDetails()
     }
@@ -56,6 +58,7 @@ export default function HabitDetails() {
       }
 
       const BASE_URL = await getBaseUrl()
+      console.log('📡 Fetching habit details for:', habitId)
 
       // Fetch habit details
       const habitResponse = await fetch(`${BASE_URL}/api/habits/${habitId}`, {
@@ -64,7 +67,10 @@ export default function HabitDetails() {
 
       if (habitResponse.ok) {
         const habitData = await habitResponse.json()
+        console.log('✅ Habit data:', habitData)
         setHabit(habitData)
+      } else {
+        console.error('❌ Failed to fetch habit')
       }
 
       // Fetch goals
@@ -74,6 +80,7 @@ export default function HabitDetails() {
 
       if (goalsResponse.ok) {
         const goalsData = await goalsResponse.json()
+        console.log('✅ Goals data:', goalsData)
         setGoals(goalsData)
       }
 
@@ -84,11 +91,12 @@ export default function HabitDetails() {
 
       if (logsResponse.ok) {
         const logsData = await logsResponse.json()
+        console.log('✅ Logs data:', logsData.length, 'logs')
         setLogs(logsData)
       }
 
     } catch (err) {
-      console.error('Fetch habit details error:', err)
+      console.error('💥 Fetch habit details error:', err)
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -98,6 +106,26 @@ export default function HabitDetails() {
   const onRefresh = () => {
     setRefreshing(true)
     fetchHabitDetails()
+  }
+
+  const handleAddGoal = () => {
+    setShowGoalTypeModal(true)
+  }
+
+  const handleGoalTypeSelect = (type: 'frequency' | 'completion') => {
+    setShowGoalTypeModal(false)
+    
+    if (type === 'frequency') {
+      router.push({
+        pathname: '/screens/dashboard/frequencyGoals',
+        params: { habitId: habitId }
+      })
+    } else {
+      router.push({
+        pathname: '/screens/dashboard/completionGoals',
+        params: { habitId: habitId }
+      })
+    }
   }
 
   // Get days in current month
@@ -155,7 +183,7 @@ export default function HabitDetails() {
 
       <ScrollView
         className="flex-1 px-5"
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 140 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
@@ -179,7 +207,20 @@ export default function HabitDetails() {
         <View className="flex-row justify-center items-start mt-4 space-x-6">
           {/* Goal 1 */}
           {goals[0] && (
-            <View className="flex-col items-center">
+            <TouchableOpacity
+              onPress={() => {
+                console.log('Navigating to goal:', goals[0].goal_name)
+                router.push({
+                  pathname: '/screens/dashboard/goalPage',
+                  params: { 
+                    habitId: habitId,
+                    userId: goals[0].user_id
+                  }
+                })
+              }}
+              activeOpacity={0.8}
+              className="flex-col items-center"
+            >
               <ProgressCircle progress={goals[0].progress_percentage} size={80} />
               <View className="bg-white rounded-2xl p-4 w-40 h-28 mt-4 justify-center items-center">
                 <Text className="font-bold text-lg mb-2 text-center">GOAL:</Text>
@@ -187,7 +228,7 @@ export default function HabitDetails() {
                   {goals[0].goal_name}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* Vertical Divider */}
@@ -200,7 +241,20 @@ export default function HabitDetails() {
 
           {/* Goal 2 */}
           {goals[1] && (
-            <View className="flex-col items-center">
+            <TouchableOpacity
+              onPress={() => {
+                console.log('Navigating to goal:', goals[1].goal_name)
+                router.push({
+                  pathname: '/screens/dashboard/goalPage',
+                  params: { 
+                    habitId: habitId,
+                    userId: goals[1].user_id
+                  }
+                })
+              }}
+              activeOpacity={0.8}
+              className="flex-col items-center"
+            >
               <ProgressCircle progress={goals[1].progress_percentage} size={80} opacityRingColor="rgba(255,255,255,0.1)" />
               <View className="bg-white rounded-2xl p-4 w-40 h-28 mt-4 justify-center items-center">
                 <Text className="font-bold text-lg mb-2 text-center">GOAL:</Text>
@@ -208,7 +262,7 @@ export default function HabitDetails() {
                   {goals[1].goal_name}
                 </Text>
               </View>
-            </View>
+            </TouchableOpacity>
           )}
 
           {/* No goals message */}
@@ -248,12 +302,57 @@ export default function HabitDetails() {
         </View>
       </ScrollView>
 
-      <View className="absolute bottom-5 w-full px-5 items-center">
+      {/* Bottom Buttons */}
+      <View className="absolute bottom-5 w-full px-5 items-center" style={{ gap: 12 }}>
+        <GreyButton 
+          text="ADD GOAL" 
+          onPress={handleAddGoal}
+        />
         <GreyButton 
           text="EDIT HABIT" 
           onPress={() => console.log('Edit habit')}
         />
       </View>
+
+      {/* Goal Type Selection Modal */}
+      <Modal
+        visible={showGoalTypeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowGoalTypeModal(false)}
+      >
+        <TouchableOpacity 
+          className="flex-1 justify-center items-center bg-black/60"
+          activeOpacity={1}
+          onPress={() => setShowGoalTypeModal(false)}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+            <View className="bg-[#9A84A2] rounded-2xl p-6 w-72 items-center">
+              <Text className="text-[#291133] text-[20px] text-center mb-10 font-medium">
+                What type of goal would you like to create?
+              </Text>
+
+              <TouchableOpacity
+                className="bg-white w-full h-[50px] py-2 rounded-2xl mb-3 justify-center"
+                onPress={() => handleGoalTypeSelect('completion')}
+              >
+                <Text className="text-center text-purple-900 font-semibold">
+                  Completion Goal
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                className="bg-white w-full h-[50px] py-2 rounded-2xl mb-3 justify-center"
+                onPress={() => handleGoalTypeSelect('frequency')}
+              >
+                <Text className="text-center text-purple-900 font-semibold">
+                  Frequency Goal
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
