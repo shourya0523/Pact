@@ -1,10 +1,11 @@
 from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from datetime import datetime, timedelta
 from typing import List, Optional
 
-from app.dependencies.auth import get_current_user_id
+from app.utils.security import decode_access_token
 from app.models.goals import (
     UserGoal,
     SetGoalRequest,
@@ -17,6 +18,25 @@ from app.models.goals import (
 from config.database import get_database
 
 router = APIRouter(prefix="/goals", tags=["Goals"])
+security = HTTPBearer()
+
+
+# ============================================================================
+# AUTHENTICATION
+# ============================================================================
+
+async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Extract user ID from JWT token"""
+    token = credentials.credentials
+    payload = decode_access_token(token)
+
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials"
+        )
+
+    return payload.get("sub")
 
 
 # ============================================================================
@@ -121,7 +141,7 @@ async def create_frequency_goal(
         habit_id: str,
         target_user_id: str,
         goal_data: SetGoalRequest,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -139,6 +159,8 @@ async def create_frequency_goal(
 
     Returns the created goal with progress tracking fields.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
@@ -247,7 +269,7 @@ async def update_frequency_goal(
         habit_id: str,
         target_user_id: str,
         update_data: UpdateGoalRequest,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -259,6 +281,8 @@ async def update_frequency_goal(
 
     Note: Cannot change frequency_count, duration_count, or units after creation.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
@@ -327,7 +351,7 @@ async def create_user_goal(
         habit_id: str,
         target_user_id: str,
         goal_data: SetGoalRequest,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -339,6 +363,8 @@ async def create_user_goal(
 
     Returns the created goal with progress tracking fields.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
@@ -408,20 +434,23 @@ async def create_user_goal(
         user_goal=user_goal
     )
 
+
 @router.post(
-        "/habits/{habit_id}/users/{target_user_id}/goal/completion",
-        response_model=UserGoalResponse,
-        status_code=status.HTTP_201_CREATED,
-        summary="Create a completion goal",
-        description="Create a new completion goal for a specfic user within a specific habit."
+    "/habits/{habit_id}/users/{target_user_id}/goal/completion",
+    response_model=UserGoalResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a completion goal",
+    description="Create a new completion goal for a specfic user within a specific habit."
 )
 async def create_user_goal_completion(
-    habit_id: str,
-    target_user_id: str,
-    goal_data: SetGoalRequest,
-    current_user_id: str = Depends(get_current_user_id),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+        habit_id: str,
+        target_user_id: str,
+        goal_data: SetGoalRequest,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
 ):
+    current_user_id = await get_current_user_id(credentials)
+
     request = SetGoalRequest(
         goal_type=GoalType.COMPLETION,
         goal_name=goal_data.goal_name,
@@ -435,7 +464,7 @@ async def create_user_goal_completion(
         habit_id=habit_id,
         target_user_id=target_user_id,
         goal_data=request,
-        current_user_id=current_user_id,
+        credentials=credentials,
         db=db
     )
 
@@ -453,7 +482,7 @@ async def create_user_goal_completion(
 async def get_user_goal(
         habit_id: str,
         target_user_id: str,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -464,6 +493,8 @@ async def get_user_goal(
 
     Returns the goal with current progress and status.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
@@ -495,7 +526,7 @@ async def get_user_goal(
 )
 async def get_habit_goals(
         habit_id: str,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -505,6 +536,8 @@ async def get_habit_goals(
 
     Returns a list of all goals for the habit.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
@@ -538,7 +571,7 @@ async def get_habit_goals(
 )
 async def get_my_goals(
         active_only: bool = True,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -548,6 +581,8 @@ async def get_my_goals(
 
     Returns a list of all goals for the current user.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Find all habits where user has goals
     habits = await db.habits.find({
         f"goals.{current_user_id}": {"$exists": True}
@@ -588,7 +623,7 @@ async def update_user_goal(
         habit_id: str,
         target_user_id: str,
         update_data: UpdateGoalRequest,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -600,6 +635,8 @@ async def update_user_goal(
 
     Note: Progress fields (goal_progress, count_checkins, etc.) are calculated automatically.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
@@ -644,28 +681,31 @@ async def update_user_goal(
         user_goal=user_goal
     )
 
+
 @router.put(
-     "/habits/{habit_id}/users/{target_user_id}/goal/completion",
+    "/habits/{habit_id}/users/{target_user_id}/goal/completion",
     response_model=UserGoalResponse,
     summary="Update a user's goal",
-    description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."   
+    description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."
 )
 async def update_user_goal_completion(
-    habit_id: str,
-    target_user_id: str,
-    update_data: UpdateGoalRequest,
-    current_user_id: str = Depends(get_current_user_id),
-    db: AsyncIOMotorDatabase = Depends(get_database)
+        habit_id: str,
+        target_user_id: str,
+        update_data: UpdateGoalRequest,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
 ):
+    current_user_id = await get_current_user_id(credentials)
+
     habit = await verify_habit_access(db, habit_id, current_user_id)
-    
+
     goals = habit.get("goals", {})
     if target_user_id not in goals:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Goal not found for this user in this habit"
         )
-    
+
     if goals[target_user_id].get("goal_type") != "completion":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -676,9 +716,10 @@ async def update_user_goal_completion(
         habit_id=habit_id,
         target_user_id=target_user_id,
         update_data=update_data,
-        current_user_id=current_user_id,
+        credentials=credentials,
         db=db
     )
+
 
 # ============================================================================
 # DELETE GOAL
@@ -693,7 +734,7 @@ async def update_user_goal_completion(
 async def delete_user_goal(
         habit_id: str,
         target_user_id: str,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -704,6 +745,8 @@ async def delete_user_goal(
 
     Note: This permanently removes the goal. Consider using status updates instead for historical tracking.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
@@ -748,7 +791,7 @@ async def update_goal_status(
         habit_id: str,
         target_user_id: str,
         new_status: GoalStatus,
-        current_user_id: str = Depends(get_current_user_id),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
@@ -760,6 +803,8 @@ async def update_goal_status(
 
     Returns the updated goal.
     """
+    current_user_id = await get_current_user_id(credentials)
+
     # Verify habit access
     habit = await verify_habit_access(db, habit_id, current_user_id)
 
