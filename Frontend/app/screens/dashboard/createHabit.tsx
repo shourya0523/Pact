@@ -13,15 +13,13 @@ import InvitePartners from '@/components/popups/invite-partner'
 export default function StudyHabitCreation() {
     const router = useRouter()
     
-    // Form state
     const [habitName, setHabitName] = useState('')
     const [habitType, setHabitType] = useState<'build' | 'break'>('build')
     const [description, setDescription] = useState('')
     const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily')
     const [partnershipId, setPartnershipId] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
-    
-    // Popup state
+
     const [goalPopupVisible, setGoalPopupVisible] = useState(false)
     const [goalType, setGoalType] = useState<'completion' | 'frequency' | null>(null)
     const [invitePopupVisible, setInvitePopupVisible] = useState(false)
@@ -71,7 +69,7 @@ export default function StudyHabitCreation() {
                 "You need a partner to create habits. Would you like to invite one?",
                 [
                     { text: "Cancel", style: "cancel" },
-                    { text: "Invite Partner", onPress: () => router.push('/screens/dashboard/InvitePartners') }
+                    { text: "Invite Partner", onPress: () => router.push('/screens/dashboard/invitePartners') }
                 ]
             )
             return
@@ -122,7 +120,7 @@ export default function StudyHabitCreation() {
                     `"${habitName}" has been created and is pending partner approval.\n\nIt will appear in your habits once your partner approves it.`,
                     [{
                         text: "View Habits",
-                        onPress: () => router.replace("/screens/dashboard/HabitViews")
+                        onPress: () => router.replace("/screens/dashboard/habitViews")
                     }]
                 )
             } else {

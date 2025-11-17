@@ -60,7 +60,6 @@ export default function HabitDetails() {
       const BASE_URL = await getBaseUrl()
       console.log('📡 Fetching habit details for:', habitId)
 
-      // Fetch habit details
       const habitResponse = await fetch(`${BASE_URL}/api/habits/${habitId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -73,7 +72,6 @@ export default function HabitDetails() {
         console.error('❌ Failed to fetch habit')
       }
 
-      // Fetch goals
       const goalsResponse = await fetch(`${BASE_URL}/api/goals/habits/${habitId}/goals`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -84,7 +82,6 @@ export default function HabitDetails() {
         setGoals(goalsData)
       }
 
-      // Fetch habit logs for calendar
       const logsResponse = await fetch(`${BASE_URL}/api/habits/${habitId}/logs`, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -128,7 +125,6 @@ export default function HabitDetails() {
     }
   }
 
-  // Get days in current month
   const getDaysInMonth = () => {
     const now = new Date()
     const year = now.getFullYear()
@@ -136,7 +132,6 @@ export default function HabitDetails() {
     return new Date(year, month + 1, 0).getDate()
   }
 
-  // Check if a day was completed
   const isDayCompleted = (day: number) => {
     const now = new Date()
     const checkDate = new Date(now.getFullYear(), now.getMonth(), day)
@@ -205,7 +200,6 @@ export default function HabitDetails() {
         </View>
 
         <View className="flex-row justify-center items-start mt-4 space-x-6">
-          {/* Goal 1 */}
           {goals[0] && (
             <TouchableOpacity
               onPress={() => {
@@ -231,7 +225,6 @@ export default function HabitDetails() {
             </TouchableOpacity>
           )}
 
-          {/* Vertical Divider */}
           {goals.length > 1 && (
             <View
               className="w-[2px] bg-white"
@@ -239,7 +232,6 @@ export default function HabitDetails() {
             />
           )}
 
-          {/* Goal 2 */}
           {goals[1] && (
             <TouchableOpacity
               onPress={() => {
@@ -255,7 +247,7 @@ export default function HabitDetails() {
               activeOpacity={0.8}
               className="flex-col items-center"
             >
-              <ProgressCircle progress={goals[1].progress_percentage} size={80} opacityRingColor="rgba(255,255,255,0.1)" />
+              <ProgressCircle progress={goals[1].progress_percentage} size={80} />
               <View className="bg-white rounded-2xl p-4 w-40 h-28 mt-4 justify-center items-center">
                 <Text className="font-bold text-lg mb-2 text-center">GOAL:</Text>
                 <Text className="text-center text-sm">
@@ -265,7 +257,6 @@ export default function HabitDetails() {
             </TouchableOpacity>
           )}
 
-          {/* No goals message */}
           {goals.length === 0 && (
             <View className="flex-col items-center py-8">
               <Text className="text-white/60 text-center">No goals set yet</Text>
@@ -276,7 +267,6 @@ export default function HabitDetails() {
           )}
         </View>
 
-        {/* Calendar */}
         <View className="bg-[#2a0055] rounded-2xl p-4 mt-8">
           <Text className="text-white text-center text-xl mb-4">
             {getMonthName()}
@@ -302,7 +292,6 @@ export default function HabitDetails() {
         </View>
       </ScrollView>
 
-      {/* Bottom Buttons */}
       <View className="absolute bottom-5 w-full px-5 items-center" style={{ gap: 12 }}>
         <GreyButton 
           text="ADD GOAL" 
@@ -314,7 +303,6 @@ export default function HabitDetails() {
         />
       </View>
 
-      {/* Goal Type Selection Modal */}
       <Modal
         visible={showGoalTypeModal}
         transparent={true}

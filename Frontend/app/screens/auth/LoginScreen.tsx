@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Text, TouchableOpacity, ScrollView, View, Alert, ActivityIndicator } from "react-native";
+import { Text, TouchableOpacity, ScrollView, View, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { getBaseUrl } from "../../../config";
+import WhiteParticles from "app/components/space/whiteStarsParticlesBackground";
 import Input from "../../components/common/Text-input";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -10,16 +11,23 @@ export default function LoginScreen() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
     const handleLogIn = async () => {
-        if (!email || !password) {
-            Alert.alert("Missing fields", "Please enter your email and password.");
+        // Clear previous messages
+        setError("");
+        setSuccess("");
+
+        // Input validation
+        if (!email.trim() || !password.trim()) {
+            setError("Please enter both email and password to continue.");
             return;
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            Alert.alert("Invalid email", "Please enter a valid email address.");
+        if (!emailRegex.test(email.trim())) {
+            setError("Please enter a valid email address.");
             return;
         }
 
@@ -42,19 +50,48 @@ export default function LoginScreen() {
             const data = await response.json();
 
             if (response.ok) {
-                await AsyncStorage.setItem('access_token', data.access_token);
-                await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
-
-                console.log("✅ Login successful:", data.user);
-                
-                // Redirect to Home page
-                router.replace("/screens/dashboard/Home");
+                // Save authentication data
+                try {
+                    await AsyncStorage.setItem('access_token', data.access_token);
+                    await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+                    
+                    setSuccess("Login successful! Redirecting...");
+                    
+                    // Navigate to Home after brief delay
+                    setTimeout(() => {
+                        router.replace("/screens/dashboard/Home");
+                    }, 500);
+                } catch (storageError) {
+                    setError("Failed to save login information. Please try again.");
+                }
             } else {
-                Alert.alert("Login Failed", data.detail || "Please check your credentials.");
+                let errorMessage = "Please check your credentials and try again.";
+                
+                if (data.detail) {
+                    if (typeof data.detail === 'string') {
+                        errorMessage = data.detail;
+                    } else if (Array.isArray(data.detail)) {
+                        errorMessage = data.detail
+                            .map((err: any) => {
+                                const field = err.loc.slice(-1)[0];
+                                return `${field}: ${err.msg}`;
+                            })
+                            .join(', ');
+                    }
+                }
+                
+                setError(`Login Failed: ${errorMessage}`);
             }
         } catch (error) {
-            console.error("Login error:", error);
-            Alert.alert("Network Error", "Unable to connect. Please check your internet connection.");
+            if (error instanceof Error) {
+                if (error.message.includes('fetch') || error.message.includes('Network')) {
+                    setError("Unable to connect to the server. Please check your internet connection and try again.");
+                } else {
+                    setError("An unexpected error occurred. Please try again later.");
+                }
+            } else {
+                setError("An unexpected error occurred. Please try again later.");
+            }
         } finally {
             setLoading(false);
         }
@@ -62,6 +99,7 @@ export default function LoginScreen() {
 
     return (
         <View className="flex-1 bg-[#291133]">
+            <WhiteParticles />
             <ScrollView 
                 className="flex-1 px-6"
                 contentContainerStyle={{ paddingTop: 60, paddingBottom: 40 }}
@@ -70,10 +108,25 @@ export default function LoginScreen() {
                 <Text className="text-white text-3xl font-bold text-center mb-2">PACT</Text>
                 <Text className="text-white text-2xl font-bold mb-10">Sign In</Text>
 
+                {error ? (
+                    <View className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-4 mb-6">
+                        <Text className="text-red-200 text-sm font-semibold">❌ {error}</Text>
+                    </View>
+                ) : null}
+
+                {success ? (
+                    <View className="bg-green-500/20 border-2 border-green-500 rounded-2xl p-4 mb-6">
+                        <Text className="text-green-200 text-sm font-semibold">✅ {success}</Text>
+                    </View>
+                ) : null}
+
                 <Input
                     placeholder="Email"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                        setEmail(text);
+                        setError("");
+                    }}
                     type="email"
                     autoCapitalize="none"
                     keyboardType="email-address"
@@ -83,7 +136,10 @@ export default function LoginScreen() {
                 <Input
                     placeholder="Password"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                        setPassword(text);
+                        setError("");
+                    }}
                     type="password"
                     className="mb-6"
                     editable={!loading}
@@ -100,6 +156,7 @@ export default function LoginScreen() {
                 <TouchableOpacity 
                     className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center"
                     disabled={loading}
+                    onPress={() => setError("Google Sign-In coming soon!")}
                 >
                     <View className="w-5 h-5 mr-2">
                         <View className="absolute w-2 h-2 top-0 left-0 bg-[#EA4335]" />
