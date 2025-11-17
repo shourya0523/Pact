@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
 import { Renderer, Camera, Geometry, Program, Mesh } from 'ogl';
 
 interface ParticlesProps {
@@ -117,6 +118,9 @@ const whiteParticles: React.FC<ParticlesProps> = ({
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   useEffect(() => {
+    // Only run on web platform
+    if (Platform.OS !== 'web') return;
+    
     const container = containerRef.current;
     if (!container) return;
 
@@ -243,7 +247,14 @@ const whiteParticles: React.FC<ParticlesProps> = ({
     disableRotation
   ]);
 
-  return <div ref={containerRef} className={`fixed top-0 left-0 w-full h-full -z-10 ${className}`} />;
+  // Only render on web platform
+  if (Platform.OS !== 'web') {
+    return null;
+  }
+
+  // Type assertion for web-only code
+  const WebDiv = 'div' as any;
+  return <WebDiv ref={containerRef} className={`fixed top-0 left-0 w-full h-full -z-10 ${className}`} />;
 };
 
 export default whiteParticles;
