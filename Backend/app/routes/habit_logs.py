@@ -7,6 +7,7 @@ from app.models.habit_log import (
     PartnershipTodayStatus
 )
 from app.utils.security import decode_access_token
+from app.services.streak_service import StreakCalculationService
 from config.database import get_database
 from bson import ObjectId
 from datetime import datetime, date, timedelta
@@ -97,14 +98,28 @@ async def log_habit_completion(
         result = await db.habit_logs.insert_one(log_entry)
         log_id = result.inserted_id
     
-    # Check if both partners completed - update streak
+    # Check if both partners completed - update Partnership-level points (legacy)
     await update_partnership_streak(db, habit_id, habit["partnership_id"], today)
+
+    # Recompute streak from logs and upsert into streaks (persistent cache)
+    recomputed = await StreakCalculationService.recompute_streak_from_logs(
+        db, habit_id, habit["partnership_id"]
+    )
+    await StreakCalculationService.upsert_streaks(
+        db, habit_id, habit["partnership_id"], recomputed
+    )
+    # Invalidate in-memory cache for this habit so next read is fresh
+    StreakCalculationService.invalidate_mem_cache(habit_id)
     
     # Get user info
     user = await db.users.find_one({"_id": ObjectId(user_id)})
     
     # Get the log
     log = await db.habit_logs.find_one({"_id": log_id})
+    
+    # Get current streak value from persistent cache
+    current_streak_doc = await db.streaks.find_one({"habit_id": ObjectId(habit_id)})
+    current_streak_val = 0 if not current_streak_doc else current_streak_doc.get("current_streak", 0)
     
     return HabitLogResponse(
         id=str(log["_id"]),
@@ -114,6 +129,8 @@ async def log_habit_completion(
         completed=log["completed"],
         date=log["date"].isoformat(),
         logged_at=log["logged_at"],
+        current_streak=current_streak_val
+        
         current_streak=habit.get("current_streak", 0)
     )
 

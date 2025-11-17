@@ -9,6 +9,7 @@ from app.routes import goals
 from app.routes.auth import router as auth_router
 from app.routes.partnership_apis import router as partnership_router
 from app.routes.habits import router as habits_router
+from app.routes.streaks import router as streaks_router
 import os
 from dotenv import load_dotenv
 
@@ -47,6 +48,7 @@ app.include_router(streak_history.router)
 app.include_router(auth_router)
 app.include_router(partnership_router)
 app.include_router(habits_router)
+app.include_router(streaks_router)
 
 # Include routers with /api prefix
 app.include_router(auth.router, prefix="/api")
