@@ -51,4 +51,4 @@ config
 pytest.ini
 
 .vscode/
-.env
+Backend/.env
