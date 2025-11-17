@@ -225,7 +225,7 @@ class StreakCalculationService:
         logs = await db.habit_logs.find({"habit_id": habit_id, "completed": True}, {"user_id": 1, "date": 1}).to_list(length=None)
         by_date: Dict[date, set] = {}
         for log in logs:
-            d = log["date"]
+            d = log["log_date"]
             by_date.setdefault(d, set()).add(log["user_id"])
 
         both_days = sorted([d for d, users in by_date.items() if user1_id in users and user2_id in users])

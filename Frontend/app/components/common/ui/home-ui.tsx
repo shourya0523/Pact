@@ -14,7 +14,7 @@ export default function HomeUI() {
                 resizeMode="contain"
             />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/screens/dashboard/habitViews')}>
+        <TouchableOpacity onPress={() => router.push('/screens/dashboard/HabitViews')}>
             <Image
             source={require('app/images/home-ui/Stat.png')}
             className="w-8 h-8"
