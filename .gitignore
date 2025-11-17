@@ -32,7 +32,7 @@ yarn-error.*
 
 # Environment variables - all .env files
 .env
-Backend/.env.test
+Backend/.env
 !.env.example
 !.env.sample
 
