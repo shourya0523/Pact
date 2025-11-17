@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Text, TouchableOpacity, ScrollView, View, Alert, Image, ActivityIndicator } from "react-native";
+import { Text, TouchableOpacity, ScrollView, View, Image, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { getBaseUrl } from "../../../config";
+import WhiteParticles from "app/components/space/whiteStarsParticlesBackground";
 import Input from "../../components/common/Text-input";
 
 export default function SignupScreen() {
@@ -10,28 +11,31 @@ export default function SignupScreen() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
     const handleSignup = async () => {
-        // Validation
-        if (!username || !email || !password) {
-            Alert.alert("Missing fields", "Please fill out all fields.");
+        setError("");
+        setSuccess("");
+
+        if (!username.trim() || !email.trim() || !password.trim()) {
+            setError("Please fill out all fields to continue.");
             return;
         }
 
-        if (username.length < 3) {
-            Alert.alert("Username too short", "Username must be at least 3 characters.");
+        if (username.trim().length < 3) {
+            setError("Username must be at least 3 characters long.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            setError("Please enter a valid email address.");
             return;
         }
 
         if (password.length < 8) {
-            Alert.alert("Password too short", "Password must be at least 8 characters.");
-            return;
-        }
-
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            Alert.alert("Invalid email", "Please enter a valid email address.");
+            setError("Password must be at least 8 characters long.");
             return;
         }
 
@@ -46,9 +50,6 @@ export default function SignupScreen() {
                 password: password
             };
             
-            console.log("Signup payload:", payload);
-            console.log("API URL:", `${BASE_URL}/api/auth/signup`);
-            
             const response = await fetch(`${BASE_URL}/api/auth/signup`, {
                 method: "POST",
                 headers: {
@@ -60,36 +61,39 @@ export default function SignupScreen() {
             const data = await response.json();
 
             if (response.ok) {
-                Alert.alert(
-                    "Success", 
-                    "Account created successfully! Please log in to continue.",
-                    [{
-                        text: "OK",
-                        onPress: () => router.push("/screens/auth/LoginScreen")
-                    }]
-                );
-            } else {
-                // Log the full error for debugging
-                console.error("Signup failed:", data);
+                setSuccess("Account created successfully! Redirecting to login...");
                 
-                // Show detailed error message
-                let errorMessage = "An error occurred during signup.";
+                setTimeout(() => {
+                    router.push("/screens/auth/LoginScreen");
+                }, 1500);
+            } else {
+                let errorMessage = "Unable to create account. Please try again.";
+                
                 if (data.detail) {
                     if (typeof data.detail === 'string') {
                         errorMessage = data.detail;
                     } else if (Array.isArray(data.detail)) {
-                        // Pydantic validation errors come as array
-                        errorMessage = data.detail.map((err: any) => 
-                            `${err.loc.join('.')}: ${err.msg}`
-                        ).join('\n');
+                        errorMessage = data.detail
+                            .map((err: any) => {
+                                const field = err.loc.slice(-1)[0];
+                                return `${field}: ${err.msg}`;
+                            })
+                            .join(', ');
                     }
                 }
                 
-                Alert.alert("Signup Failed", errorMessage);
+                setError(`Signup Failed: ${errorMessage}`);
             }
         } catch (error) {
-            console.error("Signup error:", error);
-            Alert.alert("Network Error", "Unable to connect. Please check your internet connection.");
+            if (error instanceof Error) {
+                if (error.message.includes('fetch') || error.message.includes('Network')) {
+                    setError("Unable to connect to the server. Please check your internet connection and try again.");
+                } else {
+                    setError("An unexpected error occurred. Please try again later.");
+                }
+            } else {
+                setError("An unexpected error occurred. Please try again later.");
+            }
         } finally {
             setLoading(false);
         }
@@ -97,30 +101,7 @@ export default function SignupScreen() {
 
     return (
         <View className="flex-1 bg-[#291133]">
-            {/* Star field background */}
-            <View className="absolute inset-0">
-                {[...Array(50)].map((_, i) => (
-                    <View
-                        key={i}
-                        className="absolute bg-white rounded-full"
-                        style={{
-                            top: `${Math.random() * 100}%`,
-                            left: `${Math.random() * 100}%`,
-                            width: Math.random() * 3 + 1,
-                            height: Math.random() * 3 + 1,
-                            opacity: Math.random() * 0.7 + 0.3,
-                        }}
-                    />
-                ))}
-            </View>
-            
-            {/* Moon image */}
-            <Image
-                source={require('../../images/space/moon.png')}
-                className="absolute w-150 h-150 -top-32 -right-20"
-                resizeMode="contain"
-            />
-
+            <WhiteParticles />
             <ScrollView 
                 className="flex-1 px-6"
                 contentContainerStyle={{ paddingTop: 200, paddingBottom: 40 }}
@@ -131,10 +112,25 @@ export default function SignupScreen() {
                     Create Your{'\n'}Account
                 </Text>
 
+                {error ? (
+                    <View className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-4 mb-6 mt-4">
+                        <Text className="text-red-200 text-sm font-semibold">❌ {error}</Text>
+                    </View>
+                ) : null}
+
+                {success ? (
+                    <View className="bg-green-500/20 border-2 border-green-500 rounded-2xl p-4 mb-6 mt-4">
+                        <Text className="text-green-200 text-sm font-semibold">✅ {success}</Text>
+                    </View>
+                ) : null}
+
                 <Input
                     placeholder="Username"
                     value={username}
-                    onChangeText={setUsername}
+                    onChangeText={(text) => {
+                        setUsername(text);
+                        setError(""); 
+                    }}
                     type="text"
                     autoCapitalize="none"
                     editable={!loading}
@@ -143,7 +139,10 @@ export default function SignupScreen() {
                 <Input
                     placeholder="Email"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                        setEmail(text);
+                        setError(""); 
+                    }}
                     type="email"
                     autoCapitalize="none"
                     keyboardType="email-address"
@@ -153,7 +152,10 @@ export default function SignupScreen() {
                 <Input
                     placeholder="Password"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                        setPassword(text);
+                        setError("");
+                    }}
                     type="password"
                     editable={!loading}
                 />
@@ -169,6 +171,7 @@ export default function SignupScreen() {
                 <TouchableOpacity 
                     className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center"
                     disabled={loading}
+                    onPress={() => setError("Google Sign-Up coming soon!")}
                 >
                     <View className="w-5 h-5 mr-2">
                         <View className="absolute w-2 h-2 top-0 left-0 bg-[#EA4335]" />
