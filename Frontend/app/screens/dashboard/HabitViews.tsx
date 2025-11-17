@@ -136,7 +136,7 @@ export default function HabitViews() {
                             onPress={() => {
                                 console.log('Navigating to habit:', habit.id, habit.habit_name)
                                 router.push({
-                                    pathname: '/screens/dashboard/habitDetails',
+                                    pathname: '/screens/dashboard/HabitDetails',
                                     params: { habitId: habit.id }
                                 })
                             }}
