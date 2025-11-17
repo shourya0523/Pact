@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Text, TouchableOpacity, ScrollView, View, Image, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
-import { getBaseUrl } from "../../../config";
 import WhiteParticles from "app/components/space/whiteStarsParticlesBackground";
 import Input from "../../components/common/Text-input";
+import { signup as signupUtil } from "../../utils/authUtils";
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -42,58 +42,30 @@ export default function SignupScreen() {
         setLoading(true);
         
         try {
-            const BASE_URL = await getBaseUrl();
+            // Use authUtils signup which handles signup + auto-login
+            const data = await signupUtil(username, email, password);
             
-            const payload = {
-                username: username.trim(),
-                email: email.trim().toLowerCase(),
-                password: password
-            };
+            // If we get here, signup and auto-login succeeded
+            // Token and user data are already stored by signupUtil
+            setSuccess("Account created! Logging you in...");
             
-            const response = await fetch(`${BASE_URL}/api/auth/signup`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                setSuccess("Account created successfully! Redirecting to login...");
-                
-                setTimeout(() => {
-                    router.push("/screens/auth/LoginScreen");
-                }, 1500);
-            } else {
-                let errorMessage = "Unable to create account. Please try again.";
-                
-                if (data.detail) {
-                    if (typeof data.detail === 'string') {
-                        errorMessage = data.detail;
-                    } else if (Array.isArray(data.detail)) {
-                        errorMessage = data.detail
-                            .map((err: any) => {
-                                const field = err.loc.slice(-1)[0];
-                                return `${field}: ${err.msg}`;
-                            })
-                            .join(', ');
-                    }
-                }
-                
-                setError(`Signup Failed: ${errorMessage}`);
-            }
-        } catch (error) {
+            // Navigate to invite friend screen after brief delay
+            setTimeout(() => {
+                router.replace("/screens/auth/GetStarted");
+            }, 1000);
+        } catch (error: any) {
+            let errorMessage = "Unable to create account. Please try again.";
+            
+            // Handle different error types
             if (error instanceof Error) {
                 if (error.message.includes('fetch') || error.message.includes('Network')) {
-                    setError("Unable to connect to the server. Please check your internet connection and try again.");
-                } else {
-                    setError("An unexpected error occurred. Please try again later.");
+                    errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
+                } else if (error.message) {
+                    errorMessage = error.message;
                 }
-            } else {
-                setError("An unexpected error occurred. Please try again later.");
             }
+            
+            setError(`Signup Failed: ${errorMessage}`);
         } finally {
             setLoading(false);
         }

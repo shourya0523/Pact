@@ -105,6 +105,7 @@ export const isAuthenticated = async (): Promise<boolean> => {
 
 /**
  * Make an authenticated API call
+ * Automatically handles token expiration (401 errors)
  */
 export const authenticatedFetch = async (
     endpoint: string,
@@ -123,10 +124,18 @@ export const authenticatedFetch = async (
         ...options.headers,
     };
 
-    return fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
         ...options,
         headers,
     });
+
+    // Handle token expiration (401) automatically
+    if (response.status === 401) {
+        console.log('🔒 Token expired during API call - clearing auth data');
+        await handleTokenExpiration();
+    }
+
+    return response;
 };
 
 /**
@@ -160,7 +169,8 @@ export const login = async (email: string, password: string): Promise<any> => {
 };
 
 /**
- * Signup new user
+ * Signup new user and automatically log them in
+ * Returns the same data as login (token + user)
  */
 export const signup = async (
     username: string,
@@ -169,7 +179,8 @@ export const signup = async (
 ): Promise<any> => {
     const BASE_URL = await getBaseUrl();
     
-    const response = await fetch(`${BASE_URL}/api/auth/signup`, {
+    // Step 1: Create account
+    const signupResponse = await fetch(`${BASE_URL}/api/auth/signup`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -181,13 +192,35 @@ export const signup = async (
         }),
     });
 
-    const data = await response.json();
+    const signupData = await signupResponse.json();
 
-    if (!response.ok) {
-        throw new Error(data.detail || 'Signup failed');
+    if (!signupResponse.ok) {
+        throw new Error(signupData.detail || 'Signup failed');
     }
 
-    return data;
+    // Step 2: Automatically log in the newly created user
+    const loginResponse = await fetch(`${BASE_URL}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            email: email.trim().toLowerCase(),
+            password,
+        }),
+    });
+
+    const loginData = await loginResponse.json();
+
+    if (!loginResponse.ok) {
+        throw new Error(loginData.detail || 'Auto-login after signup failed');
+    }
+
+    // Step 3: Store token and user data
+    await storeToken(loginData.access_token);
+    await storeUserData(loginData.user);
+
+    return loginData;
 };
 
 /**
@@ -211,4 +244,76 @@ export const getCurrentUser = async (): Promise<any> => {
     await storeUserData(userData);
     
     return userData;
+};
+
+/**
+ * Check if token might be expired (client-side check)
+ * Note: This is a best-effort check. Server validation is authoritative.
+ * JWT tokens contain expiration time, but we'd need to decode them to check.
+ * For now, we rely on server validation.
+ */
+export const isTokenLikelyExpired = async (): Promise<boolean> => {
+    // For now, we don't decode JWT on client side
+    // We rely on server validation via validateToken()
+    // This function is a placeholder for future enhancement
+    return false;
+};
+
+/**
+ * Validate token by checking with backend
+ * Returns true if token is valid, false otherwise
+ * Clears auth data if token is invalid/expired (401)
+ * 
+ * Token expiration handling:
+ * - Backend returns 401 when token is expired/invalid
+ * - We detect 401 and automatically clear auth data
+ * - User is redirected to login screen
+ */
+export const validateToken = async (): Promise<boolean> => {
+    try {
+        const token = await getToken();
+        
+        // No token means not authenticated
+        if (!token) {
+            return false;
+        }
+
+        // Try to get current user - this validates the token
+        const response = await authenticatedFetch('/api/auth/me');
+        
+        if (response.ok) {
+            // Token is valid, update user data
+            const userData = await response.json();
+            await storeUserData(userData);
+            return true;
+        } else if (response.status === 401) {
+            // Token is invalid or expired - clear auth data
+            console.log('🔒 Token expired or invalid (401) - clearing auth data');
+            console.log('💡 User will be redirected to login screen');
+            await clearAuthData();
+            return false;
+        } else {
+            // Other error (network, server error, etc.)
+            console.error('⚠️ Token validation failed with status:', response.status);
+            // Don't clear auth on network errors - might be temporary
+            return false;
+        }
+    } catch (error: any) {
+        // Network error or other exception
+        console.error('⚠️ Token validation error:', error.message);
+        // On network errors, assume token might still be valid
+        // User will be redirected to login if token is actually invalid
+        return false;
+    }
+};
+
+/**
+ * Handle token expiration gracefully
+ * Called when a 401 error is detected during API calls
+ * Clears auth data and optionally shows a message to user
+ */
+export const handleTokenExpiration = async (): Promise<void> => {
+    console.log('🔒 Handling token expiration...');
+    await clearAuthData();
+    console.log('✅ Auth data cleared. User should be redirected to login.');
 };
