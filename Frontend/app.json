@@ -46,7 +46,7 @@
       "expo-web-browser"
     ],
     "experiments": {
-      "typedRoutes": false,
+      "typedRoutes": true,
       "reactCompiler": true
     }
   }
