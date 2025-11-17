@@ -1,9 +1,9 @@
-from app.routes import partnership_apis
+from app.routes import partnership_apis, dashboard  # ← Add dashboard import
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from config.database import connect_to_mongo, close_mongo_connection
-from app.routes import auth, habits, users, streak_history
+from app.routes import auth, habits, users, streak_history, habit_logs
 from app.routes import goals
 
 from app.routes.auth import router as auth_router
@@ -57,6 +57,8 @@ app.include_router(habits.router, prefix="/api")
 app.include_router(users.router, prefix="/api")
 app.include_router(streak_history.router, prefix="/api")
 app.include_router(goals.router, prefix="/api")
+app.include_router(habit_logs.router, prefix="/api")
+app.include_router(dashboard.router, prefix="/api")  # ← ADD THIS LINE
 
 
 @app.get("/")

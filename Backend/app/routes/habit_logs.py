@@ -12,6 +12,7 @@ from config.database import get_database
 from bson import ObjectId
 from datetime import datetime, date, timedelta
 from typing import List, Optional
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 router = APIRouter(tags=["Habit Logging"])
 security = HTTPBearer()
@@ -32,10 +33,10 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
 async def log_habit_completion(
     habit_id: str,
     log_data: HabitLogCreate,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Log daily habit completion"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
     
     # Verify habit exists and user has access
@@ -62,7 +63,8 @@ async def log_habit_completion(
             detail="Access denied"
         )
     
-    today = date.today()
+    # Get today's date as datetime (MongoDB compatible)
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     
     # Check if already logged today
     existing_log = await db.habit_logs.find_one({
@@ -78,7 +80,6 @@ async def log_habit_completion(
             {
                 "$set": {
                     "completed": log_data.completed,
-                    "notes": log_data.notes,
                     "logged_at": datetime.utcnow()
                 }
             }
@@ -90,7 +91,6 @@ async def log_habit_completion(
             "habit_id": habit_id,
             "user_id": user_id,
             "completed": log_data.completed,
-            "notes": log_data.notes,
             "date": today,
             "logged_at": datetime.utcnow()
         }
@@ -127,11 +127,11 @@ async def log_habit_completion(
         user_id=log["user_id"],
         username=user["username"],
         completed=log["completed"],
-        notes=log.get("notes"),
         date=log["date"].isoformat(),
         logged_at=log["logged_at"],
         current_streak=current_streak_val
         
+        current_streak=habit.get("current_streak", 0)
     )
 
 async def update_partnership_streak(db, habit_id: str, partnership_id: str, check_date: date):
@@ -189,10 +189,10 @@ async def get_habit_logs(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
     user_id_filter: Optional[str] = Query(None, alias="user_id"),
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get habit log history with optional filters"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
     
     # Verify habit exists and user has access
@@ -248,7 +248,6 @@ async def get_habit_logs(
             user_id=log["user_id"],
             username=user_map.get(log["user_id"], "Unknown"),
             completed=log["completed"],
-            notes=log.get("notes"),
             date=log["date"].isoformat(),
             logged_at=log["logged_at"]
         )
@@ -258,10 +257,10 @@ async def get_habit_logs(
 @router.get("/habits/{habit_id}/logs/today", response_model=TodayLogStatus)
 async def get_today_log_status(
     habit_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get today's log status for both partners"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
     
     # Verify habit exists and user has access
@@ -291,7 +290,8 @@ async def get_today_log_status(
     user1_id = partnership["user_id_1"]
     user2_id = partnership["user_id_2"]
     
-    today = date.today()
+    # Get today's date as datetime (MongoDB compatible)
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     
     # Get today's logs for both users
     logs = await db.habit_logs.find({
@@ -327,10 +327,10 @@ async def get_today_log_status(
 @router.get("/partnerships/{partnership_id}/logs/today", response_model=PartnershipTodayStatus)
 async def get_partnership_today_status(
     partnership_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get all habits' completion status for today"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
     
     # Verify partnership and access
@@ -357,7 +357,8 @@ async def get_partnership_today_status(
         "status": "active"
     }).to_list(100)
     
-    today = date.today()
+    # Get today's date as datetime (MongoDB compatible)
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     
     # Get all today's logs for these habits
     habit_ids = [str(h["_id"]) for h in habits]
@@ -424,7 +425,7 @@ async def get_partnership_today_status(
     
     return PartnershipTodayStatus(
         partnership_id=partnership_id,
-        date=today.isoformat(),
+        date=today.date().isoformat(),
         habits=habits_status,
         completion_summary={
             "total_habits": len(habits),

@@ -1,70 +1,73 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import Particles from '@/components/ui/starsParticlesBackground';
+import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground';
 import HabitShadowCircle from '@/components/ui/habitShadowCircle';
 import GreyButton from '@/components/ui/greyButton';
 import BackwardButton from '@/components/ui/backwardButton';
+import OrComponent from '@/components/ui/or';
 import { useRouter } from 'expo-router';
 
 export default function ChooseHabitCategory() {
   const router = useRouter();
 
-  /*const handleCategoryPress = (category: string) => {
+  const handleCategoryPress = (category: string) => {
     router.push({
-      pathname: '/PredefinedHabits',
-      params: { category }
+      pathname: '/screens/dashboard/predefinedHabits',
+      params: { category },
     });
-  };*/
+  };
 
   const chooseHabitPress = () => {
     router.push('/screens/dashboard/createHabit');
   };
 
-  return (
-    <View className="flex-1 relative">
-      <Particles />
-      
-      <View className="flex-1 px-5 pt-20 pb-5">
-        <BackwardButton />
+  const habits = [
+    { label: 'Study everyday', category: 'productivity' },
+    { label: 'Reduce screen time', category: 'fitness' },
+    { label: 'Wake up early', category: 'selfcare' },
+    { label: 'Stop procrastinating', category: 'selfcare' },
+  ];
 
-        <Text className="font-wix text-[32px] text-center text-white mb-8 leading-tight">
+  return (
+    <View className="flex-1 relative bg-transparent">
+      <WhiteParticles />
+      
+      <View className="absolute mt-6 left-8 z-50">
+        <BackwardButton />
+      </View>
+
+      <View className="flex-1 px-5 pt-20 pb-5">
+        <Text className="font-wix text-[38px] text-center text-white mt-6 leading-tight">
           Choose from Predefined Productivity Habits
         </Text>
-        
-        <View className="flex-1 justify-center items-center">
-          <View className="flex-row justify-center mb-12 gap-8">
-            <HabitShadowCircle 
-              label="Study Everyday"
-              onPress={() => handleCategoryPress('productivity')}
-            />
-            <HabitShadowCircle
-              label="Reduce Screen Time"
-              onPress={() => handleCategoryPress('fitness')}
-            />
-          </View>
-          <View className="flex-row justify-center mb-12 gap-8">
-            <HabitShadowCircle
-              label="Wake up Early"
-              onPress={() => handleCategoryPress('selfcare')}
-            />
-            <HabitShadowCircle
-              label="Stop Procrastinating"
-              onPress={() => handleCategoryPress('selfcare')}
-            />
-          </View>
+
+        {/* Automatic grid layout */}
+        <View className="flex-row flex-wrap justify-center mt-10">
+          {habits.map((habit, index) => (
+            <View
+              key={index}
+              className="m-4" // controls spacing
+              style={{
+                width: '40%', // fits 2 per row roughly
+                alignItems: 'center',
+              }}
+            >
+              <HabitShadowCircle
+                label={habit.label}
+                onPress={() => handleCategoryPress(habit.category)}
+              />
+            </View>
+          ))}
         </View>
-        
+
         <View className="mt-auto">
-          <View className="flex-row justify-center items-center mb-6">
-            <View className="flex-1 h-[1px] bg-white" />
-            <Text className="mx-4 text-white font-wix text-sm">OR</Text>
-            <View className="flex-1 h-[1px] bg-white" />
-          </View>
-          
+          <OrComponent />
+
           <View className="items-center">
             <GreyButton
-                onPress={chooseHabitPress}
-                text="CREATE YOUR OWN HABIT"
+              onPress={chooseHabitPress}
+              text="CREATE YOUR OWN HABIT"
+              style={{ marginTop: 40, marginBottom: 40 }}
             />
           </View>
         </View>

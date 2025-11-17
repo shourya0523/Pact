@@ -1,83 +1,83 @@
-// Login screen (can also be a modal)
 import React, { useState } from "react";
-import { Text, TouchableOpacity, ScrollView, View, Alert, Image } from "react-native";
+import { Text, TouchableOpacity, ScrollView, View, Alert, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { getBaseUrl } from "../../../config";
 import Input from "../../components/common/Text-input";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
     const router = useRouter();
-
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const handleLogIn = async () => {
-        const BASE_URL = await getBaseUrl();
+        if (!email || !password) {
+            Alert.alert("Missing fields", "Please enter your email and password.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            Alert.alert("Invalid email", "Please enter a valid email address.");
+            return;
+        }
+
+        setLoading(true);
+        
         try {
-            const response = await fetch(`${BASE_URL}/auth/login`, {
+            const BASE_URL = await getBaseUrl();
+            
+            const response = await fetch(`${BASE_URL}/api/auth/login`, {
                 method: "POST",
                 headers: {
-                    "Content-type": "application/json"
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    email,
-                    password
+                    email: email.trim().toLowerCase(),
+                    password: password
                 })
             });
 
+            const data = await response.json();
+
             if (response.ok) {
-                router.push("/screens/main/DashboardScreen");
+                await AsyncStorage.setItem('access_token', data.access_token);
+                await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+
+                console.log("✅ Login successful:", data.user);
+                
+                // Redirect to Home page
+                router.replace("/screens/dashboard/Home");
             } else {
-                const errorData = await response.json();
-                Alert.alert("Signup failer", errorData.detail || "Error creating account");
+                Alert.alert("Login Failed", data.detail || "Please check your credentials.");
             }
         } catch (error) {
-            console.error(error);
-            Alert.alert("Network error", "Could not connect to server");
+            console.error("Login error:", error);
+            Alert.alert("Network Error", "Unable to connect. Please check your internet connection.");
+        } finally {
+            setLoading(false);
         }
-    }
+    };
 
     return (
         <View className="flex-1 bg-[#291133]">
-            <View className="absolute inset-0">
-                {[...Array(50)].map((_, i) => (
-                    <View
-                        key={i}
-                        className="absolute bg-white rounded-full"
-                        style={{
-                            top: `${Math.random() * 100}%`,
-                            left: `${Math.random() * 100}%`,
-                            width: Math.random() * 3 + 1,
-                            height: Math.random() * 3 + 1,
-                            opacity: Math.random() * 0.7 + 0.3,
-                        }}
-                    />
-                ))}
-            </View>
-            
-            <Image
-                source={require('../../images/space/moon.png')}
-                className="absolute w-150 h-150 -top-32 -right-20"
-                resizeMode="contain"
-            />
-
             <ScrollView 
                 className="flex-1 px-6"
-                contentContainerStyle={{ paddingTop: 200, paddingBottom: 40 }}
+                contentContainerStyle={{ paddingTop: 60, paddingBottom: 40 }}
                 keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
             >
-                <Text className="text-white text-4xl font-semibold mb-2 leading-tight">
-                    Welcome{'\n'}Back!
-                </Text>
+                <Text className="text-white text-3xl font-bold text-center mb-2">PACT</Text>
                 <Text className="text-white text-2xl font-bold mb-10">Sign In</Text>
-
 
                 <Input
                     placeholder="Email"
                     value={email}
                     onChangeText={setEmail}
                     type="email"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    editable={!loading}
                 />
 
                 <Input
@@ -86,6 +86,7 @@ export default function LoginScreen() {
                     onChangeText={setPassword}
                     type="password"
                     className="mb-6"
+                    editable={!loading}
                 />
 
                 <View className="flex-row items-center my-6">
@@ -96,7 +97,10 @@ export default function LoginScreen() {
                     <View className="flex-1 h-[1px] bg-white" />
                 </View>
 
-                <TouchableOpacity className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center">
+                <TouchableOpacity 
+                    className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center"
+                    disabled={loading}
+                >
                     <View className="w-5 h-5 mr-2">
                         <View className="absolute w-2 h-2 top-0 left-0 bg-[#EA4335]" />
                         <View className="absolute w-2 h-2 top-0 right-0 bg-[#4285F4]" />
@@ -109,10 +113,25 @@ export default function LoginScreen() {
                 <TouchableOpacity 
                     className="bg-white rounded-full py-4 mb-6 items-center"
                     onPress={handleLogIn}
+                    disabled={loading}
                 >
-                    <Text className="text-gray-900 text-sm font-semibold">SIGN IN</Text>
+                    {loading ? (
+                        <ActivityIndicator color="#111827" />
+                    ) : (
+                        <Text className="text-gray-900 text-sm font-semibold">SIGN IN</Text>
+                    )}
                 </TouchableOpacity>
+
+                <Text className="text-white text-sm text-center font-medium">
+                    DON'T HAVE AN ACCOUNT?{" "}
+                    <Text 
+                        className="text-blue-500 font-semibold"
+                        onPress={() => !loading && router.push("/screens/auth/SignupScreen")}
+                    >
+                        SIGN UP
+                    </Text>
+                </Text>
             </ScrollView>
         </View>
-    )
+    );
 }
