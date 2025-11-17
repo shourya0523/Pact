@@ -129,8 +129,6 @@ async def log_habit_completion(
         completed=log["completed"],
         date=log["date"].isoformat(),
         logged_at=log["logged_at"],
-        current_streak=current_streak_val
-        
         current_streak=habit.get("current_streak", 0)
     )
 
