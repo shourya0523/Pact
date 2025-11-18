@@ -51,4 +51,4 @@ config
 pytest.ini
 
 .vscode/
-Backend/.env
+Backend/.env.DS_Store
