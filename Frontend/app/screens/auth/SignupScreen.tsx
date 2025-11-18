@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text, TouchableOpacity, ScrollView, View, Image, ActivityIndicator } from "react-native";
+import { Text, TouchableOpacity, ScrollView, View, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import WhiteParticles from "app/components/space/whiteStarsParticlesBackground";
 import Input from "../../components/common/Text-input";
@@ -72,11 +72,18 @@ export default function SignupScreen() {
     };
 
     return (
-        <View className="flex-1 bg-[#291133]">
+        <KeyboardAvoidingView 
+            className="flex-1 bg-[#291133]"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <WhiteParticles />
             <ScrollView 
                 className="flex-1 px-6"
-                contentContainerStyle={{ paddingTop: 200, paddingBottom: 40 }}
+                contentContainerStyle={{ 
+                    paddingTop: Platform.OS === 'ios' ? 100 : 120, 
+                    paddingBottom: 40 
+                }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
@@ -176,6 +183,6 @@ export default function SignupScreen() {
                     </Text>
                 </Text>
             </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
     );
 }

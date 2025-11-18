@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -8,6 +8,7 @@ import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import HabitBox from '@/components/ui/habitBox'
 import GreyButton from '@/components/ui/greyButton'
 import { Ionicons } from '@expo/vector-icons'
+import { scaleFont, scaleSize } from '../../utils/constants'
 
 interface Habit {
     id: string;
@@ -21,6 +22,7 @@ export default function HabitViews() {
     const router = useRouter()
     const [habits, setHabits] = useState<Habit[]>([])
     const [loading, setLoading] = useState(true)
+    const screenWidth = Dimensions.get('window').width
 
     useEffect(() => {
         fetchHabits()
@@ -122,11 +124,11 @@ export default function HabitViews() {
             <Image
                 source={require('app/images/space/galaxy.png')}
                 className="absolute bottom-0 right-0"
-                style={{ height: 300 }}
+                style={{ height: scaleSize(300), width: scaleSize(300) }}
                 resizeMode="cover"
             />
             
-            <Text className="font-wix text-white text-[38px] text-center mt-16">All Habits</Text>
+            <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
             
             <View className="items-center justify-center mt-4 mb-10">
                 {activeHabits.length > 0 ? (

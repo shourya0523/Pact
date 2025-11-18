@@ -1,10 +1,11 @@
 import React, { useState } from "react";
-import { Text, TouchableOpacity, ScrollView, View, ActivityIndicator } from "react-native";
+import { Text, TouchableOpacity, ScrollView, View, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { getBaseUrl } from "../../../config";
 import WhiteParticles from "app/components/space/whiteStarsParticlesBackground";
 import Input from "../../components/common/Text-input";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scaleFont } from "../../utils/constants";
 
 export default function LoginScreen() {
     const router = useRouter();
@@ -98,15 +99,20 @@ export default function LoginScreen() {
     };
 
     return (
-        <View className="flex-1 bg-[#291133]">
+        <KeyboardAvoidingView 
+            className="flex-1 bg-[#291133]"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <WhiteParticles />
             <ScrollView 
                 className="flex-1 px-6"
                 contentContainerStyle={{ paddingTop: 60, paddingBottom: 40 }}
                 keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
             >
-                <Text className="text-white text-3xl font-bold text-center mb-2">PACT</Text>
-                <Text className="text-white text-2xl font-bold mb-10">Sign In</Text>
+                <Text className="text-white font-bold text-center mb-2" style={{ fontSize: scaleFont(30) }}>PACT</Text>
+                <Text className="text-white font-bold mb-10" style={{ fontSize: scaleFont(24) }}>Sign In</Text>
 
                 {error ? (
                     <View className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-4 mb-6">
@@ -189,6 +195,6 @@ export default function LoginScreen() {
                     </Text>
                 </Text>
             </ScrollView>
-        </View>
+        </KeyboardAvoidingView>
     );
 }
