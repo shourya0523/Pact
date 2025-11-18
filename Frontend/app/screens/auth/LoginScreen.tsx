@@ -36,8 +36,10 @@ export default function LoginScreen() {
         
         try {
             const BASE_URL = await getBaseUrl();
+            console.log('🔗 Attempting login to:', `${BASE_URL}/auth/login`);
+            console.log('📧 Email:', email.trim().toLowerCase());
             
-            const response = await fetch(`${BASE_URL}/api/auth/login`, {
+            const response = await fetch(`${BASE_URL}/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

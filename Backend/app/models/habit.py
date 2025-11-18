@@ -102,6 +102,7 @@ class HabitResponse(BaseModel):
     description: Optional[str]
     goal: Optional[str]  # NEW
     count_checkins: int  # NEW - expose current check-in count
+    current_streak: Optional[int] = 0  # NEW - expose current streak
     frequency: str  # NEW
     partnership_id: Optional[str]
     status: str
