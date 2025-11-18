@@ -117,12 +117,12 @@ export default function HabitDetails() {
 
         if (type === 'frequency') {
             router.push({
-                pathname: '/screens/dashboard/frequencyGoals',
+                pathname: '/screens/dashboard/FrequencyGoals',
                 params: {habitId: habitId}
             })
         } else {
             router.push({
-                pathname: '/screens/dashboard/completionGoals',
+                pathname: '/screens/dashboard/CompletionGoals',
                 params: {habitId: habitId}
             })
         }
@@ -233,7 +233,7 @@ export default function HabitDetails() {
                             onPress={() => {
                                 console.log('Navigating to goal:', goals[0].goal_name)
                                 router.push({
-                                    pathname: '/screens/dashboard/goalPage',
+                                    pathname: '/screens/dashboard/GoalPage',
                                     params: {
                                         habitId: habitId,
                                         userId: goals[0].user_id
@@ -265,7 +265,7 @@ export default function HabitDetails() {
                             onPress={() => {
                                 console.log('Navigating to goal:', goals[1].goal_name)
                                 router.push({
-                                    pathname: '/screens/dashboard/goalPage',
+                                    pathname: '/screens/dashboard/GoalPage',
                                     params: {
                                         habitId: habitId,
                                         userId: goals[1].user_id

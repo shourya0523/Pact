@@ -235,7 +235,7 @@ export default function HomePage() {
             <Text className="text-white text-[28px] font-semibold">Check In</Text>
             <View className="flex-row justify-between items-center mb-3">
               <Text className="text-white text-[22px]">Today's Goals</Text>
-              <TouchableOpacity onPress={() => router.push('/screens/dashboard/habitViews')}>
+              <TouchableOpacity onPress={() => router.push('/screens/dashboard/HabitViews')}>
                 <Text className="text-gray-300 text-xs">View All</Text>
               </TouchableOpacity>
             </View>
@@ -283,7 +283,7 @@ export default function HomePage() {
                 </Text>
                 <TouchableOpacity 
                   className="bg-white rounded-full py-3 px-6 self-start"
-                  onPress={() => router.push('/screens/dashboard/invitePartners')}
+                  onPress={() => router.push('/screens/dashboard/InvitePartners')}
                 >
                   <Text className="text-purple-900 font-semibold">Invite Partner</Text>
                 </TouchableOpacity>

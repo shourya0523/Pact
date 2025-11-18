@@ -13,15 +13,20 @@ interface GoalBoxProps {
 
 export default function GoalBox({
     title,
-    progress,
     currentValue,
     targetValue,
+    progress_percentage,
     onCheckIn,
     onViewGoal
 }: GoalBoxProps) {
-    // Ensure progress is between 0 and 1
-    const normalizedProgress = Math.min(Math.max(progress, 0), 1)
-    const percentage = Math.round(normalizedProgress * 100)
+    // Handle undefined/null progress_percentage and calculate fallback
+    const actualProgress = progress_percentage ?? ((currentValue / targetValue) * 100 || 0)
+
+    // Use ceiling of the progress percentage
+    const percentage = Math.ceil(actualProgress)
+
+    // Normalize to 0-1 for the circle visualization
+    const normalizedProgress = Math.min(Math.max(actualProgress / 100, 0), 1)
 
     return (
         <View className="rounded-3xl p-3 shadow-lg w-[90%] mb-4 flex-row items-center" style={{ backgroundColor: '#E5E7EB', gap: 12 }}>

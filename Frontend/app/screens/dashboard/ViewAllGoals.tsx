@@ -1,14 +1,13 @@
-
-import React, { useEffect, useState } from 'react'
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
-import { useRouter } from 'expo-router'
+import React, {useEffect, useState} from 'react'
+import {View, Text, Image, TouchableOpacity, ActivityIndicator, Alert} from 'react-native'
+import {useRouter} from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getBaseUrl } from '../../../config'
+import {getBaseUrl} from '../../../config'
 import HomeUI from "@/components/ui/home-ui"
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GoalBox from '@/components/ui/goalBox'
 import GreyButton from '@/components/ui/greyButton'
-import { Ionicons } from '@expo/vector-icons'
+import {Ionicons} from '@expo/vector-icons'
 
 interface Goal {
     habit_id: string;
@@ -85,7 +84,7 @@ export default function ViewAllGoals() {
                         Alert.alert(
                             "No Goals Found",
                             "You don't have any goals yet. Create one to get started!",
-                            [{ text: "OK" }]
+                            [{text: "OK"}]
                         )
                     }, 500)
                 }
@@ -112,10 +111,10 @@ export default function ViewAllGoals() {
 
     if (loading) {
         return (
-            <View className="flex-1 relative" style={{ backgroundColor: '#291133' }}>
-                <WhiteParticles />
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+                <WhiteParticles/>
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#ffffff" />
+                    <ActivityIndicator size="large" color="#ffffff"/>
                     <Text className="text-white mt-4">Loading Goals...</Text>
                 </View>
             </View>
@@ -123,12 +122,12 @@ export default function ViewAllGoals() {
     }
 
     return (
-        <View className="flex-1 relative" style={{ backgroundColor: '#291133' }}>
-            <WhiteParticles />
+        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+            <WhiteParticles/>
             <Image
                 source={require('app/images/space/galaxy.png')}
                 className="absolute bottom-0 right-0"
-                style={{ height: 300 }}
+                style={{height: 300}}
                 resizeMode="cover"
             />
 
@@ -143,7 +142,7 @@ export default function ViewAllGoals() {
                                 console.log('Navigating to goal:', goal.habit_id, goal.habit_name)
                                 router.push({
                                     pathname: '/screens/dashboard/GoalDetails',
-                                    params: { habitId: goal.habit_id }
+                                    params: {habitId: goal.habit_id}
                                 })
                             }}
                             activeOpacity={0.8}
@@ -151,12 +150,19 @@ export default function ViewAllGoals() {
                         >
                             <GoalBox
                                 title={goal.habit_name}
-                                progress={goal.current_value && goal.target_value
-                                    ? goal.current_value / goal.target_value
-                                    : 0}
                                 currentValue={goal.current_value || 0}
                                 targetValue={goal.target_value || 0}
-                                partnerName={goal.partner_username}
+                                progress_percentage={goal.progress_percentage || 0}
+                                onCheckIn={() => {
+                                    // TODO: Call your check-in API endpoint
+                                    console.log('Check in for goal:', goal.habit_id)
+                                }}
+                                onViewGoal={() => {
+                                    router.push({
+                                        pathname: '/screens/dashboard/HabitDetails',
+                                        params: {habitId: goal.habit_id}
+                                    })
+                                }}
                             />
                         </TouchableOpacity>
                     ))
@@ -166,24 +172,24 @@ export default function ViewAllGoals() {
                         <Text className="text-white/40 text-center mt-2">Create your first goal below!</Text>
                     </View>
                 )}
-                
+
                 {completedGoals.length > 0 && (
-                    <GreyButton 
+                    <GreyButton
                         text="COMPLETED GOALS"
                         onPress={() => router.push('/screens/dashboard/CompletedGoals')}
-                        style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
+                        style={{width: '80%', backgroundColor: '#3E1B56', marginTop: 20}}
                     />
                 )}
-            
+
                 <TouchableOpacity
                     className="mt-6 bg-white/50 rounded-full p-4 shadow-lg"
                     onPress={() => router.push('/screens/dashboard/createGoal')}
                 >
-                    <Ionicons name="add" size={32} color="white" />
+                    <Ionicons name="add" size={32} color="white"/>
                 </TouchableOpacity>
             </View>
-            
-            <HomeUI />
+
+            <HomeUI/>
         </View>
     )
 }
