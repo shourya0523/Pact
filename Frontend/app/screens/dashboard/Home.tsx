@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, ActivityIndicator, ScrollView, RefreshControl, Alert, TouchableOpacity, Dimensions, Platform } from "react-native";
+import { View, Text, Image, ActivityIndicator, ScrollView, RefreshControl, Alert, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBaseUrl } from "../../../config";
 import HomeUI from "../../components/common/ui/home-ui";
 import HabitSelect from "../../components/common/ui/habitSelect";
 import ProgressCheck from "../../components/common/ui/progressCheck";
-import WhiteParticles from "../../components/space/whiteStarsParticlesBackground";
+import PurpleParticles from "../../components/space/purpleStarsParticlesBackground";
 import StreakIndicator from "../../components/habit/StreakIndicator";
-import { scaleFont, scaleSize } from "../../utils/constants";
 
 interface DashboardData {
   user: {
@@ -45,19 +44,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const screenWidth = Dimensions.get('window').width;
-  const isWeb = Platform.OS === 'web';
-  const maxWidth = isWeb ? 1200 : screenWidth;
-  // Desktop-specific sizing (don't use mobile scaleSize on web)
-  const webPadding = 48;
-  const webFontSize = {
-    greeting: 32,
-    sectionTitle: 24,
-    body: 18,
-    subtitle: 20
-  };
-  const mobilePadding = scaleSize(24);
-  const horizontalPadding = isWeb ? webPadding : mobilePadding;
 
   const fetchDashboardData = async () => {
     try {
@@ -174,8 +160,8 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <View className="flex-1 relative items-center justify-center">
-        <WhiteParticles />
+      <View className="flex-1 bg-black items-center justify-center">
+        <PurpleParticles />
         <ActivityIndicator size="large" color="#ffffff" />
         <Text className="text-white mt-4">Loading Dashboard...</Text>
       </View>
@@ -184,8 +170,8 @@ export default function HomePage() {
 
   if (!dashboardData) {
     return (
-      <View className="flex-1 relative items-center justify-center px-6">
-        <WhiteParticles />
+      <View className="flex-1 bg-black items-center justify-center px-6">
+        <PurpleParticles />
         <Text className="text-white text-xl mb-4">⚠️ Failed to load dashboard</Text>
         <TouchableOpacity onPress={() => fetchDashboardData()}>
           <Text className="text-blue-400 text-lg underline">Tap to Retry</Text>
@@ -204,77 +190,34 @@ export default function HomePage() {
     <View className="flex-1 bg-black">
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ 
-          flexGrow: 1, 
-          paddingBottom: isWeb ? 40 : 100,
-          alignItems: isWeb ? 'center' : 'stretch'
-        }}
-        showsVerticalScrollIndicator={true}
         refreshControl={
-          Platform.OS !== 'web' ? (
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
-          ) : undefined
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
         }
       >
-        <View 
-          className="relative"
-          style={{ 
-            width: '100%',
-            maxWidth: maxWidth,
-          }}
-        >
-          <WhiteParticles />
+        <View className="flex-1 relative">
+          <PurpleParticles />
           
           <Image
             source={require("../../images/space/nebula.png")}
-            className="absolute top-0 right-0"
-            style={{ 
-              width: isWeb ? 500 : Math.min(screenWidth, 500), 
-              height: isWeb ? 420 : Math.min(screenWidth * 0.84, 420),
-              opacity: isWeb ? 0.6 : 1
-            }}
+            className="absolute top-0 left-0"
+            style={{ width: 500, height: 420 }}
             resizeMode="cover"
           />
-          
-          <Image
-            source={require("../../../assets/images/favicon.png")}
-            className="absolute"
-            style={{ 
-              right: isWeb ? 24 : 0,
-              top: isWeb ? 24 : 0,
-              width: isWeb ? 80 : scaleSize(150), 
-              height: isWeb ? 80 : scaleSize(150), 
-              opacity: 0.8 
-            }}
-            resizeMode="contain"
-          />
 
-          <View 
-            className="w-full bg-white/10"
-            style={{ 
-              paddingTop: isWeb ? 48 : scaleSize(64),
-              paddingBottom: isWeb ? 32 : scaleSize(24),
-              paddingHorizontal: horizontalPadding
-            }}
-          >
-            <Text className="text-white font-wix" style={{ fontSize: isWeb ? webFontSize.greeting : scaleFont(36) }}>
+          <View className="w-full bg-white/10 pt-12 pb-6 px-6">
+            <Text className="text-white text-[36px] font-wix">
               Hello, {dashboardData.user.display_name || dashboardData.user.username}!
             </Text>
           </View>
 
-          <View 
-            style={{ 
-              marginTop: isWeb ? 32 : scaleSize(24),
-              paddingHorizontal: horizontalPadding
-            }}
-          >
-            <Text className="text-white font-semibold mb-1" style={{ fontSize: isWeb ? webFontSize.sectionTitle : scaleFont(28) }}>Streaks</Text>
+          <View className="mt-6 px-6">
+            <Text className="text-white text-[28px] font-semibold mb-1">Streaks</Text>
             <View className="h-[1px] mb-2 bg-white" />
             
             {dashboardData.streaks.length > 0 ? (
               dashboardData.streaks.map((item) => (
                 <View key={item.habit_id} className="flex-row justify-between mb-2">
-                  <Text className="text-white ml-2" style={{ fontSize: isWeb ? webFontSize.body : scaleFont(18) }}>{item.habit_name}</Text>
+                  <Text className="text-white text-[18px] ml-2">{item.habit_name}</Text>
                   <StreakIndicator currentStreak={item.current_streak} isActive={true} />
                 </View>
               ))
@@ -288,32 +231,25 @@ export default function HomePage() {
             )}
           </View>
 
-          <View 
-            style={{ 
-              marginTop: isWeb ? 40 : scaleSize(32),
-              paddingHorizontal: horizontalPadding
-            }}
-          >
-            <Text className="text-white font-semibold" style={{ fontSize: isWeb ? webFontSize.sectionTitle : scaleFont(28) }}>Check In</Text>
+          <View className="mt-8 px-6">
+            <Text className="text-white text-[28px] font-semibold">Check In</Text>
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-white" style={{ fontSize: isWeb ? webFontSize.subtitle : scaleFont(22) }}>Today's Goals</Text>
-              <TouchableOpacity onPress={() => router.push('/screens/dashboard/HabitViews')}>
+              <Text className="text-white text-[22px]">Today's Goals</Text>
+              <TouchableOpacity onPress={() => router.push('/screens/dashboard/habitViews')}>
                 <Text className="text-gray-300 text-xs">View All</Text>
               </TouchableOpacity>
             </View>
             
             {dashboardData.todays_goals.length > 0 ? (
-              <View style={isWeb ? { flexDirection: 'row', flexWrap: 'wrap', gap: 20 } : undefined}>
-                <HabitSelect
-                  habits={goals}
-                  onPress={(habit) => {
-                    const goal = dashboardData.todays_goals.find(g => g.habit_id === habit.id);
-                    if (goal) {
-                      handleCheckIn(habit.id, habit.name, goal.checked_in_today);
-                    }
-                  }}
-                />
-              </View>
+              <HabitSelect
+                habits={goals}
+                onPress={(habit) => {
+                  const goal = dashboardData.todays_goals.find(g => g.habit_id === habit.id);
+                  if (goal) {
+                    handleCheckIn(habit.id, habit.name, goal.checked_in_today);
+                  }
+                }}
+              />
             ) : (
               <View className="bg-white/10 rounded-2xl p-6 items-center">
                 <Text className="text-white/60">No goals for today</Text>
@@ -322,14 +258,8 @@ export default function HomePage() {
             )}
           </View>
 
-          <View 
-            style={{ 
-              marginTop: isWeb ? 40 : scaleSize(32),
-              paddingHorizontal: horizontalPadding,
-              marginBottom: isWeb ? 48 : scaleSize(80)
-            }}
-          >
-            <Text className="text-white font-semibold mb-3" style={{ fontSize: isWeb ? webFontSize.sectionTitle : scaleFont(28) }}>Partner Progress</Text>
+          <View className="mt-8 px-6 mb-20">
+            <Text className="text-white text-[28px] font-semibold mb-3">Partner Progress</Text>
             
             {dashboardData.partner_progress.length > 0 ? (
               dashboardData.partner_progress.map((activity, index) => (
@@ -353,7 +283,7 @@ export default function HomePage() {
                 </Text>
                 <TouchableOpacity 
                   className="bg-white rounded-full py-3 px-6 self-start"
-                  onPress={() => router.push('/screens/dashboard/InvitePartners')}
+                  onPress={() => router.push('/screens/dashboard/invitePartners')}
                 >
                   <Text className="text-purple-900 font-semibold">Invite Partner</Text>
                 </TouchableOpacity>

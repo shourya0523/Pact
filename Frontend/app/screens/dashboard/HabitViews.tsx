@@ -18,20 +18,32 @@ interface Habit {
     current_streak?: number;
 }
 
+interface Goal {
+    user_id: string;
+    habit_id: string;
+    progress_percentage: number;
+}
+
+interface HabitWithProgress extends Habit {
+    userProgress: number;
+    partnerProgress: number;
+}
+
 export default function HabitViews() {
     const router = useRouter()
-    const [habits, setHabits] = useState<Habit[]>([])
+    const [habits, setHabits] = useState<HabitWithProgress[]>([])
     const [loading, setLoading] = useState(true)
     const screenWidth = Dimensions.get('window').width
 
     useEffect(() => {
-        fetchHabits()
+        fetchHabitsWithProgress()
     }, [])
 
-    const fetchHabits = async () => {
+    const fetchHabitsWithProgress = async () => {
+        console.log('🚀 STARTING fetchHabitsWithProgress')
         try {
             const token = await AsyncStorage.getItem('access_token')
-            
+
             if (!token) {
                 Alert.alert("Not Authenticated", "Please log in again.")
                 router.replace("/screens/auth/LoginScreen")
@@ -39,10 +51,10 @@ export default function HabitViews() {
             }
 
             const BASE_URL = await getBaseUrl()
-            console.log('🔍 Fetching habits from:', `${BASE_URL}/api/habits`)
-            console.log('🔑 Token:', token.substring(0, 20) + '...')
-            
-            const response = await fetch(`${BASE_URL}/api/habits`, {
+            console.log('🔍 Fetching habits and goals...')
+
+            // Fetch habits
+            const habitsResponse = await fetch(`${BASE_URL}/api/habits`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -50,46 +62,129 @@ export default function HabitViews() {
                 }
             })
 
-            console.log('📡 Response status:', response.status)
+            console.log('📡 Habits response status:', habitsResponse.status)
 
-            if (response.status === 401) {
+            if (habitsResponse.status === 401) {
                 await AsyncStorage.clear()
                 Alert.alert("Session Expired", "Please log in again.")
                 router.replace("/screens/auth/LoginScreen")
                 return
             }
 
-            if (response.ok) {
-                const data = await response.json()
-                console.log('✅ Fetched habits:', data)
-                console.log('📊 Number of habits:', data.length)
-                
-                // Debug each habit
-                data.forEach((habit: any, index: number) => {
-                    console.log(`Habit ${index + 1}:`, {
-                        name: habit.habit_name,
-                        status: habit.status,
-                        id: habit.id
-                    })
-                })
-                
-                setHabits(data)
-                
-                // Alert if no habits found
-                if (data.length === 0) {
-                    setTimeout(() => {
-                        Alert.alert(
-                            "No Habits Found",
-                            "You don't have any habits yet. Create one to get started!",
-                            [{ text: "OK" }]
-                        )
-                    }, 500)
-                }
-            } else {
-                const errorData = await response.json()
+            if (!habitsResponse.ok) {
+                const errorData = await habitsResponse.json()
                 console.error('❌ Failed to fetch habits:', errorData)
                 Alert.alert("Error", errorData.detail || "Failed to fetch habits")
                 setHabits([])
+                setLoading(false)
+                return
+            }
+
+            const habitsData = await habitsResponse.json()
+            console.log('✅ Fetched habits:', habitsData)
+
+            // Fetch goals
+            const goalsResponse = await fetch(`${BASE_URL}/api/goals/users/me/goals`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            console.log('📡 Goals response status:', goalsResponse.status)
+
+            if (!goalsResponse.ok) {
+                console.error('❌ Failed to fetch goals')
+                // If goals fail, just show habits without progress
+                const habitsWithZeroProgress = habitsData.map((habit: Habit) => ({
+                    ...habit,
+                    userProgress: 0,
+                    partnerProgress: 0
+                }))
+                setHabits(habitsWithZeroProgress)
+                setLoading(false)
+                return
+            }
+
+            const goalsData = await goalsResponse.json()
+            console.log('✅ Goals data:', goalsData)
+
+            // Debug goals in detail
+            goalsData.forEach((goal: any, index: number) => {
+                console.log(`Goal ${index}:`, {
+                    user_id: goal.user_id,
+                    habit_id: goal.habit_id,
+                    progress_percentage: goal.progress_percentage,
+                    count_checkins: goal.count_checkins,
+                    total_checkins_required: goal.total_checkins_required
+                })
+            })
+
+            // Fetch current user info
+            const userResponse = await fetch(`${BASE_URL}/api/users/me`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (!userResponse.ok) {
+                console.error('❌ Failed to fetch user info')
+                const habitsWithZeroProgress = habitsData.map((habit: Habit) => ({
+                    ...habit,
+                    userProgress: 0,
+                    partnerProgress: 0
+                }))
+                setHabits(habitsWithZeroProgress)
+                setLoading(false)
+                return
+            }
+
+            const userData = await userResponse.json()
+            const currentUserId = userData.id || userData._id || userData.user_id
+            console.log('👤 Current user ID:', currentUserId)
+
+            // Match habits with goals and calculate progress
+            const habitsWithProgress: HabitWithProgress[] = habitsData.map((habit: Habit) => {
+                console.log(`🔍 Processing habit: ${habit.habit_name} (${habit.id})`)
+
+                // Find user's goal for this habit
+                const userGoal = goalsData.find((g: Goal) =>
+                    g.habit_id === habit.id && g.user_id === currentUserId
+                )
+
+                // Find partner's goal for this habit (different user_id)
+                const partnerGoal = goalsData.find((g: Goal) =>
+                    g.habit_id === habit.id && g.user_id !== currentUserId
+                )
+
+                const userProgress = userGoal?.progress_percentage || 0
+                const partnerProgress = partnerGoal?.progress_percentage || 0
+
+                console.log(`  📊 User progress: ${userProgress}%`)
+                console.log(`  📊 Partner progress: ${partnerProgress}%`)
+                console.log(`  📊 Average: ${Math.ceil((userProgress + partnerProgress) / 2)}%`)
+
+                return {
+                    ...habit,
+                    userProgress,
+                    partnerProgress
+                }
+            })
+
+            console.log('✅ Habits with progress:', habitsWithProgress)
+            setHabits(habitsWithProgress)
+
+            if (habitsWithProgress.length === 0) {
+                setTimeout(() => {
+                    Alert.alert(
+                        "No Habits Found",
+                        "You don't have any habits yet. Create one to get started!",
+                        [{ text: "OK" }]
+                    )
+                }, 500)
             }
         } catch (err) {
             console.error('💥 Fetch habits error:', err)
@@ -101,7 +196,7 @@ export default function HabitViews() {
 
     const activeHabits = habits.filter(h => h.status === 'active')
     const inactiveHabits = habits.filter(h => h.status !== 'active')
-    
+
     console.log('📊 Total habits:', habits.length)
     console.log('✅ Active habits:', activeHabits.length)
     console.log('❌ Inactive habits:', inactiveHabits.length)
@@ -127,9 +222,9 @@ export default function HabitViews() {
                 style={{ height: scaleSize(300), width: scaleSize(300) }}
                 resizeMode="cover"
             />
-            
+
             <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
-            
+
             <View className="items-center justify-center mt-4 mb-10">
                 {activeHabits.length > 0 ? (
                     activeHabits.map((habit) => (
@@ -147,7 +242,8 @@ export default function HabitViews() {
                         >
                             <HabitBox
                                 title={habit.habit_name}
-                                progress={habit.count_checkins ? habit.count_checkins / 100 : 0}
+                                userProgress={habit.userProgress}
+                                partnerProgress={habit.partnerProgress}
                                 streak={habit.current_streak || 0}
                             />
                         </TouchableOpacity>
@@ -158,15 +254,15 @@ export default function HabitViews() {
                         <Text className="text-white/40 text-center mt-2">Create your first habit below!</Text>
                     </View>
                 )}
-                
+
                 {inactiveHabits.length > 0 && (
-                    <GreyButton 
+                    <GreyButton
                         text="INACTIVE HABITS"
                         onPress={() => console.log('Show inactive habits')}
                         style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
                     />
                 )}
-            
+
                 <TouchableOpacity
                     className="mt-6 bg-white/50 rounded-full p-4 shadow-lg"
                     onPress={() => router.push('/screens/dashboard/createHabit')}
@@ -174,7 +270,7 @@ export default function HabitViews() {
                     <Ionicons name="add" size={32} color="white" />
                 </TouchableOpacity>
             </View>
-            
+
             <HomeUI />
         </View>
     )

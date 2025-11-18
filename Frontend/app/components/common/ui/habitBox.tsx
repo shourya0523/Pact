@@ -5,7 +5,8 @@ import StreakIndicator from 'app/components/habit/StreakIndicator';
 
 interface HabitBoxProps {
     title: string;
-    progress?: number;
+    userProgress: number;  // User's progress percentage (0-100)
+    partnerProgress: number;  // Partner's progress percentage (0-100)
     streak?: number;
     leftAvatar?: string | ImageSourcePropType;
     rightAvatar?: string | ImageSourcePropType;
@@ -14,12 +15,23 @@ interface HabitBoxProps {
 
 const HabitBox: React.FC<HabitBoxProps> = ({
   title,
-  progress = 0,
+  userProgress = 0,
+  partnerProgress = 0,
   streak = 0,
   leftAvatar,
   rightAvatar,
   partnerName = 'Partner',
 }) => {
+  // ADD DEBUG LOG
+  console.log(`🎯 HabitBox "${title}":`, {
+    userProgress,
+    partnerProgress,
+    average: Math.ceil((userProgress + partnerProgress) / 2)
+  });
+
+  // Calculate average progress and ceiling it
+  const averageProgress = Math.ceil((userProgress + partnerProgress) / 2);
+
   return (
     <View className="flex-row items-center justify-between bg-white/90 rounded-2xl px-4 py-3 w-[80%] mt-4 h-[110px]">
       <View className="items-center">
@@ -39,14 +51,15 @@ const HabitBox: React.FC<HabitBoxProps> = ({
       <View className="flex-1 items-center">
         <Text className="text-black text-[24px] mb-2">{title}</Text>
         <View className="flex-row items-center space-x-4">
-          <ProgressCircle progress={progress * 100} size={50} strokeWidth={8} />
+          {/* Show average progress - NOT multiplied by 100! */}
+          <ProgressCircle progress={averageProgress} size={50} strokeWidth={8} />
           <StreakIndicator
             currentStreak={streak}
             isActive={streak > 0}
             flameSize={36}
-            numberSize={24}      
-            numberColor="black"  
-            spacing={0}     
+            numberSize={24}
+            numberColor="black"
+            spacing={0}
           />
         </View>
       </View>
