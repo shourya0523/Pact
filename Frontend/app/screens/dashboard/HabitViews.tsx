@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native'
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -128,30 +128,37 @@ export default function HabitViews() {
                 resizeMode="cover"
             />
             
-            <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
-            
-            <View className="items-center justify-center mt-4 mb-10">
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 120 }}
+                showsVerticalScrollIndicator={false}
+            >
+                <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
+                
+                <View className="items-center justify-center mt-4 mb-10">
                 {activeHabits.length > 0 ? (
-                    activeHabits.map((habit) => (
-                        <TouchableOpacity
-                            key={habit.id}
-                            onPress={() => {
-                                console.log('Navigating to habit:', habit.id, habit.habit_name)
-                                router.push({
-                                    pathname: '/screens/dashboard/HabitDetails',
-                                    params: { habitId: habit.id }
-                                })
-                            }}
-                            activeOpacity={0.8}
-                            className="w-full items-center"
-                        >
-                            <HabitBox
-                                title={habit.habit_name}
-                                progress={habit.count_checkins ? habit.count_checkins / 100 : 0}
-                                streak={habit.current_streak || 0}
-                            />
-                        </TouchableOpacity>
-                    ))
+                    <View className="w-full items-center">
+                        {activeHabits.map((habit) => (
+                            <TouchableOpacity
+                                key={habit.id}
+                                onPress={() => {
+                                    console.log('Navigating to habit:', habit.id, habit.habit_name)
+                                    router.push({
+                                        pathname: '/screens/dashboard/HabitDetails',
+                                        params: { habitId: habit.id }
+                                    })
+                                }}
+                                activeOpacity={0.8}
+                                style={{ width: '80%', alignItems: 'center' }}
+                            >
+                                <HabitBox
+                                    title={habit.habit_name}
+                                    progress={habit.count_checkins ? habit.count_checkins / 100 : 0}
+                                    streak={habit.current_streak || 0}
+                                />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
                 ) : (
                     <View className="py-8">
                         <Text className="text-white/60 text-center text-lg">No active habits yet</Text>
@@ -174,6 +181,7 @@ export default function HabitViews() {
                     <Ionicons name="add" size={32} color="white" />
                 </TouchableOpacity>
             </View>
+            </ScrollView>
             
             <HomeUI />
         </View>
