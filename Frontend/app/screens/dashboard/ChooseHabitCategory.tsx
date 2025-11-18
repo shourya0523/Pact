@@ -1,22 +1,23 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import Particles from '@/components/ui/starsParticlesBackground';
-import HabitShadowCircle from '@/components/ui/habitShadowCircle';
-import GreyButton from '@/components/ui/greyButton';
+import Particles from '../../components/common/ui/starsParticlesBackground';
+import HabitShadowCircle from '../../components/common/ui/habitShadowCircle';
+import GreyButton from '../../components/common/ui/greyButton';
 import { useRouter } from 'expo-router';
 
 export default function ChooseHabitCategory() {
   const router = useRouter();
 
-  /*const handleCategoryPress = (category: string) => {
-    router.push({
-      pathname: '/PredefinedHabits',
-      params: { category }
-    });
-  };*/
+  const handleCategoryPress = (category: string) => {
+    console.log('Category pressed:', category);
+    // Navigate to predefined habits for the selected category
+    router.push('/screens/dashboard/PredefinedHabits');
+  };
 
   const chooseHabitPress = () => {
-    router.push('/screens/dashboard/createHabits');
+    console.log('Create own habit pressed');
+    // Navigate to custom habit creation
+    router.push('/screens/dashboard/StudyHabit');
   };
 
   return (
@@ -66,4 +67,3 @@ export default function ChooseHabitCategory() {
     </View>
   );
 }
-// testing testing

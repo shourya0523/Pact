@@ -1,43 +1,208 @@
 // Dashboard screen (homepage if you will)
 
-import React, { useState } from 'react';
-import { ScrollView, Text, View, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { ScrollView, Text, View, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import Particles from '../../components/common/ui/starsParticlesBackground';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getBaseUrl } from '../../../config';
 
-// placeholder - replace with actual user data
-const userName = "Mark";
-const streaks = [
-  { id: '1', name: 'Study Everyday', days: 4 },
-  { id: '2', name: 'Reduce Screen Time', days: 13 },
-  { id: '3', name: 'Workout', days: 1 },
-  { id: '4', name: 'Wake Up Early', days: 7 },
-];
+interface Habit {
+  id: string;
+  habit_name: string;
+  category: string;
+  current_streak?: number;
+}
 
-const todaysGoals = [
-  { id: '1', name: 'Wake Up Early', icon: '☀️' },
-  { id: '2', name: 'Study Everyday', icon: '📚' },
-  { id: '3', name: 'Workout', icon: '💪' },
-];
+interface TodayLog {
+  user_id: string;
+  completed: boolean;
+  logged: boolean;
+}
 
-const partnerProgress = [
-  { id: '1', partnerName: 'Jake', habit: 'Study Everyday', checkedIn: true },
-  { id: '2', partnerName: 'Charles', habit: 'Wake Up Early', checkedIn: true },
-  { id: '3', partnerName: 'Becky', habit: 'Workout', checkedIn: true },
-];
+interface HabitTodayStatus {
+  habit_id: string;
+  habit_name: string;
+  user_logs: { [key: string]: TodayLog };
+  both_completed: boolean;
+}
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+}
+
+interface Partnership {
+  id: string;
+  partner: {
+    username: string;
+    email: string;
+  };
+  current_streak: number;
+}
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [partnership, setPartnership] = useState<Partnership | null>(null);
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [todayStatus, setTodayStatus] = useState<HabitTodayStatus[]>([]);
   const [checkedGoals, setCheckedGoals] = useState<string[]>([]);
 
-  const toggleGoalCheck = (goalId: string) => {
-    setCheckedGoals(prev =>
-      prev.includes(goalId)
-        ? prev.filter(id => id !== goalId)
-        : [...prev, goalId]
-    );
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      const token = await AsyncStorage.getItem('access_token');
+      
+      if (!token) {
+        Alert.alert('Error', 'Please log in again');
+        router.replace('/auth/welcome');
+        return;
+      }
+
+      const baseUrl = await getBaseUrl();
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      };
+
+      // Fetch user info
+      const userResponse = await fetch(`${baseUrl}/users/me`, { headers });
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+        setUser(userData);
+      }
+
+      // Fetch current partnership
+      const partnershipResponse = await fetch(`${baseUrl}/partnerships/current`, { headers });
+      if (partnershipResponse.ok) {
+        const partnershipData = await partnershipResponse.json();
+        setPartnership(partnershipData);
+
+        // Fetch today's status for the partnership
+        const todayResponse = await fetch(
+          `${baseUrl}/partnerships/${partnershipData.id}/logs/today`,
+          { headers }
+        );
+        if (todayResponse.ok) {
+          const todayData = await todayResponse.json();
+          setTodayStatus(todayData.habits || []);
+        }
+      }
+
+      // Fetch habits
+      const habitsResponse = await fetch(`${baseUrl}/habits`, { headers });
+      if (habitsResponse.ok) {
+        const habitsData = await habitsResponse.json();
+        setHabits(habitsData);
+      }
+
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+      Alert.alert('Error', 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const toggleGoalCheck = async (habitId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('access_token');
+      const baseUrl = await getBaseUrl();
+      
+      // Find current status
+      const currentStatus = todayStatus.find(h => h.habit_id === habitId);
+      const isCurrentlyCompleted = currentStatus?.user_logs[user?.id || '']?.completed || false;
+
+      // Log the habit
+      const response = await fetch(`${baseUrl}/habits/${habitId}/log`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          completed: !isCurrentlyCompleted,
+          notes: ''
+        })
+      });
+
+      if (response.ok) {
+        // Refresh today's status
+        await loadDashboardData();
+      }
+    } catch (error) {
+      console.error('Error checking in:', error);
+      Alert.alert('Error', 'Failed to check in');
+    }
+  };
+
+  // Get category emoji
+  const getCategoryEmoji = (category: string): string => {
+    const emojiMap: { [key: string]: string } = {
+      'health': '💪',
+      'productivity': '📚',
+      'mindfulness': '🧘',
+      'fitness': '🏃',
+      'sleep': '😴',
+      'nutrition': '🥗',
+      'learning': '📖',
+      'social': '👥',
+      'creativity': '🎨',
+      'finance': '💰',
+    };
+    return emojiMap[category.toLowerCase()] || '⭐';
+  };
+
+  // Calculate streaks from today's status
+  const getStreaksForDisplay = () => {
+    return todayStatus.slice(0, 4).map(status => ({
+      id: status.habit_id,
+      name: status.habit_name,
+      days: habits.find(h => h.id === status.habit_id)?.current_streak || 0
+    }));
+  };
+
+  // Get partner progress
+  const getPartnerProgress = () => {
+    if (!partnership) return [];
+    
+    return todayStatus
+      .filter(status => {
+        const partnerUserId = Object.keys(status.user_logs).find(id => id !== user?.id);
+        return partnerUserId && status.user_logs[partnerUserId]?.completed;
+      })
+      .slice(0, 3)
+      .map(status => {
+        const partnerUserId = Object.keys(status.user_logs).find(id => id !== user?.id);
+        return {
+          id: status.habit_id,
+          partnerName: partnership.partner.username,
+          habit: status.habit_name,
+          checkedIn: status.user_logs[partnerUserId || '']?.completed || false
+        };
+      });
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Particles />
+        <ActivityIndicator size="large" color="white" />
+        <Text style={styles.loadingText}>Loading your dashboard...</Text>
+      </View>
+    );
+  }
+
+  const streaks = getStreaksForDisplay();
+  const partnerProgress = getPartnerProgress();
 
   return (
     <View style={styles.container}>
@@ -53,7 +218,7 @@ export default function DashboardScreen() {
             <Ionicons name="person-circle-outline" size={40} color="white" />
           </TouchableOpacity>
 
-          <Text style={styles.greeting}>Hello, {userName}!</Text>
+          <Text style={styles.greeting}>Hello, {user?.username || 'there'}!</Text>
 
           <TouchableOpacity style={styles.notificationIcon}>
             <Ionicons name="notifications-outline" size={28} color="white" />
@@ -61,67 +226,105 @@ export default function DashboardScreen() {
         </View>
 
         {/* Streaks Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Streaks</Text>
-          <View style={styles.streaksContainer}>
-            {streaks.map((streak) => (
-              <View key={streak.id} style={styles.streakItem}>
-                <Text style={styles.streakName}>{streak.name}</Text>
-                <View style={styles.streakBadge}>
-                  <Text style={styles.fireEmoji}>🔥</Text>
-                  <Text style={styles.streakDays}>{streak.days}</Text>
+        {streaks.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Streaks</Text>
+            <View style={styles.streaksContainer}>
+              {streaks.map((streak) => (
+                <View key={streak.id} style={styles.streakItem}>
+                  <Text style={styles.streakName}>{streak.name}</Text>
+                  <View style={styles.streakBadge}>
+                    <Text style={styles.fireEmoji}>🔥</Text>
+                    <Text style={styles.streakDays}>{streak.days}</Text>
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Check In Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Check In</Text>
+        {habits.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Check In</Text>
 
-          <View style={styles.checkInHeader}>
-            <Text style={styles.todaysGoalsText}>Today's Goals</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.goalsScroll}
-          >
-            {todaysGoals.map((goal) => (
-              <TouchableOpacity
-                key={goal.id}
-                style={styles.goalCard}
-                onPress={() => toggleGoalCheck(goal.id)}
-              >
-                <Text style={styles.goalCardTitle}>{goal.name}</Text>
-                <Text style={styles.goalCardIcon}>{goal.icon}</Text>
+            <View style={styles.checkInHeader}>
+              <Text style={styles.todaysGoalsText}>Today's Goals</Text>
+              <TouchableOpacity>
+                <Text style={styles.viewAllText}>View All</Text>
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.goalsScroll}
+            >
+              {habits.slice(0, 5).map((habit) => {
+                const status = todayStatus.find(h => h.habit_id === habit.id);
+                const isCompleted = status?.user_logs[user?.id || '']?.completed || false;
+
+                return (
+                  <TouchableOpacity
+                    key={habit.id}
+                    style={[
+                      styles.goalCard,
+                      isCompleted && styles.goalCardCompleted
+                    ]}
+                    onPress={() => toggleGoalCheck(habit.id)}
+                  >
+                    <Text style={[
+                      styles.goalCardTitle,
+                      isCompleted && styles.goalCardTitleCompleted
+                    ]}>
+                      {habit.habit_name}
+                    </Text>
+                    <Text style={styles.goalCardIcon}>
+                      {getCategoryEmoji(habit.category)}
+                    </Text>
+                    {isCompleted && (
+                      <View style={styles.completedBadge}>
+                        <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Partner Progress Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Partner Progress</Text>
+        {partnerProgress.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Partner Progress</Text>
 
-          <View style={styles.partnerProgressContainer}>
-            {partnerProgress.map((item) => (
-              <View key={item.id} style={styles.partnerProgressItem}>
-                <Text style={styles.partnerProgressText}>
-                  {item.partnerName} checked in for {item.habit}!
-                </Text>
-                <View style={styles.checkmarkCircle}>
-                  <Ionicons name="checkmark" size={20} color="#4CAF50" />
+            <View style={styles.partnerProgressContainer}>
+              {partnerProgress.map((item) => (
+                <View key={item.id} style={styles.partnerProgressItem}>
+                  <Text style={styles.partnerProgressText}>
+                    {item.partnerName} checked in for {item.habit}!
+                  </Text>
+                  <View style={styles.checkmarkCircle}>
+                    <Ionicons name="checkmark" size={20} color="#4CAF50" />
+                  </View>
                 </View>
-              </View>
-            ))}
+              ))}
+            </View>
           </View>
-        </View>
+        )}
+
+        {/* Empty State */}
+        {habits.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>
+              No habits yet! Start by creating your first habit.
+            </Text>
+            <TouchableOpacity style={styles.emptyStateButton}>
+              <Text style={styles.emptyStateButtonText}>Create Habit</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Bottom spacing for navigation bar */}
         <View style={styles.bottomSpacer} />
@@ -151,8 +354,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#291133',
   },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: 'white',
+    fontSize: 16,
+    marginTop: 10,
+  },
   scrollContent: {
-    paddingBottom: 100, // Space for bottom nav
+    paddingBottom: 100,
   },
   header: {
     flexDirection: 'row',
@@ -246,15 +458,29 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     justifyContent: 'space-between',
+    position: 'relative',
+  },
+  goalCardCompleted: {
+    backgroundColor: 'rgba(76, 175, 80, 0.2)',
+    borderWidth: 2,
+    borderColor: '#4CAF50',
   },
   goalCardTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#291133',
   },
+  goalCardTitleCompleted: {
+    color: 'white',
+  },
   goalCardIcon: {
     fontSize: 48,
     textAlign: 'center',
+  },
+  completedBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
   },
   partnerProgressContainer: {
     gap: 10,
@@ -281,6 +507,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    marginTop: 60,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  emptyStateButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+  },
+  emptyStateButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   bottomSpacer: {
     height: 20,
   },
@@ -302,4 +551,3 @@ const styles = StyleSheet.create({
     padding: 10,
   },
 });
-// testing testing

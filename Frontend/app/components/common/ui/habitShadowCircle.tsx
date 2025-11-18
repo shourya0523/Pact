@@ -1,5 +1,5 @@
-import React, { ReactNode } from 'react';
-import { View, Image, ImageSourcePropType, Text, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 
 interface HabitShadowCircleProps {
   label: string;
@@ -11,25 +11,13 @@ const HabitShadowCircle: React.FC<HabitShadowCircleProps> = ({
   onPress 
 }) => {
   const content = (
-    <View className="items-center">
-      <View className="w-60 h-60 rounded-full border-white blur-xl absolute" />
-      <View 
-        className="w-40 h-40 border-4 border-white blur-[4px] rounded-full justify-center items-center relative"
-        style={{
-          shadowColor: '#ffffff',
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.9,
-          shadowRadius: 50,
-          elevation: 10, 
-        }}
-      >
-        <Image
-          className="w-24 h-24"
-          resizeMode="contain"
-        />
+    <View style={styles.container}>
+      <View style={styles.outerGlow} />
+      <View style={styles.circle}>
+        {/* Icon placeholder - you can add image here */}
       </View>
       
-      <Text className="text-white font-wix text-sm mt-3 text-center">
+      <Text style={styles.label}>
         {label}
       </Text>
     </View>
@@ -37,16 +25,66 @@ const HabitShadowCircle: React.FC<HabitShadowCircleProps> = ({
 
   if (onPress) {
     return (
-      <TouchableOpacity 
-        onPress={onPress}
-        activeOpacity={0.7}
+      <Pressable 
+        onPress={() => {
+          console.log('HabitShadowCircle pressed:', label);
+          onPress();
+        }}
+        style={({ pressed }) => [
+          styles.pressable,
+          pressed && styles.pressed
+        ]}
       >
         {content}
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
   return content;
 };
+
+const styles = StyleSheet.create({
+  pressable: {
+    zIndex: 999,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 180,
+    height: 200,
+  },
+  outerGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 40,
+    elevation: 8,
+  },
+  circle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(41, 17, 51, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  label: {
+    color: 'white',
+    fontSize: 14,
+    marginTop: 16,
+    textAlign: 'center',
+    fontFamily: 'WixMadeforText-Regular',
+  },
+});
 
 export default HabitShadowCircle;

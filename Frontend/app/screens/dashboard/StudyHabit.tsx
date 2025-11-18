@@ -94,12 +94,20 @@ export default function StudyHabit() {
                 </View>
                 <View className="flex-row justify-center mt-20">
                     <GreyButton
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={() => {
+                            console.log('Creating habit...');
+                            // TODO: Save habit to backend
+                            router.push('/screens/main/DashboardScreen');
+                        }}
                         text="CREATE"
                         style={{ marginRight: 10, width: '190px', height: '65px' }}
                     />
                     <GreyButton
-                        onPress={() => router.push('/screens/dashboard/habitCreated')}
+                        onPress={() => {
+                            console.log('Saving habit as draft...');
+                            // TODO: Save habit draft to backend
+                            router.push('/screens/main/DashboardScreen');
+                        }}
                         text="SAVE"
                         style={{ width: '190px', height: '65px'}}
                     />
