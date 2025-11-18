@@ -6,6 +6,7 @@ import GreyButton from '@/components/ui/greyButton';
 import BackwardButton from '@/components/ui/backwardButton';
 import OrComponent from '@/components/ui/or';
 import { useRouter } from 'expo-router';
+import { scaleFont } from '../../utils/constants';
 
 export default function ChooseHabitCategory() {
   const router = useRouter();
@@ -37,7 +38,7 @@ export default function ChooseHabitCategory() {
       </View>
 
       <View className="flex-1 px-5 pt-20 pb-5">
-        <Text className="font-wix text-[38px] text-center text-white mt-6 leading-tight">
+        <Text className="font-wix text-center text-white mt-6 leading-tight" style={{ fontSize: scaleFont(38) }}>
           Choose from Predefined Productivity Habits
         </Text>
 

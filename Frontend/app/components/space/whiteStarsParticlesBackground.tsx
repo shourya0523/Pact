@@ -1,4 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Platform, View, Animated, StyleSheet, Dimensions } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Renderer, Camera, Geometry, Program, Mesh } from 'ogl';
 
 interface ParticlesProps {
@@ -115,8 +118,23 @@ const whiteParticles: React.FC<ParticlesProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  // Mobile animation hooks (must be declared unconditionally)
+  const fadeAnim = useRef(new Animated.Value(0.2)).current;
+  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const [mobileParticles, setMobileParticles] = useState<Array<{
+    x: Animated.Value;
+    y: Animated.Value;
+    opacity: Animated.Value;
+    size: number;
+    color: string;
+  }>>([]);
+  const screenDimensions = useRef(Dimensions.get('window')).current;
+  const insets = Platform.OS !== 'web' ? useSafeAreaInsets() : { bottom: 0, top: 0 };
 
   useEffect(() => {
+    // Only run on web platform
+    if (Platform.OS !== 'web') return;
+    
     const container = containerRef.current;
     if (!container) return;
 
@@ -243,7 +261,186 @@ const whiteParticles: React.FC<ParticlesProps> = ({
     disableRotation
   ]);
 
-  return <div ref={containerRef} className={`fixed top-0 left-0 w-full h-full -z-10 ${className}`} />;
+  // Initialize mobile particles
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    
+    const particleColors = defaultColors;
+    const count = Math.min(particleCount || 300, 150); // Limit for performance
+    const particles = [];
+    
+    for (let i = 0; i < count; i++) {
+      particles.push({
+        x: new Animated.Value(Math.random() * screenDimensions.width),
+        y: new Animated.Value(Math.random() * screenDimensions.height),
+        opacity: new Animated.Value(0.3 + Math.random() * 0.7),
+        size: 2 + Math.random() * 3,
+        color: particleColors[Math.floor(Math.random() * particleColors.length)],
+      });
+    }
+    
+    setMobileParticles(particles);
+  }, [particleCount, screenDimensions]);
+
+  // Animate mobile particles
+  useEffect(() => {
+    if (Platform.OS === 'web' || mobileParticles.length === 0) return;
+    
+    const animations = mobileParticles.map((particle, index) => {
+      const duration = 8000 + Math.random() * 4000; // 8-12s (much faster)
+      
+      return Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(particle.x, {
+              toValue: Math.random() * screenDimensions.width,
+              duration: duration,
+              useNativeDriver: true,
+            }),
+            Animated.timing(particle.y, {
+              toValue: Math.random() * screenDimensions.height,
+              duration: duration,
+              useNativeDriver: true,
+            }),
+            Animated.sequence([
+              Animated.timing(particle.opacity, {
+                toValue: 0.8,
+                duration: duration / 2,
+                useNativeDriver: true,
+              }),
+              Animated.timing(particle.opacity, {
+                toValue: 0.3,
+                duration: duration / 2,
+                useNativeDriver: true,
+              }),
+            ]),
+          ]),
+        ]),
+        { iterations: -1 }
+      );
+    });
+    
+    animations.forEach(anim => anim.start());
+    
+    // Subtle pulsing animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0.4,
+          duration: 4000,
+          useNativeDriver: false,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0.2,
+          duration: 4000,
+          useNativeDriver: false,
+        }),
+      ])
+    ).start();
+    
+    // Shimmer effect
+    Animated.loop(
+      Animated.timing(shimmerAnim, {
+        toValue: 1,
+        duration: 5000,
+        useNativeDriver: false,
+      })
+    ).start();
+  }, [mobileParticles, screenDimensions, fadeAnim, shimmerAnim]);
+
+  // Mobile particle system
+  if (Platform.OS !== 'web') {
+    const shimmerOpacity = shimmerAnim.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [0, 0.1, 0],
+    });
+
+    return (
+      <View 
+        style={[
+          StyleSheet.absoluteFillObject,
+          {
+            width: '100%',
+            height: Dimensions.get('window').height + insets.bottom,
+            bottom: -insets.bottom,
+            overflow: 'hidden',
+          }
+        ]} 
+        className={className}
+      >
+        {/* Base gradient background */}
+        <LinearGradient
+          colors={['#1a0a1f', '#291133', '#2d1640']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        
+        {/* Animated overlay gradient */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              opacity: fadeAnim,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.1)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </Animated.View>
+        
+        {/* Shimmer effect */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFillObject,
+            {
+              opacity: shimmerOpacity,
+            },
+          ]}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(255, 255, 255, 0.1)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </Animated.View>
+        
+        {/* Animated particles */}
+        {mobileParticles.map((particle, index) => (
+          <Animated.View
+            key={index}
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: particle.size,
+              height: particle.size,
+              borderRadius: particle.size / 2,
+              backgroundColor: particle.color,
+              opacity: particle.opacity,
+              transform: [
+                { translateX: particle.x },
+                { translateY: particle.y },
+              ],
+              shadowColor: particle.color,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.8,
+              shadowRadius: particle.size,
+            }}
+          />
+        ))}
+      </View>
+    );
+  }
+
+  // Type assertion for web-only code
+  const WebDiv = 'div' as any;
+  return <WebDiv ref={containerRef} className={`fixed top-0 left-0 w-full h-full -z-10 ${className}`} />;
 };
 
 export default whiteParticles;
