@@ -76,7 +76,7 @@ export default function LinkScreen(): React.JSX.Element {
                     <TouchableOpacity
                         style={styles.continueButton}
                         activeOpacity={0.8}
-                        onPress={() => router.push('/screens/onboarding/HabitSetupScreen')}
+                        onPress={() => router.push('/screens/dashboard/Home')}
                     >
                         <Text style={styles.continueButtonText}>
                             CONTINUE

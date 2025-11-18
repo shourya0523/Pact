@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.models.habit_log import (
@@ -7,69 +8,79 @@ from app.models.habit_log import (
     PartnershipTodayStatus
 )
 from app.utils.security import decode_access_token
+from app.services.streak_service import StreakCalculationService
 from config.database import get_database
 from bson import ObjectId
 from datetime import datetime, date, timedelta
 from typing import List, Optional
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 router = APIRouter(tags=["Habit Logging"])
 security = HTTPBearer()
 
+
 async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depends(security)):
     token = credentials.credentials
     payload = decode_access_token(token)
-    
+
     if payload is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials"
         )
-    
+
     return payload.get("sub")
+
 
 @router.post("/habits/{habit_id}/log", response_model=HabitLogResponse, status_code=status.HTTP_201_CREATED)
 async def log_habit_completion(
-    habit_id: str,
-    log_data: HabitLogCreate,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+        habit_id: str,
+        log_data: HabitLogCreate,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Log daily habit completion"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
-    
+
     # Verify habit exists and user has access
     habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-    
+
     if not habit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Habit not found"
         )
-    
+
+    # FIXED: Handle partnership_id as both ObjectId and string
+    partnership_id = habit.get("partnership_id")
+    if isinstance(partnership_id, str):
+        partnership_id = ObjectId(partnership_id)
+
     # Verify user is part of partnership
     partnership = await db.partnerships.find_one({
-        "_id": ObjectId(habit["partnership_id"]),
+        "_id": partnership_id,
         "$or": [
-            {"user_id_1": user_id},
-            {"user_id_2": user_id}
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ]
     })
-    
+
     if not partnership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied"
         )
-    
-    today = date.today()
-    
+
+    # Get today's date as datetime (MongoDB compatible)
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
     # Check if already logged today
     existing_log = await db.habit_logs.find_one({
         "habit_id": habit_id,
         "user_id": user_id,
-        "date": today
+        "log_date": today
     })
-    
+
     if existing_log:
         # Update existing log
         await db.habit_logs.update_one(
@@ -77,8 +88,7 @@ async def log_habit_completion(
             {
                 "$set": {
                     "completed": log_data.completed,
-                    "notes": log_data.notes,
-                    "logged_at": datetime.utcnow()
+                    "timestamp": datetime.utcnow()
                 }
             }
         )
@@ -89,76 +99,85 @@ async def log_habit_completion(
             "habit_id": habit_id,
             "user_id": user_id,
             "completed": log_data.completed,
-            "notes": log_data.notes,
-            "date": today,
-            "logged_at": datetime.utcnow()
+            "log_date": today,
+            "timestamp": datetime.utcnow()
         }
-        
+
         result = await db.habit_logs.insert_one(log_entry)
         log_id = result.inserted_id
-    
-    # Check if both partners completed - update streak
-    await update_partnership_streak(db, habit_id, habit["partnership_id"], today)
-    
-    # Get user info
-    user = await db.users.find_one({"_id": ObjectId(user_id)})
-    
+
+    # Check if both partners completed - update Partnership-level points (legacy)
+    await update_partnership_streak(db, habit_id, partnership_id, today)
+
+    # Recompute streak from logs and upsert into streaks (persistent cache)
+    recomputed = await StreakCalculationService.recompute_streak_from_logs(
+        db, habit_id, str(partnership_id)
+    )
+    await StreakCalculationService.upsert_streaks(
+        db, habit_id, str(partnership_id), recomputed
+    )
+    # Invalidate in-memory cache for this habit so next read is fresh
+    StreakCalculationService.invalidate_mem_cache(habit_id)
+
     # Get the log
     log = await db.habit_logs.find_one({"_id": log_id})
-    
+
+    # Get current streak value from persistent cache
+    current_streak_doc = await db.streaks.find_one({"habit_id": ObjectId(habit_id)})
+    current_streak_val = 0 if not current_streak_doc else current_streak_doc.get("current_streak", 0)
+
+    # Return response
     return HabitLogResponse(
         id=str(log["_id"]),
         habit_id=log["habit_id"],
         user_id=log["user_id"],
-        username=user["username"],
         completed=log["completed"],
-        notes=log.get("notes"),
-        date=log["date"].isoformat(),
-        logged_at=log["logged_at"],
-        current_streak=habit.get("current_streak", 0)
-        
+        date=log["log_date"].date().isoformat(),
+        logged_at=log.get("timestamp", log["log_date"]),
+        current_streak=current_streak_val
     )
 
-async def update_partnership_streak(db, habit_id: str, partnership_id: str, check_date: date):
+
+async def update_partnership_streak(db, habit_id: str, partnership_id: ObjectId, check_date: datetime):
     """Update partnership streak if both partners completed"""
-    
+
     # Get both partner IDs
-    partnership = await db.partnerships.find_one({"_id": ObjectId(partnership_id)})
-    user1_id = partnership["user_id_1"]
-    user2_id = partnership["user_id_2"]
-    
+    partnership = await db.partnerships.find_one({"_id": partnership_id})
+    user1_id = str(partnership["user_id_1"])
+    user2_id = str(partnership["user_id_2"])
+
     # Check if both completed today
     logs_today = await db.habit_logs.find({
         "habit_id": habit_id,
-        "date": check_date,
+        "log_date": check_date,
         "completed": True
     }).to_list(2)
-    
+
     logged_users = {log["user_id"] for log in logs_today}
-    
+
     if user1_id in logged_users and user2_id in logged_users:
         # Both completed! Update streak
         current_streak = partnership.get("current_streak", 0)
-        
+
         # Check if yesterday was also completed (for streak continuation)
         yesterday = check_date - timedelta(days=1)
         logs_yesterday = await db.habit_logs.find({
             "habit_id": habit_id,
-            "date": yesterday,
+            "log_date": yesterday,
             "completed": True
         }).to_list(2)
-        
+
         logged_yesterday = {log["user_id"] for log in logs_yesterday}
-        
+
         if user1_id in logged_yesterday and user2_id in logged_yesterday:
             # Streak continues
             new_streak = current_streak + 1
         else:
             # New streak starts
             new_streak = 1
-        
+
         await db.partnerships.update_one(
-            {"_id": ObjectId(partnership_id)},
+            {"_id": partnership_id},
             {
                 "$set": {
                     "current_streak": new_streak,
@@ -168,140 +187,150 @@ async def update_partnership_streak(db, habit_id: str, partnership_id: str, chec
             }
         )
 
+
 @router.get("/habits/{habit_id}/logs", response_model=List[HabitLogResponse])
 async def get_habit_logs(
-    habit_id: str,
-    start_date: Optional[str] = Query(None),
-    end_date: Optional[str] = Query(None),
-    user_id_filter: Optional[str] = Query(None, alias="user_id"),
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+        habit_id: str,
+        start_date: Optional[str] = Query(None),
+        end_date: Optional[str] = Query(None),
+        user_id_filter: Optional[str] = Query(None, alias="user_id"),
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get habit log history with optional filters"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
-    
+
     # Verify habit exists and user has access
     habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-    
+
     if not habit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Habit not found"
         )
-    
-    # Verify user is part of partnership
-    partnership = await db.partnerships.find_one({
-        "_id": ObjectId(habit["partnership_id"]),
-        "$or": [
-            {"user_id_1": user_id},
-            {"user_id_2": user_id}
-        ]
-    })
-    
-    if not partnership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-    
+
+    # FIXED: Handle partnership_id as both ObjectId and string
+    partnership_id = habit.get("partnership_id")
+    if partnership_id:
+        # Convert to ObjectId if it's a string
+        if isinstance(partnership_id, str):
+            partnership_id = ObjectId(partnership_id)
+
+        # Verify user is part of partnership
+        partnership = await db.partnerships.find_one({
+            "_id": partnership_id,
+            "$or": [
+                {"user_id_1": ObjectId(user_id)},
+                {"user_id_2": ObjectId(user_id)}
+            ]
+        })
+
+        if not partnership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+
     # Build query
     query = {"habit_id": habit_id}
-    
+
     if start_date:
-        query["date"] = query.get("date", {})
-        query["date"]["$gte"] = date.fromisoformat(start_date)
-    
+        query["log_date"] = query.get("log_date", {})
+        query["log_date"]["$gte"] = datetime.fromisoformat(start_date)
+
     if end_date:
-        query["date"] = query.get("date", {})
-        query["date"]["$lte"] = date.fromisoformat(end_date)
-    
+        query["log_date"] = query.get("log_date", {})
+        query["log_date"]["$lte"] = datetime.fromisoformat(end_date)
+
     if user_id_filter:
         query["user_id"] = user_id_filter
-    
+
     # Get logs
-    logs = await db.habit_logs.find(query).sort("date", -1).to_list(1000)
-    
-    # Get usernames
-    user_ids = list(set(log["user_id"] for log in logs))
-    users = await db.users.find({"_id": {"$in": [ObjectId(uid) for uid in user_ids]}}).to_list(100)
-    user_map = {str(u["_id"]): u["username"] for u in users}
-    
+    logs = await db.habit_logs.find(query).sort("log_date", -1).to_list(1000)
+
+    # Convert logs to response format
     return [
         HabitLogResponse(
             id=str(log["_id"]),
-            habit_id=log["habit_id"],
-            user_id=log["user_id"],
-            username=user_map.get(log["user_id"], "Unknown"),
+            habit_id=str(log["habit_id"]),
+            user_id=str(log["user_id"]),
             completed=log["completed"],
-            notes=log.get("notes"),
-            date=log["date"].isoformat(),
-            logged_at=log["logged_at"]
+            date=log["log_date"].date().isoformat(),
+            logged_at=log.get("timestamp", log["log_date"]),
+            current_streak=0
         )
         for log in logs
     ]
 
+
 @router.get("/habits/{habit_id}/logs/today", response_model=TodayLogStatus)
 async def get_today_log_status(
-    habit_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+        habit_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get today's log status for both partners"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
-    
+
     # Verify habit exists and user has access
     habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-    
+
     if not habit:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Habit not found"
         )
-    
+
+    # FIXED: Handle partnership_id as both ObjectId and string
+    partnership_id = habit.get("partnership_id")
+    if isinstance(partnership_id, str):
+        partnership_id = ObjectId(partnership_id)
+
     # Get partnership
     partnership = await db.partnerships.find_one({
-        "_id": ObjectId(habit["partnership_id"]),
+        "_id": partnership_id,
         "$or": [
-            {"user_id_1": user_id},
-            {"user_id_2": user_id}
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ]
     })
-    
+
     if not partnership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access denied"
         )
-    
-    user1_id = partnership["user_id_1"]
-    user2_id = partnership["user_id_2"]
-    
-    today = date.today()
-    
+
+    user1_id = str(partnership["user_id_1"])
+    user2_id = str(partnership["user_id_2"])
+
+    # Get today's date as datetime (MongoDB compatible)
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
     # Get today's logs for both users
     logs = await db.habit_logs.find({
         "habit_id": habit_id,
-        "date": today
+        "log_date": today
     }).to_list(2)
-    
+
     user_logs = {}
     for log in logs:
         user_logs[log["user_id"]] = {
             "completed": log["completed"],
             "logged": True
         }
-    
+
     # Fill in missing users
     if user1_id not in user_logs:
         user_logs[user1_id] = {"completed": False, "logged": False}
     if user2_id not in user_logs:
         user_logs[user2_id] = {"completed": False, "logged": False}
-    
+
     both_completed = (
-        user_logs[user1_id]["completed"] and 
-        user_logs[user2_id]["completed"]
+            user_logs[user1_id]["completed"] and
+            user_logs[user2_id]["completed"]
     )
-    
+
     return TodayLogStatus(
         habit_id=habit_id,
         habit_name=habit["habit_name"],
@@ -309,67 +338,72 @@ async def get_today_log_status(
         both_completed=both_completed
     )
 
+
 @router.get("/partnerships/{partnership_id}/logs/today", response_model=PartnershipTodayStatus)
 async def get_partnership_today_status(
-    partnership_id: str,
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+        partnership_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get all habits' completion status for today"""
-    db = get_database()
     user_id = await get_current_user_id(credentials)
-    
+
     # Verify partnership and access
     partnership = await db.partnerships.find_one({
         "_id": ObjectId(partnership_id),
         "$or": [
-            {"user_id_1": user_id},
-            {"user_id_2": user_id}
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ]
     })
-    
+
     if not partnership:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Partnership not found"
         )
-    
-    user1_id = partnership["user_id_1"]
-    user2_id = partnership["user_id_2"]
-    
-    # Get all active habits for this partnership
+
+    user1_id = str(partnership["user_id_1"])
+    user2_id = str(partnership["user_id_2"])
+
+    # Get all active habits for this partnership - FIXED: Handle both ObjectId and string
     habits = await db.habits.find({
-        "partnership_id": partnership_id,
+        "$or": [
+            {"partnership_id": ObjectId(partnership_id)},
+            {"partnership_id": partnership_id}
+        ],
         "status": "active"
     }).to_list(100)
-    
-    today = date.today()
-    
+
+    # Get today's date as datetime (MongoDB compatible)
+    today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+
     # Get all today's logs for these habits
     habit_ids = [str(h["_id"]) for h in habits]
     logs = await db.habit_logs.find({
         "habit_id": {"$in": habit_ids},
-        "date": today
+        "log_date": today
     }).to_list(1000)
-    
+
     # Organize logs by habit
     logs_by_habit = {}
     for log in logs:
         if log["habit_id"] not in logs_by_habit:
             logs_by_habit[log["habit_id"]] = {}
         logs_by_habit[log["habit_id"]][log["user_id"]] = log
-    
+
     # Build response
     habits_status = []
     both_completed_count = 0
     user1_completed = 0
     user2_completed = 0
-    
+
     for habit in habits:
         habit_id = str(habit["_id"])
         habit_logs = logs_by_habit.get(habit_id, {})
-        
+
         user_logs = {}
-        
+
         # User 1
         if user1_id in habit_logs:
             user_logs[user1_id] = {
@@ -380,7 +414,7 @@ async def get_partnership_today_status(
                 user1_completed += 1
         else:
             user_logs[user1_id] = {"completed": False, "logged": False}
-        
+
         # User 2
         if user2_id in habit_logs:
             user_logs[user2_id] = {
@@ -391,25 +425,25 @@ async def get_partnership_today_status(
                 user2_completed += 1
         else:
             user_logs[user2_id] = {"completed": False, "logged": False}
-        
+
         both_completed = (
-            user_logs[user1_id]["completed"] and 
-            user_logs[user2_id]["completed"]
+                user_logs[user1_id]["completed"] and
+                user_logs[user2_id]["completed"]
         )
-        
+
         if both_completed:
             both_completed_count += 1
-        
+
         habits_status.append(TodayLogStatus(
             habit_id=habit_id,
             habit_name=habit["habit_name"],
             user_logs=user_logs,
             both_completed=both_completed
         ))
-    
+
     return PartnershipTodayStatus(
         partnership_id=partnership_id,
-        date=today.isoformat(),
+        date=today.date().isoformat(),
         habits=habits_status,
         completion_summary={
             "total_habits": len(habits),

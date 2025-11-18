@@ -1,153 +1,78 @@
 import React from 'react';
-import { View, Text, Alert, ScrollView, StyleSheet } from 'react-native';
-import Particles from '../../components/common/ui/starsParticlesBackground';
-import HabitShadowCircle from '../../components/common/ui/habitShadowCircle';
-import GreyButton from '../../components/common/ui/greyButton';
-import BackwardButton from '../../components/common/ui/backwardButton';
+import { View, Text } from 'react-native';
+import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground';
+import HabitShadowCircle from '@/components/ui/habitShadowCircle';
+import GreyButton from '@/components/ui/greyButton';
+import BackwardButton from '@/components/ui/backwardButton';
+import OrComponent from '@/components/ui/or';
 import { useRouter } from 'expo-router';
+import { scaleFont } from '../../utils/constants';
 
-export default function PredefinedHabits() {
+export default function ChooseHabitCategory() {
   const router = useRouter();
 
-  const handleHabitPress = (habitName: string) => {
-    console.log('=== HABIT PRESSED ===');
-    console.log('Habit:', habitName);
-    
-    try {
-      console.log('Navigating to StudyHabit...');
-      router.push('/screens/dashboard/StudyHabit');
-      console.log('Navigation successful');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert('Error', 'Failed to navigate: ' + error);
-    }
+  const handleCategoryPress = (category: string) => {
+    router.push({
+      pathname: '/screens/dashboard/predefinedHabits',
+      params: { category },
+    });
   };
 
   const chooseHabitPress = () => {
-    console.log('=== CREATE OWN HABIT PRESSED ===');
-    
-    try {
-      console.log('Navigating to StudyHabit...');
-      router.push('/screens/dashboard/StudyHabit');
-      console.log('Navigation successful');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      Alert.alert('Error', 'Failed to navigate: ' + error);
-    }
+    router.push('/screens/dashboard/createHabit');
   };
 
-  return (
-    <View style={styles.container}>
-      <Particles />
-      
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <BackwardButton />
+  const habits = [
+    { label: 'Study everyday', category: 'productivity' },
+    { label: 'Reduce screen time', category: 'fitness' },
+    { label: 'Wake up early', category: 'selfcare' },
+    { label: 'Stop procrastinating', category: 'selfcare' },
+  ];
 
-        <Text style={styles.title}>
-          Choose from Predefined{'\n'}Productivity Habits
+  return (
+    <View className="flex-1 relative bg-transparent">
+      <WhiteParticles />
+      
+      <View className="absolute mt-6 left-8 z-50">
+        <BackwardButton />
+      </View>
+
+      <View className="flex-1 px-5 pt-20 pb-5">
+        <Text className="font-wix text-center text-white mt-6 leading-tight" style={{ fontSize: scaleFont(38) }}>
+          Choose from Predefined Productivity Habits
         </Text>
-        
-        <View style={styles.habitsContainer}>
-          <View style={styles.row}>
-            <HabitShadowCircle 
-              label="Study Everyday"
-              onPress={() => handleHabitPress('Study Everyday')}
-            />
-            <HabitShadowCircle
-              label="Reduce Screen Time"
-              onPress={() => handleHabitPress('Reduce Screen Time')}
-            />
-          </View>
-          
-          <View style={styles.row}>
-            <HabitShadowCircle
-              label="Wake up Early"
-              onPress={() => handleHabitPress('Wake up Early')}
-            />
-            <HabitShadowCircle
-              label="Stop Procrastinating"
-              onPress={() => handleHabitPress('Stop Procrastinating')}
-            />
-          </View>
+
+        {/* Automatic grid layout */}
+        <View className="flex-row flex-wrap justify-center mt-10">
+          {habits.map((habit, index) => (
+            <View
+              key={index}
+              className="m-4" // controls spacing
+              style={{
+                width: '40%', // fits 2 per row roughly
+                alignItems: 'center',
+              }}
+            >
+              <HabitShadowCircle
+                label={habit.label}
+                onPress={() => handleCategoryPress(habit.category)}
+              />
+            </View>
+          ))}
         </View>
-        
-        <View style={styles.footer}>
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
-          </View>
-          
-          <View style={styles.buttonContainer}>
+
+        <View className="mt-auto">
+          <OrComponent />
+
+          <View className="items-center">
             <GreyButton
               onPress={chooseHabitPress}
               text="CREATE YOUR OWN HABIT"
+              style={{ marginTop: 40, marginBottom: 40 }}
             />
           </View>
         </View>
-      </ScrollView>
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#291133',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 80,
-    paddingBottom: 40,
-  },
-  title: {
-    fontFamily: 'WixMadeforText-Regular',
-    fontSize: 32,
-    textAlign: 'center',
-    color: 'white',
-    marginBottom: 40,
-    marginTop: 20,
-    lineHeight: 40,
-  },
-  habitsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    minHeight: 400,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 40,
-    paddingHorizontal: 10,
-  },
-  footer: {
-    marginTop: 40,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'white',
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: 'white',
-    fontFamily: 'WixMadeforText-Regular',
-    fontSize: 14,
-  },
-  buttonContainer: {
-    alignItems: 'center',
-  },
-});

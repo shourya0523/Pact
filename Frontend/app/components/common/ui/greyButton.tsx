@@ -18,8 +18,8 @@ const greyButton: React.FC<greyButtonProps> = ({
             className="rounded-[30px] flex-row items-center justify-center"
             style={[{ 
                 backgroundColor: "rgba(129, 132, 152, 0.27)", 
-                width: '480px',
-                height: '60px'
+                width: '440px',
+                height: '65px'
             }, style]} 
         >
             <Text className="text-[16px] font-wix text-white text-center">

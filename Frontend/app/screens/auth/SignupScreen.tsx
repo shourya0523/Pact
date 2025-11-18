@@ -1,108 +1,142 @@
 import React, { useState } from "react";
-// testing testing
-import { Text, TouchableOpacity, ScrollView, View, Alert, Image } from "react-native";
+import { Text, TouchableOpacity, ScrollView, View, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { getBaseUrl } from "../../../config";
+import WhiteParticles from "app/components/space/whiteStarsParticlesBackground";
 import Input from "../../components/common/Text-input";
+import { signup as signupUtil } from "../../utils/authUtils";
 
 export default function SignupScreen() {
     const router = useRouter();
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [success, setSuccess] = useState("");
 
     const handleSignup = async () => {
-        const BASE_URL = await getBaseUrl();
-        if (!username || !email || !password) {
-            Alert.alert("Missing fields", "Please fill out all fields.");
+        setError("");
+        setSuccess("");
+
+        if (!username.trim() || !email.trim() || !password.trim()) {
+            setError("Please fill out all fields to continue.");
+            return;
+        }
+
+        if (username.trim().length < 3) {
+            setError("Username must be at least 3 characters long.");
+            return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            setError("Please enter a valid email address.");
             return;
         }
 
         if (password.length < 8) {
-            Alert.alert("Password too short", "Password must be longer than 8 characters.")
+            setError("Password must be at least 8 characters long.");
             return;
         }
 
-        console.log({ username, email, password });
+        setLoading(true);
         
         try {
-            const response = await fetch(`${BASE_URL}/auth/signup`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    username,
-                    email,
-                    password,
-                }),
-            });
-            console.log(response.status);
-            const data = await response.json();
-            console.log(data);
-
-            if (response.ok) {
-                // Store the access token if returned (optional)
-                // await AsyncStorage.setItem('access_token', data.access_token);
-                
-                Alert.alert(
-                    "Success!",
-                    "Account created successfully!",
-                    [
-                        {
-                            text: "OK",
-                            onPress: () => router.replace("/screens/auth/GetStarted")
-                        }
-                    ]
-                );
-            } else {
-                Alert.alert("Signup failed", data.detail || "Error creating account");
+            // Use authUtils signup which handles signup + auto-login
+            const data = await signupUtil(username, email, password);
+            
+            // If we get here, signup and auto-login succeeded
+            // Token and user data are already stored by signupUtil
+            setSuccess("Account created! Logging you in...");
+            
+            // Navigate to invite friend screen after brief delay
+            setTimeout(() => {
+                router.replace("/screens/auth/GetStarted");
+            }, 1000);
+        } catch (error: any) {
+            let errorMessage = "Unable to create account. Please try again.";
+            
+            // Handle different error types
+            if (error instanceof Error) {
+                if (error.message.includes('fetch') || error.message.includes('Network')) {
+                    errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
             }
-        } catch (error) {
-            console.error(error);
-            Alert.alert("Network error", "Could not connect to server");
+            
+            setError(`Signup Failed: ${errorMessage}`);
+        } finally {
+            setLoading(false);
         }
-    }
+    };
 
     return (
-        <View className="flex-1 bg-[#291133]">
-            <Image
-                source={require('../../images/space/moon.png')}
-                className="absolute w-100 h-100 -top-10 -right-10"
-                resizeMode="contain"
-            />
-
+        <KeyboardAvoidingView 
+            className="flex-1 bg-[#291133]"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+            <WhiteParticles />
             <ScrollView 
                 className="flex-1 px-6"
-                contentContainerStyle={{ paddingTop: 150, paddingBottom: 40 }}
+                contentContainerStyle={{ 
+                    paddingTop: Platform.OS === 'ios' ? 100 : 120, 
+                    paddingBottom: 40 
+                }}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
             >
                 <Text className="text-white text-4xl font-semibold mb-2 leading-tight">
-                    Create your{'\n'}account
+                    Create Your{'\n'}Account
                 </Text>
-                <Text className="text-white text-2xl font-bold mb-10">Sign Up</Text>
+
+                {error ? (
+                    <View className="bg-red-500/20 border-2 border-red-500 rounded-2xl p-4 mb-6 mt-4">
+                        <Text className="text-red-200 text-sm font-semibold">❌ {error}</Text>
+                    </View>
+                ) : null}
+
+                {success ? (
+                    <View className="bg-green-500/20 border-2 border-green-500 rounded-2xl p-4 mb-6 mt-4">
+                        <Text className="text-green-200 text-sm font-semibold">✅ {success}</Text>
+                    </View>
+                ) : null}
 
                 <Input
                     placeholder="Username"
                     value={username}
-                    onChangeText={setUsername}
+                    onChangeText={(text) => {
+                        setUsername(text);
+                        setError(""); 
+                    }}
                     type="text"
+                    autoCapitalize="none"
+                    editable={!loading}
                 />
 
                 <Input
                     placeholder="Email"
                     value={email}
-                    onChangeText={setEmail}
+                    onChangeText={(text) => {
+                        setEmail(text);
+                        setError(""); 
+                    }}
                     type="email"
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    editable={!loading}
                 />
 
                 <Input
                     placeholder="Password"
                     value={password}
-                    onChangeText={setPassword}
+                    onChangeText={(text) => {
+                        setPassword(text);
+                        setError("");
+                    }}
                     type="password"
-                    className="mb-6"
+                    editable={!loading}
                 />
 
                 <View className="flex-row items-center my-6">
@@ -113,7 +147,11 @@ export default function SignupScreen() {
                     <View className="flex-1 h-[1px] bg-white" />
                 </View>
 
-                <TouchableOpacity className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center">
+                <TouchableOpacity 
+                    className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center"
+                    disabled={loading}
+                    onPress={() => setError("Google Sign-Up coming soon!")}
+                >
                     <View className="w-5 h-5 mr-2">
                         <View className="absolute w-2 h-2 top-0 left-0 bg-[#EA4335]" />
                         <View className="absolute w-2 h-2 top-0 right-0 bg-[#4285F4]" />
@@ -126,20 +164,25 @@ export default function SignupScreen() {
                 <TouchableOpacity 
                     className="bg-white rounded-full py-4 mb-6 items-center"
                     onPress={handleSignup}
+                    disabled={loading}
                 >
-                    <Text className="text-gray-900 text-sm font-semibold">NEXT</Text>
+                    {loading ? (
+                        <ActivityIndicator color="#111827" />
+                    ) : (
+                        <Text className="text-gray-900 text-sm font-semibold">NEXT</Text>
+                    )}
                 </TouchableOpacity>
 
                 <Text className="text-white text-sm text-center font-medium">
                     ALREADY HAVE AN ACCOUNT?{" "}
                     <Text 
                         className="text-blue-500 font-semibold"
-                        onPress={() => router.push("/screens/auth/LoginScreen")}
+                        onPress={() => !loading && router.push("/screens/auth/LoginScreen")}
                     >
                         SIGN IN
                     </Text>
                 </Text>
             </ScrollView>
-        </View>
-    )
+        </KeyboardAvoidingView>
+    );
 }
