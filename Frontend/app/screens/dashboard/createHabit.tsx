@@ -69,7 +69,7 @@ export default function StudyHabitCreation() {
                 "You need a partner to create habits. Would you like to invite one?",
                 [
                     { text: "Cancel", style: "cancel" },
-                    { text: "Invite Partner", onPress: () => router.push('/screens/dashboard/invitePartners') }
+                    { text: "Invite Partner", onPress: () => router.push('/screens/dashboard/InvitePartners') }
                 ]
             )
             return
@@ -112,17 +112,39 @@ export default function StudyHabitCreation() {
             console.log('Response:', data)
 
             if (response.ok) {
-                const createdHabit = await response.json()
+                const createdHabit = data
+                const habitId = createdHabit.id
                 console.log('✅ Habit created successfully:', createdHabit)
+                console.log('📋 Goal type in state:', goalType)
+                console.log('🆔 Habit ID:', habitId)
                 
-                Alert.alert(
-                    "Habit Created! ✅",
-                    `"${habitName}" has been created and is pending partner approval.\n\nIt will appear in your habits once your partner approves it.`,
-                    [{
-                        text: "View Habits",
-                        onPress: () => router.replace("/screens/dashboard/habitViews")
-                    }]
-                )
+                // If a goal type was selected, navigate to goal creation
+                if (goalType && habitId) {
+                    console.log('🎯 Navigating to goal creation:', goalType, 'for habit:', habitId)
+                    // Small delay to ensure state is properly set
+                    setTimeout(() => {
+                        if (goalType === 'completion') {
+                            router.push({
+                                pathname: '/screens/dashboard/CompletionGoals',
+                                params: { habitId }
+                            })
+                        } else if (goalType === 'frequency') {
+                            router.push({
+                                pathname: '/screens/dashboard/FrequencyGoals',
+                                params: { habitId }
+                            })
+                        }
+                    }, 100)
+                } else {
+                    Alert.alert(
+                        "Habit Created! ✅",
+                        `"${habitName}" has been created and is pending partner approval.\n\nIt will appear in your habits once your partner approves it.`,
+                        [{
+                            text: "View Habits",
+                            onPress: () => router.replace("/screens/dashboard/HabitViews")
+                        }]
+                    )
+                }
             } else {
                 console.error('Creation failed:', data)
                 Alert.alert("Creation Failed", data.detail || "Unable to create habit.")
@@ -222,8 +244,13 @@ export default function StudyHabitCreation() {
                         </Text>
                         <PurpleButton 
                             onPress={() => setGoalPopupVisible(true)}
-                            text="SET"
+                            text={goalType ? goalType.toUpperCase() : "SET"}
                         />
+                        {goalType && (
+                            <Text className="text-white/70 text-xs mt-2">
+                                {goalType === 'completion' ? 'Completion goal selected' : 'Frequency goal selected'}
+                            </Text>
+                        )}
                     </View>
                 </View>
                 <Text className="font-wix text-white text-[24px] text-center mt-6">Repeat</Text>
@@ -272,8 +299,11 @@ export default function StudyHabitCreation() {
                 visible={goalPopupVisible}
                 onClose={() => setGoalPopupVisible(false)}
                 onSelect={(type) => {
-                setGoalType(type)
-                setGoalPopupVisible(false)
+                    console.log('🎯 Goal type selected:', type)
+                    setGoalType(type)
+                    setGoalPopupVisible(false)
+                    // Note: Navigation to goal screen will happen after habit creation
+                    // Goal type is saved in state and will be used when habit is created
                 }}
             />
             <InvitePartners

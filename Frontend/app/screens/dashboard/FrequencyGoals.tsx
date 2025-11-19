@@ -37,8 +37,9 @@ export default function FrequencyGoals() {
             const BASE_URL = await getBaseUrl()
 
             // Check if user already has a goal for this habit
+            const userId = user.id || user._id || user.user_id
             const goalResponse = await fetch(
-                `${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal`,
+                `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -98,12 +99,20 @@ export default function FrequencyGoals() {
             }
 
             const user = JSON.parse(userData)
+            const userId = user.id || user._id || user.user_id
+            
+            if (!userId) {
+                Alert.alert("Error", "Unable to get user ID. Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+            
             const BASE_URL = await getBaseUrl()
             
             // DEBUG LOGGING
             console.log('🐛 DEBUG INFO:')
             console.log('habitId:', habitId)
-            console.log('user.id:', user.id)
+            console.log('userId:', userId)
             console.log('BASE_URL:', BASE_URL)
             
             // Map frequency to backend format
@@ -125,7 +134,7 @@ export default function FrequencyGoals() {
 
             console.log('Creating frequency goal:', goalData)
 
-            const response = await fetch(`${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal/frequency`, {
+            const response = await fetch(`${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal/frequency`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,

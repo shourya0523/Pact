@@ -61,8 +61,9 @@ export default function Goals() {
             console.log('✅ Habit exists:', habitData.habit_name)
 
             // Check if user already has a goal for this habit
+            const userId = user.id || user._id || user.user_id
             const goalResponse = await fetch(
-                `${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal`,
+                `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -111,11 +112,19 @@ export default function Goals() {
             }
 
             const user = JSON.parse(userData)
+            const userId = user.id || user._id || user.user_id
+            
+            if (!userId) {
+                Alert.alert("Error", "Unable to get user ID. Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+            
             const BASE_URL = await getBaseUrl()
             
             console.log('🐛 DEBUG INFO:')
             console.log('habitId:', habitId)
-            console.log('user.id:', user.id)
+            console.log('userId:', userId)
             console.log('BASE_URL:', BASE_URL)
 
             const goalData = {
@@ -123,7 +132,7 @@ export default function Goals() {
                 goal_name: goalName.trim()
             }
 
-            const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal/completion`
+            const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal/completion`
             console.log('📡 Full URL:', url)
             console.log('📦 Goal Data:', goalData)
 
