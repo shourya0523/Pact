@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -170,14 +170,24 @@ export default function Goals() {
     }
 
     return (
-        <View className="flex-1 relative">
+        <KeyboardAvoidingView 
+            className="flex-1 relative"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <WhiteParticles />
             {/* Back button */}
             <View className="absolute mt-6 left-8 z-50">
                 <BackwardButton />
             </View>
-            {/* Main content */}
-            <View className="flex-1 justify-start items-center pt-20 px-6">
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 140, paddingTop: 20 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Main content */}
+                <View className="flex-1 justify-start items-center pt-20 px-6">
                 {/* Title */}
                 <Text className="font-wix text-white text-[38px] text-center max-w-[80%]">
                     Create Completion Goal
@@ -225,7 +235,8 @@ export default function Goals() {
                         <ActivityIndicator size="large" color="#ffffff" />
                     </View>
                 )}
-            </View>
+                </View>
+            </ScrollView>
             <View className="absolute bottom-12 w-full px-6 flex-row justify-center" style={{ gap: 16 }}>
                 <GreyButton
                     onPress={handleCreate}
@@ -240,6 +251,6 @@ export default function Goals() {
                     disabled={loading}
                 />
             </View>
-        </View>
+        </KeyboardAvoidingView>
     )
 }

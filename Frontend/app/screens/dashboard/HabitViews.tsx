@@ -227,6 +227,7 @@ export default function HabitViews() {
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
             >
                 <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
 

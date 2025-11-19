@@ -228,6 +228,7 @@ export default function HabitDetails() {
                 className="flex-1 px-5"
                 contentContainerStyle={{paddingBottom: 140}}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff"/>
                 }
