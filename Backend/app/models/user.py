@@ -66,12 +66,16 @@ class UserResponse(BaseModel):
 class ProfileSetupRequest(BaseModel):
     """Request model for initial profile setup"""
     display_name: str = Field(..., min_length=1, max_length=50, description="User's display name")
-    profile_photo_url: str = Field(..., min_length=1, description="URL to user's profile photo")
+    profile_photo_url: str = Field(default="", description="URL to user's profile photo (optional)")
 
     @field_validator('profile_photo_url')
     @classmethod
     def validate_url(cls, v: str) -> str:
-        """Validate that profile_photo_url is a valid URL"""
+        """Validate that profile_photo_url is a valid URL if provided"""
+        # Allow empty string (no photo)
+        if not v:
+            return v
+        # If provided, must be a valid URL
         if not v.startswith(('http://', 'https://')):
             raise ValueError('profile_photo_url must be a valid HTTP/HTTPS URL')
         return v
