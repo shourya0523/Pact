@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException, status, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.models.partnership_model import (
     PartnershipCreate,
-    PartnershipResponse,
     PartnershipStatus,
     PartnershipDetailResponse,
     PartnershipStatsResponse,
@@ -10,7 +9,9 @@ from app.models.partnership_model import (
     PartnerInfo,
     HabitSummary,
     HabitStatsDetail,
-    StreakHistoryDetail
+    StreakHistoryDetail,
+    PartnerRequestResponse,
+    PartnerRequestDB,
 )
 
 from app.utils.security import decode_access_token
@@ -81,7 +82,7 @@ async def get_current_partnership(
 
     # Get associated habits
     habits = await db.habits.find({
-        "partnership_id": partnership["_id"],
+        "partnership_id": str(partnership["_id"]),
         "is_active": True
     }).to_list(100)
 
@@ -121,110 +122,280 @@ async def get_current_partnership(
         ]
     )
 
-#Create new partnership between two users
-@router.post("/create")
-async def create_partnership(
-        partnership: PartnershipCreate,
-        credentials: HTTPAuthorizationCredentials = Depends(security)
+
+@router.post("/invites", response_model=PartnerRequestResponse, status_code=status.HTTP_201_CREATED)
+async def send_partnership_invite(
+    partnership: PartnershipCreate,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """
-    POST: Create new partnership between two users
-    
-    Creates a direct partnership between the current user and another user by username.
-    Validates that neither user already has an active partnership.
-    
-    Args:
-        partnership: PartnershipCreate with partner_username
-        credentials: JWT Bearer token
-        
-    Returns:
-        Success message with partnership details
+    POST: Send a partnership invite instead of instantly creating a partnership.
+
+    Flow:
+    - Current user (sender) looks up partner by username
+    - Validates that neither user already has an active partnership
+    - Ensures there is no existing pending request between the two users
+    - Creates a `partner_requests` document with status `pending`
+    """
+    db = get_database()
+    sender_id = await get_current_user_id(credentials)
+
+    # Find the partner by username
+    partner = await db.users.find_one({"username": partnership.partner_username})
+    if not partner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    receiver_id = str(partner["_id"])
+
+    # Cannot invite yourself
+    if sender_id == receiver_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot partner with yourself",
+        )
+
+    # Check if either user already has an ACTIVE partnership
+    for user in (sender_id, receiver_id):
+        active_count = await db.partnerships.count_documents(
+            {
+                "$or": [
+                    {"user_id_1": ObjectId(user)},
+                    {"user_id_2": ObjectId(user)},
+                ],
+                "status": PartnershipStatus.ACTIVE.value,
+            }
+        )
+        if active_count > 0:
+            if user == sender_id:
+                msg = "You already have an active partnership"
+            else:
+                msg = "Partner already has an active partnership"
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=msg,
+            )
+
+    # Check if there is already a pending request between these two users
+    existing_request = await db.partner_requests.find_one(
+        {
+            "$or": [
+                {"sender_id": ObjectId(sender_id), "receiver_id": ObjectId(receiver_id)},
+                {"sender_id": ObjectId(receiver_id), "receiver_id": ObjectId(sender_id)},
+            ],
+            "status": "pending",
+        }
+    )
+    if existing_request:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="There is already a pending partnership request between these users",
+        )
+
+    invite = PartnerRequestDB(
+        sender_id=ObjectId(sender_id),
+        receiver_id=ObjectId(receiver_id),
+        status="pending",
+        message=partnership.message,
+    )
+    # Insert into DB
+    result = await db.partner_requests.insert_one(invite.model_dump(by_alias=True))
+
+    # Fetch sender info once for response
+    sender = await db.users.find_one({"_id": ObjectId(sender_id)})
+
+    return PartnerRequestResponse(
+        id=str(result.inserted_id),
+        sender_username=sender["username"],
+        sender_email=sender["email"],
+        message=invite.message,
+        sent_at=invite.sent_at,
+        status=invite.status,
+    )
+
+
+@router.get("/invites", response_model=List[PartnerRequestResponse])
+async def list_partnership_invites(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    GET: View partnership invites for the current user.
+
+    Returns all **incoming** pending partner requests where the current user is the receiver.
     """
     db = get_database()
     user_id = await get_current_user_id(credentials)
 
-    # Find the partner by username
-    partner = await db.users.find_one({"username": partnership.partner_username})
+    invites = await db.partner_requests.find(
+        {"receiver_id": ObjectId(user_id), "status": "pending"}
+    ).sort("sent_at", -1).to_list(100)
 
-    if not partner:
+    sender_ids = list({inv["sender_id"] for inv in invites})
+    users = await db.users.find({"_id": {"$in": sender_ids}}).to_list(len(sender_ids))
+    user_map = {u["_id"]: u for u in users}
+
+    results: List[PartnerRequestResponse] = []
+    for inv in invites:
+        sender = user_map.get(inv["sender_id"])
+        if not sender:
+            # If sender was deleted, skip this invite
+            continue
+        results.append(
+            PartnerRequestResponse(
+                id=str(inv["_id"]),
+                sender_username=sender["username"],
+                sender_email=sender["email"],
+                message=inv.get("message"),
+                sent_at=inv.get("sent_at", datetime.utcnow()),
+                status=inv.get("status", "pending"),
+            )
+        )
+
+    return results
+
+
+@router.post("/invites/{request_id}/accept")
+async def accept_partnership_invite(
+    request_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    POST: Accept a partnership invite.
+
+    - Only the receiver of the invite can accept it
+    - Marks the invite as `accepted`
+    - Creates an ACTIVE partnership between the two users
+    - Validates that neither user already has an active partnership
+    """
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+
+    if not ObjectId.is_valid(request_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid invite ID format",
+        )
+
+    invite = await db.partner_requests.find_one({"_id": ObjectId(request_id)})
+    if not invite:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="Invite not found",
         )
 
-    partner_id = str(partner["_id"])
+    if invite["receiver_id"] != ObjectId(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to accept this invite",
+        )
 
-    # Check if trying to partner with yourself
-    if user_id == partner_id:
+    if invite["status"] != "pending":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot partner with yourself"
+            detail=f"Cannot accept an invite with status '{invite['status']}'",
         )
 
-    # VALIDATION: Check if current user has active partnership
-    user_active_partnerships = await db.partnerships.count_documents({
-        "$or": [
-            {"user_id_1": ObjectId(user_id)},
-            {"user_id_2": ObjectId(user_id)}
-        ],
-        "status": PartnershipStatus.ACTIVE.value
-    })
+    sender_id = str(invite["sender_id"])
+    receiver_id = str(invite["receiver_id"])
 
-    if user_active_partnerships > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You already have an active partnership"
+    # Ensure neither user has an active partnership at the moment of acceptance
+    for uid in (sender_id, receiver_id):
+        active_count = await db.partnerships.count_documents(
+            {
+                "$or": [
+                    {"user_id_1": ObjectId(uid)},
+                    {"user_id_2": ObjectId(uid)},
+                ],
+                "status": PartnershipStatus.ACTIVE.value,
+            }
         )
+        if active_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Either you or your partner already has an active partnership",
+            )
 
-    # VALIDATION: Check if partner has active partnership
-    partner_active_partnerships = await db.partnerships.count_documents({
-        "$or": [
-            {"user_id_1": ObjectId(partner_id)},
-            {"user_id_2": ObjectId(partner_id)}
-        ],
-        "status": PartnershipStatus.ACTIVE.value
-    })
-
-    if partner_active_partnerships > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Partner already has an active partnership"
-        )
-
-    # Check if partnership already exists (any status)
-    existing_partnership = await db.partnerships.find_one({
-        "$or": [
-            {"user_id_1": ObjectId(user_id), "user_id_2": ObjectId(partner_id)},
-            {"user_id_1": ObjectId(partner_id), "user_id_2": ObjectId(user_id)}
-        ]
-    })
-
-    if existing_partnership:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Partnership already exists between these users"
-        )
-
-    # Create partnership
-    partnership_data = {
-        "user_id_1": ObjectId(user_id),
-        "user_id_2": ObjectId(partner_id),
+    # Create partnership (sender is user_id_1, receiver is user_id_2)
+    partnership_doc = {
+        "user_id_1": invite["sender_id"],
+        "user_id_2": invite["receiver_id"],
         "status": PartnershipStatus.ACTIVE.value,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.utcnow(),
     }
+    partnership_result = await db.partnerships.insert_one(partnership_doc)
 
-    result = await db.partnerships.insert_one(partnership_data)
+    # Update invite status
+    await db.partner_requests.update_one(
+        {"_id": invite["_id"]},
+        {
+            "$set": {
+                "status": "accepted",
+                "responded_at": datetime.utcnow(),
+            }
+        },
+    )
 
     return {
         "success": True,
-        "message": "Partnership created",
-        "partnership": {
-            "id": str(result.inserted_id),
-            "partner_username": partner["username"],
-            "partner_email": partner["email"],
-            "status": PartnershipStatus.ACTIVE.value,
-            "created_at": partnership_data["created_at"]
-        }
+        "message": "Partnership invite accepted",
+        "partnership_id": str(partnership_result.inserted_id),
+    }
+
+
+@router.post("/invites/{request_id}/reject")
+async def reject_partnership_invite(
+    request_id: str,
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
+    """
+    POST: Reject a partnership invite.
+
+    - Only the receiver of the invite can reject it
+    - Marks the invite as `rejected`
+    """
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+
+    if not ObjectId.is_valid(request_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid invite ID format",
+        )
+
+    invite = await db.partner_requests.find_one({"_id": ObjectId(request_id)})
+    if not invite:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Invite not found",
+        )
+
+    if invite["receiver_id"] != ObjectId(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not allowed to reject this invite",
+        )
+
+    if invite["status"] != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot reject an invite with status '{invite['status']}'",
+        )
+
+    await db.partner_requests.update_one(
+        {"_id": invite["_id"]},
+        {
+            "$set": {
+                "status": "rejected",
+                "responded_at": datetime.utcnow(),
+            }
+        },
+    )
+
+    return {
+        "success": True,
+        "message": "Partnership invite rejected",
     }
 
 #Update partnership status (activate, pause, end)
@@ -312,7 +483,7 @@ async def update_partnership_status(
     elif new_status == "broken":
         # When ending partnership, save streak to history
         habits = await db.habits.find({
-            "partnership_id": partnership["_id"],
+            "partnership_id": str(partnership["_id"]),
             "is_active": True
         }).to_list(100)
 
@@ -399,7 +570,7 @@ async def get_partnership_stats(
 
     # Get habits
     habits = await db.habits.find({
-        "partnership_id": partnership["_id"]
+        "partnership_id": str(partnership["_id"])
     }).to_list(100)
 
     # Calculate statistics
@@ -577,7 +748,7 @@ async def end_partnership(
 
     # Get habits to save streak history
     habits = await db.habits.find({
-        "partnership_id": partnership["_id"],
+        "partnership_id": str(partnership["_id"]),
         "is_active": True
     }).to_list(100)
 

@@ -3,6 +3,7 @@ import React from "react"
 import { useFonts } from 'expo-font'
 import { Stack } from "expo-router"
 import { View } from 'react-native'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -13,8 +14,10 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <View className="flex-1 font-wix">
-      <Stack screenOptions={{ headerShown: false }} />
-    </View>
+    <SafeAreaProvider>
+      <View className="flex-1 font-wix">
+        <Stack screenOptions={{ headerShown: false }} />
+      </View>
+    </SafeAreaProvider>
   );
 }

@@ -6,6 +6,8 @@ from app.models.user import UserCreate, UserLogin, UserResponse, User
 from app.utils.security import hash_password, verify_password, create_access_token, decode_access_token
 from config.database import get_database
 from datetime import datetime
+from pydantic import BaseModel
+import httpx
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 security = HTTPBearer()
@@ -198,3 +200,88 @@ async def test_login_numbered(user_number: int):
         "token_type": "bearer",
         "partnership_id": test_user["partnership_id"]
     }
+
+
+class GoogleAuthRequest(BaseModel):
+    token: str
+
+
+@router.post("/google")
+async def google_login(
+    auth_data: GoogleAuthRequest,
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Handle Google OAuth login
+    Verifies Google token and creates/logs in user
+    """
+    try:
+        # Verify Google token and get user info
+        async with httpx.AsyncClient() as client:
+            google_response = await client.get(
+                'https://www.googleapis.com/oauth2/v2/userinfo',
+                headers={'Authorization': f'Bearer {auth_data.token}'}
+            )
+        
+        if google_response.status_code != 200:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Google token"
+            )
+        
+        google_user = google_response.json()
+        email = google_user.get('email')
+        name = google_user.get('name', '')
+        
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email not provided by Google"
+            )
+        
+        # Check if user exists
+        user = await db.users.find_one({"email": email})
+        
+        if not user:
+            # Create new user
+            username = email.split('@')[0]  # Simple username from email
+            new_user = {
+                "username": username,
+                "email": email,
+                "password": hash_password(auth_data.token[:20]),  # Dummy password
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
+                "notification_preferences": {},
+                "is_active": True,
+                "display_name": name,
+                "profile_photo_url": google_user.get('picture', ''),
+                "profile_completed": False
+            }
+            
+            result = await db.users.insert_one(new_user)
+            user = await db.users.find_one({"_id": result.inserted_id})
+        
+        # Create access token
+        access_token = create_access_token(
+            data={"sub": str(user["_id"]), "email": user["email"]}
+        )
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": UserResponse(
+                id=str(user["_id"]),
+                username=user["username"],
+                email=user["email"],
+                display_name=user.get("display_name", ""),
+                profile_photo_url=user.get("profile_photo_url", ""),
+                profile_completed=user.get("profile_completed", False),
+                created_at=user["created_at"]
+            )
+        }
+    
+    except httpx.HTTPError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Could not verify Google authentication"
+        )

@@ -11,7 +11,7 @@ const HabitShadowCircle: React.FC<HabitShadowCircleProps> = ({
   onPress 
 }) => {
   const content = (
-    <View className="items-center mx-10 my-6">
+    <View className="items-center my-3">
       <View className="w-60 h-60 rounded-full border-white blur-xl absolute" />
       <View 
         className="w-[120px] h-[120px] border-[6px] border-white blur-[4px] rounded-full justify-center items-center relative"
@@ -28,7 +28,7 @@ const HabitShadowCircle: React.FC<HabitShadowCircleProps> = ({
         />
       </View>
       
-      <Text className="text-white font-wix text-[14px] mt-6 text-center">
+      <Text className="text-white font-wix text-[20px] mt-8 text-center">
         {label}
       </Text>
     </View>

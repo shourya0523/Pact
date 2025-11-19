@@ -7,6 +7,9 @@ from bson import ObjectId
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
+from typing import List, Optional
+from fastapi import Query
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 class MessageResponse(BaseModel):
     message: str
@@ -215,6 +218,57 @@ async def get_current_user_profile(
         created_at=user["created_at"]
     )
 
+@router.get("/search", response_model=List[UserResponse])
+async def search_users(
+    query: str = Query(..., min_length=1, max_length=50, description="Username search query"),
+    limit: int = Query(10, ge=1, le=50, description="Maximum number of results"),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    """
+    Search for users by username to find potential partners
+    """
+    # 1. Get current user ID from token
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
+    current_user_id = payload.get("sub")
+    if not current_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token"
+        )
+    
+    # 2. Search for users matching the query
+    # Case-insensitive partial match on username
+    search_results = await db.users.find({
+        # case sensitive regex search
+        "username": {"$regex": query, "$options": "i"},  
+        # excludes current user
+        "_id": {"$ne": ObjectId(current_user_id)},  
+        "is_active": True,  
+        "profile_completed": True 
+    }).limit(limit).to_list(length=limit)
+    
+    # 3. Convert to response format
+    return [
+        UserResponse(
+            id=str(user["_id"]),
+            username=user["username"],
+            email=user["email"],
+            display_name=user.get("display_name", ""),
+            profile_photo_url=user.get("profile_photo_url", ""),
+            profile_completed=user.get("profile_completed", False),
+            created_at=user["created_at"]
+        )
+        for user in search_results
+    ]
 
 @router.delete("/me", response_model=MessageResponse)
 async def delete_user_account(

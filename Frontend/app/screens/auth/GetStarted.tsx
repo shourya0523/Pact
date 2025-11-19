@@ -59,7 +59,7 @@ export default function LinkScreen() {
                     <TouchableOpacity
                         className="w-full bg-purple-800/60 rounded-full py-4 items-center"
                         activeOpacity={0.8}
-                        onPress={() => router.push('/screens/onboarding/HabitSetupScreen')}
+                        onPress={() => router.push('/screens/dashboard/Home')}
                     >
                         <Text className="text-white text-lg font-semibold tracking-wide">
                         CONTINUE
