@@ -144,28 +144,48 @@ export const authenticatedFetch = async (
 export const login = async (email: string, password: string): Promise<any> => {
     const BASE_URL = await getBaseUrl();
     
-    const response = await fetch(`${BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            email: email.trim().toLowerCase(),
-            password,
-        }),
-    });
+    console.log('🌐 Login - Using BASE_URL:', BASE_URL);
+    console.log('📧 Login - Email:', email.trim().toLowerCase());
+    
+    try {
+        const response = await fetch(`${BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email.trim().toLowerCase(),
+                password,
+            }),
+        });
 
-    const data = await response.json();
+        console.log('📊 Login response status:', response.status);
+        
+        const data = await response.json();
+        console.log('📄 Login response data:', data);
 
-    if (!response.ok) {
-        throw new Error(data.detail || 'Login failed');
+        if (!response.ok) {
+            throw new Error(data.detail || 'Login failed');
+        }
+
+        // Store token and user data
+        console.log('💾 Storing login credentials...');
+        await storeToken(data.access_token);
+        await storeUserData(data.user);
+        
+        console.log('✅ Login complete!');
+
+        return data;
+    } catch (error: any) {
+        console.error('❌ Login error in authUtils:', error);
+        
+        // Re-throw with more context if it's a network error
+        if (error.message.includes('fetch') || error.name === 'TypeError') {
+            throw new Error(`Network error: ${error.message}. Make sure the backend is running at ${BASE_URL}`);
+        }
+        
+        throw error;
     }
-
-    // Store token and user data
-    await storeToken(data.access_token);
-    await storeUserData(data.user);
-
-    return data;
 };
 
 /**
@@ -179,48 +199,78 @@ export const signup = async (
 ): Promise<any> => {
     const BASE_URL = await getBaseUrl();
     
-    // Step 1: Create account
-    const signupResponse = await fetch(`${BASE_URL}/api/auth/signup`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            username: username.trim(),
-            email: email.trim().toLowerCase(),
-            password,
-        }),
+    console.log('🌐 Using BASE_URL:', BASE_URL);
+    console.log('📦 Signup request payload:', {
+        username: username.trim(),
+        email: email.trim().toLowerCase(),
     });
+    
+    try {
+        // Step 1: Create account
+        console.log('📤 Sending signup request to:', `${BASE_URL}/api/auth/signup`);
+        
+        const signupResponse = await fetch(`${BASE_URL}/api/auth/signup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                username: username.trim(),
+                email: email.trim().toLowerCase(),
+                password,
+            }),
+        });
 
-    const signupData = await signupResponse.json();
+        console.log('📊 Signup response status:', signupResponse.status);
+        
+        const signupData = await signupResponse.json();
+        console.log('📄 Signup response data:', signupData);
 
-    if (!signupResponse.ok) {
-        throw new Error(signupData.detail || 'Signup failed');
+        if (!signupResponse.ok) {
+            throw new Error(signupData.detail || 'Signup failed');
+        }
+
+        // Step 2: Automatically log in the newly created user
+        console.log('🔑 Attempting auto-login after signup...');
+        
+        const loginResponse = await fetch(`${BASE_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email.trim().toLowerCase(),
+                password,
+            }),
+        });
+
+        console.log('📊 Login response status:', loginResponse.status);
+        
+        const loginData = await loginResponse.json();
+        console.log('📄 Login response data:', loginData);
+
+        if (!loginResponse.ok) {
+            throw new Error(loginData.detail || 'Auto-login after signup failed');
+        }
+
+        // Step 3: Store token and user data
+        console.log('💾 Storing token and user data...');
+        await storeToken(loginData.access_token);
+        await storeUserData(loginData.user);
+        
+        console.log('✅ Signup and login complete!');
+
+        return loginData;
+    } catch (error: any) {
+        console.error('❌ Signup error in authUtils:', error);
+        
+        // Re-throw with more context if it's a network error
+        if (error.message.includes('fetch') || error.name === 'TypeError') {
+            throw new Error(`Network error: ${error.message}. Make sure the backend is running at ${BASE_URL}`);
+        }
+        
+        throw error;
     }
-
-    // Step 2: Automatically log in the newly created user
-    const loginResponse = await fetch(`${BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            email: email.trim().toLowerCase(),
-            password,
-        }),
-    });
-
-    const loginData = await loginResponse.json();
-
-    if (!loginResponse.ok) {
-        throw new Error(loginData.detail || 'Auto-login after signup failed');
-    }
-
-    // Step 3: Store token and user data
-    await storeToken(loginData.access_token);
-    await storeUserData(loginData.user);
-
-    return loginData;
 };
 
 /**

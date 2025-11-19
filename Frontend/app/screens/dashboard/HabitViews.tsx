@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions } from 'react-native'
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -270,7 +270,8 @@ export default function HabitViews() {
                     <Ionicons name="add" size={32} color="white" />
                 </TouchableOpacity>
             </View>
-
+            </ScrollView>
+            
             <HomeUI />
         </View>
     )

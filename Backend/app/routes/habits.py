@@ -36,14 +36,20 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
 
 def format_habit_response(habit: dict) -> HabitResponse:
     """Helper to format habit dict into HabitResponse"""
+    # Convert goal to string if it's an integer
+    goal_value = habit.get("goal")
+    if isinstance(goal_value, int):
+        goal_value = str(goal_value)
+    
     return HabitResponse(
         id=str(habit["_id"]),
         habit_name=habit["habit_name"],
         habit_type=habit["habit_type"],
         category=habit.get("category", habit.get("habit_category", "")),
         description=habit.get("description", habit.get("habit_description")),
-        goal=habit.get("goal"),
+        goal=goal_value,
         count_checkins=habit.get("count_checkins", 0),
+        current_streak=habit.get("current_streak", 0),
         frequency=habit.get("frequency", "daily"),
         partnership_id=habit.get("partnership_id"),
         status=habit["status"],
@@ -74,8 +80,8 @@ async def create_habit(
     partnership = await db.partnerships.find_one({
         "_id": ObjectId(habit.partnership_id),
         "$or": [
-            {"user_id_1": ObjectId(user_id)},  # ✅ FIXED: Convert to ObjectId
-            {"user_id_2": ObjectId(user_id)}   # ✅ FIXED: Convert to ObjectId
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ],
         "status": "active"
     })
@@ -113,8 +119,8 @@ async def get_pending_habits(
     # Find user's partnerships
     partnerships = await db.partnerships.find({
         "$or": [
-            {"user_id_1": ObjectId(user_id)},  # ✅ FIXED
-            {"user_id_2": ObjectId(user_id)}   # ✅ FIXED
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ],
         "status": "active"
     }).to_list(100)
@@ -139,7 +145,7 @@ async def get_habits(
     """Get all ACTIVE habits for user's partnerships"""
     user_id = await get_current_user_id(credentials)
 
-    # Find user's partnerships - ✅ FIXED: Convert user_id to ObjectId
+    # Find user's partnerships
     partnerships = await db.partnerships.find({
         "$or": [
             {"user_id_1": ObjectId(user_id)},
@@ -180,8 +186,8 @@ async def get_habit(
     partnership = await db.partnerships.find_one({
         "_id": ObjectId(habit["partnership_id"]),
         "$or": [
-            {"user_id_1": ObjectId(user_id)},  # ✅ FIXED
-            {"user_id_2": ObjectId(user_id)}   # ✅ FIXED
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ]
     })
 
@@ -192,6 +198,69 @@ async def get_habit(
         )
 
     return format_habit_response(habit)
+
+
+@router.put("/{habit_id}", response_model=HabitResponse)
+async def update_habit(
+        habit_id: str,
+        habit_update: HabitUpdate,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Update a habit directly (no approval needed)
+    Works for both DRAFT and ACTIVE habits
+    """
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+
+    if not ObjectId.is_valid(habit_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid habit ID format"
+        )
+
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+
+    # For DRAFT habits, verify user is the creator
+    if habit["status"] == HabitStatus.DRAFT.value:
+        if habit["created_by"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Can only edit your own drafts"
+            )
+    else:
+        # For ACTIVE/PENDING habits, verify user is part of partnership
+        partnership = await db.partnerships.find_one({
+            "_id": ObjectId(habit["partnership_id"]),
+            "$or": [
+                {"user_id_1": ObjectId(user_id)},
+                {"user_id_2": ObjectId(user_id)}
+            ]
+        })
+
+        if not partnership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied - not part of this partnership"
+            )
+
+    # Apply updates directly
+    update_dict = habit_update.model_dump(exclude_none=True)
+    update_dict["updated_at"] = datetime.utcnow()
+
+    await db.habits.update_one(
+        {"_id": ObjectId(habit_id)},
+        {"$set": update_dict}
+    )
+
+    updated_habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+    return format_habit_response(updated_habit)
 
 
 @router.post("/{habit_id}/approve")
@@ -215,8 +284,8 @@ async def approve_habit(
     partnership = await db.partnerships.find_one({
         "_id": ObjectId(habit["partnership_id"]),
         "$or": [
-            {"user_id_1": ObjectId(user_id)},  # ✅ FIXED
-            {"user_id_2": ObjectId(user_id)}   # ✅ FIXED
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ]
     })
 
@@ -274,8 +343,8 @@ async def reject_habit(
     partnership = await db.partnerships.find_one({
         "_id": ObjectId(habit["partnership_id"]),
         "$or": [
-            {"user_id_1": ObjectId(user_id)},  # ✅ FIXED
-            {"user_id_2": ObjectId(user_id)}   # ✅ FIXED
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
         ]
     })
 

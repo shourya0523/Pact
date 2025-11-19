@@ -1,9 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Text, TouchableOpacity, ScrollView, View, Image, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import WhiteParticles from "app/components/space/whiteStarsParticlesBackground";
 import Input from "../../components/common/Text-input";
 import { signup as signupUtil } from "../../utils/authUtils";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getBaseUrl } from '../../../config';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function SignupScreen() {
     const router = useRouter();
@@ -13,6 +19,70 @@ export default function SignupScreen() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+
+    // Google Auth Setup
+    const [request, response, promptAsync] = Google.useAuthRequest({
+        androidClientId: '1038322012717-h1iqh7jv8s3pb6q6dm85390po4eamlso.apps.googleusercontent.com',
+        iosClientId: '1038322012717-hnel4l1370fh5tam9ccovut6av4clrik.apps.googleusercontent.com',
+        webClientId: '1038322012717-73h7qf0ba1qmtefufbd4v4hea4ggrv9t.apps.googleusercontent.com',
+    });
+
+    useEffect(() => {
+        if (response?.type === 'success') {
+            handleGoogleSignUp(response.authentication.accessToken);
+        } else if (response?.type === 'error') {
+            setError('Google Sign-Up failed. Please try again.');
+        }
+    }, [response]);
+
+    const handleGoogleSignUp = async (googleToken: string) => {
+        setLoading(true);
+        try {
+            const BASE_URL = await getBaseUrl();
+            
+            console.log('🚀 Starting Google Sign-Up...');
+            
+            // Send Google token to your backend
+            const backendResponse = await fetch(`${BASE_URL}/api/auth/google`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    token: googleToken
+                })
+            });
+
+            if (backendResponse.ok) {
+                const data = await backendResponse.json();
+                
+                console.log('✅ Google Sign-Up successful:', data);
+                
+                // Save authentication data
+                await AsyncStorage.setItem('access_token', data.access_token);
+                await AsyncStorage.setItem('user_data', JSON.stringify(data.user));
+                
+                setSuccess("Account created! Redirecting...");
+                
+                // Check if profile is completed
+                setTimeout(() => {
+                    if (data.user.profile_completed) {
+                        router.replace("/screens/dashboard/Home");
+                    } else {
+                        router.replace("/screens/auth/SetUpProfile");
+                    }
+                }, 500);
+            } else {
+                const errorData = await backendResponse.json();
+                setError(errorData.detail || 'Google Sign-Up failed. Please try regular signup.');
+            }
+        } catch (error) {
+            console.error('Google sign-up error:', error);
+            setError('Google Sign-Up unavailable. Please use email/password.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleSignup = async () => {
         setError("");
@@ -42,24 +112,36 @@ export default function SignupScreen() {
         setLoading(true);
         
         try {
+            console.log('🚀 Starting signup process...');
+            console.log('📧 Email:', email.trim().toLowerCase());
+            console.log('👤 Username:', username.trim());
+            
             // Use authUtils signup which handles signup + auto-login
             const data = await signupUtil(username, email, password);
+            
+            console.log('✅ Signup successful:', data);
             
             // If we get here, signup and auto-login succeeded
             // Token and user data are already stored by signupUtil
             setSuccess("Account created! Logging you in...");
             
-            // Navigate to invite friend screen after brief delay
+            // Navigate to SetUpProfile screen after brief delay
             setTimeout(() => {
-                router.replace("/screens/auth/GetStarted");
+                router.replace("/screens/auth/SetUpProfile");
             }, 1000);
         } catch (error: any) {
+            console.error('❌ Signup error:', error);
+            
             let errorMessage = "Unable to create account. Please try again.";
             
             // Handle different error types
             if (error instanceof Error) {
+                console.error('📋 Error message:', error.message);
+                
                 if (error.message.includes('fetch') || error.message.includes('Network')) {
                     errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
+                } else if (error.message.includes('already exists')) {
+                    errorMessage = "An account with this email or username already exists.";
                 } else if (error.message) {
                     errorMessage = error.message;
                 }
@@ -149,8 +231,8 @@ export default function SignupScreen() {
 
                 <TouchableOpacity 
                     className="border-2 border-white rounded-full py-3.5 mb-4 flex-row items-center justify-center"
-                    disabled={loading}
-                    onPress={() => setError("Google Sign-Up coming soon!")}
+                    disabled={loading || !request}
+                    onPress={() => promptAsync()}
                 >
                     <View className="w-5 h-5 mr-2">
                         <View className="absolute w-2 h-2 top-0 left-0 bg-[#EA4335]" />
