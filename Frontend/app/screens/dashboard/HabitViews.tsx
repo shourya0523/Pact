@@ -223,53 +223,58 @@ export default function HabitViews() {
                 resizeMode="cover"
             />
 
-            <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
+            >
+                <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
 
-            <View className="items-center justify-center mt-4 mb-10">
-                {activeHabits.length > 0 ? (
-                    activeHabits.map((habit) => (
-                        <TouchableOpacity
-                            key={habit.id}
-                            onPress={() => {
-                                console.log('Navigating to habit:', habit.id, habit.habit_name)
-                                router.push({
-                                    pathname: '/screens/dashboard/HabitDetails',
-                                    params: { habitId: habit.id }
-                                })
-                            }}
-                            activeOpacity={0.8}
-                            className="w-full items-center"
-                        >
-                            <HabitBox
-                                title={habit.habit_name}
-                                userProgress={habit.userProgress}
-                                partnerProgress={habit.partnerProgress}
-                                streak={habit.current_streak || 0}
-                            />
-                        </TouchableOpacity>
-                    ))
-                ) : (
-                    <View className="py-8">
-                        <Text className="text-white/60 text-center text-lg">No active habits yet</Text>
-                        <Text className="text-white/40 text-center mt-2">Create your first habit below!</Text>
-                    </View>
-                )}
+                <View className="items-center justify-center mt-4 mb-10">
+                    {activeHabits.length > 0 ? (
+                        activeHabits.map((habit) => (
+                            <TouchableOpacity
+                                key={habit.id}
+                                onPress={() => {
+                                    console.log('Navigating to habit:', habit.id, habit.habit_name)
+                                    router.push({
+                                        pathname: '/screens/dashboard/HabitDetails',
+                                        params: { habitId: habit.id }
+                                    })
+                                }}
+                                activeOpacity={0.8}
+                                className="w-full items-center"
+                            >
+                                <HabitBox
+                                    title={habit.habit_name}
+                                    userProgress={habit.userProgress}
+                                    partnerProgress={habit.partnerProgress}
+                                    streak={habit.current_streak || 0}
+                                />
+                            </TouchableOpacity>
+                        ))
+                    ) : (
+                        <View className="py-8">
+                            <Text className="text-white/60 text-center text-lg">No active habits yet</Text>
+                            <Text className="text-white/40 text-center mt-2">Create your first habit below!</Text>
+                        </View>
+                    )}
 
-                {inactiveHabits.length > 0 && (
-                    <GreyButton
-                        text="INACTIVE HABITS"
-                        onPress={() => console.log('Show inactive habits')}
-                        style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
-                    />
-                )}
+                    {inactiveHabits.length > 0 && (
+                        <GreyButton
+                            text="INACTIVE HABITS"
+                            onPress={() => console.log('Show inactive habits')}
+                            style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
+                        />
+                    )}
 
-                <TouchableOpacity
-                    className="mt-6 bg-white/50 rounded-full p-4 shadow-lg"
-                    onPress={() => router.push('/screens/dashboard/createHabit')}
-                >
-                    <Ionicons name="add" size={32} color="white" />
-                </TouchableOpacity>
-            </View>
+                    <TouchableOpacity
+                        className="mt-6 bg-white/50 rounded-full p-4 shadow-lg"
+                        onPress={() => router.push('/screens/dashboard/createHabit')}
+                    >
+                        <Ionicons name="add" size={32} color="white" />
+                    </TouchableOpacity>
+                </View>
             </ScrollView>
             
             <HomeUI />

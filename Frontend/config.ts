@@ -9,7 +9,7 @@ const getBaseUrlSync = (): string => {
   } else {
     // iOS - use local IP for physical device (works for simulator too if on same network)
     // Replace with your machine's local IP if different
-    return 'http://10.0.0.64:8000';
+    return 'http://10.0.0.242:8000';
   }
 };
 
