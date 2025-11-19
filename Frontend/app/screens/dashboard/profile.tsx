@@ -195,6 +195,15 @@ export default function Profile() {
         <View className="flex-1 relative bg-[#1a0033]">
             <PurpleParticles />
 
+            {/* Back Button */}
+            <TouchableOpacity 
+                onPress={() => router.back()}
+                className="absolute top-12 left-6 z-20"
+                style={{ zIndex: 20 }}
+            >
+                <Ionicons name="arrow-back" size={28} color="white" />
+            </TouchableOpacity>
+
             <ScrollView 
                 className="flex-1"
                 contentContainerStyle={{ paddingBottom: 140 }}

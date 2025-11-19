@@ -42,24 +42,36 @@ export default function SignupScreen() {
         setLoading(true);
         
         try {
+            console.log('🚀 Starting signup process...');
+            console.log('📧 Email:', email.trim().toLowerCase());
+            console.log('👤 Username:', username.trim());
+            
             // Use authUtils signup which handles signup + auto-login
             const data = await signupUtil(username, email, password);
+            
+            console.log('✅ Signup successful:', data);
             
             // If we get here, signup and auto-login succeeded
             // Token and user data are already stored by signupUtil
             setSuccess("Account created! Logging you in...");
             
-            // Navigate to invite friend screen after brief delay
+            // Navigate to SetUpProfile screen after brief delay
             setTimeout(() => {
-                router.replace("/screens/auth/GetStarted");
+                router.replace("/screens/auth/SetUpProfile");
             }, 1000);
         } catch (error: any) {
+            console.error('❌ Signup error:', error);
+            
             let errorMessage = "Unable to create account. Please try again.";
             
             // Handle different error types
             if (error instanceof Error) {
+                console.error('📋 Error message:', error.message);
+                
                 if (error.message.includes('fetch') || error.message.includes('Network')) {
                     errorMessage = "Unable to connect to the server. Please check your internet connection and try again.";
+                } else if (error.message.includes('already exists')) {
+                    errorMessage = "An account with this email or username already exists.";
                 } else if (error.message) {
                     errorMessage = error.message;
                 }
