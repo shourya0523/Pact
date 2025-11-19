@@ -117,12 +117,12 @@ export default function HabitDetails() {
 
         if (type === 'frequency') {
             router.push({
-                pathname: '/screens/dashboard/frequencyGoals',
+                pathname: './screens/dashboard/frequencyGoals',
                 params: {habitId: habitId}
             })
         } else {
             router.push({
-                pathname: '/screens/dashboard/completionGoals',
+                pathname: './screens/dashboard/completionGoals',
                 params: {habitId: habitId}
             })
         }
