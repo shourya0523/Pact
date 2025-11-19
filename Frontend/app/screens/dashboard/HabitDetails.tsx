@@ -39,6 +39,7 @@ export default function HabitDetails() {
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [showGoalTypeModal, setShowGoalTypeModal] = useState(false)
+    const [currentUserId, setCurrentUserId] = useState<string>('')
 
     useEffect(() => {
         console.log('🔍 HabitDetails mounted with habitId:', habitId)
@@ -59,6 +60,18 @@ export default function HabitDetails() {
 
             const BASE_URL = await getBaseUrl()
             console.log('📡 Fetching habit details for:', habitId)
+
+            // Fetch current user ID
+            const userResponse = await fetch(`${BASE_URL}/api/users/me`, {
+                headers: {'Authorization': `Bearer ${token}`}
+            })
+
+            if (userResponse.ok) {
+                const userData = await userResponse.json()
+                const userId = userData.id || userData._id || userData.user_id
+                console.log('👤 Current user ID:', userId)
+                setCurrentUserId(userId)
+            }
 
             const habitResponse = await fetch(`${BASE_URL}/api/habits/${habitId}`, {
                 headers: {'Authorization': `Bearer ${token}`}
@@ -117,15 +130,26 @@ export default function HabitDetails() {
 
         if (type === 'frequency') {
             router.push({
-                pathname: './screens/dashboard/frequencyGoals',
+                pathname: '/screens/dashboard/FrequencyGoals',
                 params: {habitId: habitId}
             })
         } else {
             router.push({
-                pathname: './screens/dashboard/completionGoals',
+                pathname: '/screens/dashboard/CompletionGoals',
                 params: {habitId: habitId}
             })
         }
+    }
+
+    // Calculate user and partner progress
+    const getUserProgress = () => {
+        const userGoal = goals.find(g => g.user_id === currentUserId)
+        return userGoal?.progress_percentage || 0
+    }
+
+    const getPartnerProgress = () => {
+        const partnerGoal = goals.find(g => g.user_id !== currentUserId)
+        return partnerGoal?.progress_percentage || 0
     }
 
     const getDaysInMonth = () => {
@@ -139,15 +163,11 @@ export default function HabitDetails() {
         const now = new Date()
         const checkDate = new Date(now.getFullYear(), now.getMonth(), day)
         const dateStr = checkDate.toISOString().split('T')[0]
-        console.log('🔍 Checking day:', day, 'Date string:', dateStr) // ADD THIS
+        console.log('🔍 Checking day:', day, 'Date string:', dateStr)
 
-
-        // Find all logs for this date
         const logsForDate = logs.filter(log => log.date === dateStr && log.completed)
         console.log('📊 Logs for', dateStr, ':', logsForDate)
 
-
-        // Get unique user IDs who completed on this date
         const uniqueUsers = new Set(logsForDate.map(log => log.user_id))
 
         return {
@@ -162,9 +182,9 @@ export default function HabitDetails() {
             return 'bg-white'
         }
         if (completionStatus.bothCompleted) {
-            return 'bg-green-400'  // Both partners completed change this perchance
+            return 'bg-green-400'
         }
-        return 'bg-yellow-400'  // Only one partner completed
+        return 'bg-yellow-400'
     }
 
     const getMonthName = () => {
@@ -219,7 +239,8 @@ export default function HabitDetails() {
                 <View className="items-center justify-center mt-4">
                     <HabitBox
                         title={habit.habit_name}
-                        progress={habit.count_checkins ? habit.count_checkins / 100 : 0}
+                        userProgress={getUserProgress()}
+                        partnerProgress={getPartnerProgress()}
                         streak={habit.current_streak || 0}
                         leftAvatar="https://example.com/user-avatar.jpg"
                         rightAvatar="https://example.com/partner-avatar.jpg"
@@ -233,7 +254,7 @@ export default function HabitDetails() {
                             onPress={() => {
                                 console.log('Navigating to goal:', goals[0].goal_name)
                                 router.push({
-                                    pathname: '/screens/dashboard/goalPage',
+                                    pathname: '/screens/dashboard/GoalPage',
                                     params: {
                                         habitId: habitId,
                                         userId: goals[0].user_id
@@ -265,7 +286,7 @@ export default function HabitDetails() {
                             onPress={() => {
                                 console.log('Navigating to goal:', goals[1].goal_name)
                                 router.push({
-                                    pathname: '/screens/dashboard/goalPage',
+                                    pathname: '/screens/dashboard/GoalPage',
                                     params: {
                                         habitId: habitId,
                                         userId: goals[1].user_id

@@ -566,8 +566,8 @@ async def get_habit_goals(
 @router.get(
     "/users/me/goals",
     response_model=List[UserGoalResponse],
-    summary="Get all goals for current user",
-    description="Retrieve all goals for the authenticated user across all their habits."
+    summary="Get all goals for current user and their partners",
+    description="Retrieve all goals for the authenticated user AND their partners across all habits in active partnerships."
 )
 async def get_my_goals(
         active_only: bool = True,
@@ -575,36 +575,70 @@ async def get_my_goals(
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """
-    Get all goals for the current user across all habits.
+    Get all goals for the current user AND their partners across all habits.
 
     - **active_only**: If true, only return active goals (default: true)
 
-    Returns a list of all goals for the current user.
+    Returns a list of all goals for the current user and their partners.
     """
     current_user_id = await get_current_user_id(credentials)
 
-    # Find all habits where user has goals
-    habits = await db.habits.find({
-        f"goals.{current_user_id}": {"$exists": True}
+    # Find all partnerships the user is in
+    partnerships = await db.partnerships.find({
+        "$or": [
+            {"user_id_1": ObjectId(current_user_id)},
+            {"user_id_2": ObjectId(current_user_id)}
+        ],
+        "status": "active"
     }).to_list(length=None)
+
+    # Get all partner user IDs
+    partner_ids = []
+    for partnership in partnerships:
+        user_id_1 = str(partnership["user_id_1"])
+        user_id_2 = str(partnership["user_id_2"])
+
+        if user_id_1 == current_user_id:
+            partner_ids.append(user_id_2)
+        else:
+            partner_ids.append(user_id_1)
+
+    # Include current user and all partners
+    all_user_ids = [current_user_id] + partner_ids
+
+    # Build query to find habits where any of these users have goals
+    query = {
+        "$or": [
+            {f"goals.{user_id}": {"$exists": True}}
+            for user_id in all_user_ids
+        ]
+    }
+
+    # Find all habits with goals for these users
+    habits = await db.habits.find(query).to_list(length=None)
 
     responses = []
     for habit in habits:
-        goal_data = habit["goals"][current_user_id]
-        user_goal = UserGoal(**goal_data)
+        goals = habit.get("goals", {})
 
-        # Filter by active status if requested
-        if active_only and user_goal.goal_status != GoalStatus.ACTIVE:
-            continue
+        # Process goals for all users in our list
+        for user_id in all_user_ids:
+            if user_id in goals:
+                goal_data = goals[user_id]
+                user_goal = UserGoal(**goal_data)
 
-        responses.append(
-            format_goal_response(
-                habit_id=str(habit["_id"]),
-                user_id=current_user_id,
-                habit=habit,
-                user_goal=user_goal
-            )
-        )
+                # Filter by active status if requested
+                if active_only and user_goal.goal_status != GoalStatus.ACTIVE:
+                    continue
+
+                responses.append(
+                    format_goal_response(
+                        habit_id=str(habit["_id"]),
+                        user_id=user_id,
+                        habit=habit,
+                        user_goal=user_goal
+                    )
+                )
 
     return responses
 
