@@ -493,3 +493,81 @@ async def delete_habit_draft(
         )
 
     return None
+
+@router.post("/{habit_id}/add-partner")
+async def add_partner_to_habit(
+        habit_id: str,
+        partner_data: dict,  # Contains partner_id
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Add a partner to an existing habit
+    Creates a partnership-habit link
+    """
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+    
+    if not ObjectId.is_valid(habit_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid habit ID format"
+        )
+    
+    # Get the habit
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    # Verify user created this habit
+    if habit["created_by"] != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the habit creator can add partners"
+        )
+    
+    partner_id = partner_data.get("partner_id")
+    
+    if not partner_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="partner_id is required"
+        )
+    
+    # Verify partnership exists between user and partner
+    partnership = await db.partnerships.find_one({
+        "$or": [
+            {"user_id_1": ObjectId(user_id), "user_id_2": ObjectId(partner_id)},
+            {"user_id_1": ObjectId(partner_id), "user_id_2": ObjectId(user_id)}
+        ],
+        "status": "active"
+    })
+    
+    if not partnership:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active partnership found with this user"
+        )
+    
+    # Update habit with partnership_id
+    await db.habits.update_one(
+        {"_id": ObjectId(habit_id)},
+        {
+            "$set": {
+                "partnership_id": str(partnership["_id"]),
+                "status": HabitStatus.PENDING_APPROVAL.value,  # Needs partner approval
+                "updated_at": datetime.utcnow()
+            }
+        }
+    )
+    
+    return {
+        "success": True,
+        "message": "Partner added to habit",
+        "habit_id": habit_id,
+        "partnership_id": str(partnership["_id"]),
+        "status": "pending_approval"
+    }

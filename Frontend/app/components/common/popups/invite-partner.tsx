@@ -1,191 +1,146 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, TouchableWithoutFeedback, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ActivityIndicator, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getBaseUrl } from '../../../../config';
-import PartnerBox from '../ui/partnerBox';
+import { getBaseUrl } from 'config';
 
 interface Partner {
-  id: string;
-  name: string;
-  username: string;
-  email: string;
+    partnership_id: string
+    partner_id: string
+    username: string
+    display_name: string
+    shared_habits: number
 }
 
 interface InvitePartnersProps {
-  visible: boolean;
-  onClose: () => void;
-  onSelect?: (type: any) => void;
+    visible: boolean
+    onClose: () => void
+    onSelectPartner: (partnerId: string, partnerName: string) => void
 }
 
-const InvitePartners: React.FC<InvitePartnersProps> = ({
-  visible,
-  onClose,
-  onSelect
-}) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Partner[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedPartner, setSelectedPartner] = useState<string | null>(null);
+export default function InvitePartners({ visible, onClose, onSelectPartner }: InvitePartnersProps) {
+    const [partners, setPartners] = useState<Partner[]>([]);
+    const [loading, setLoading] = useState(true);
 
-  if (!visible) return null;
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      Alert.alert("Enter Username", "Please enter a username to search.");
-      return;
-    }
-
-    setLoading(true);
-    
-    try {
-      const token = await AsyncStorage.getItem('access_token');
-      if (!token) return;
-
-      const BASE_URL = await getBaseUrl();
-      
-      // Search for users by username
-      const response = await fetch(`${BASE_URL}/api/users/search?username=${searchQuery}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+    useEffect(() => {
+        if (visible) {
+            fetchPartners();
         }
-      });
+    }, [visible]);
 
-      if (response.ok) {
-        const users = await response.json();
-        setSearchResults(users.map((u: any) => ({
-          id: u.id,
-          name: u.display_name || u.username,
-          username: u.username,
-          email: u.email
-        })));
-      } else {
-        setSearchResults([]);
-        Alert.alert("No Results", "No users found with that username.");
-      }
-    } catch (err) {
-      console.error('Search error:', err);
-      Alert.alert("Error", "Unable to search. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchPartners = async () => {
+        setLoading(true);
+        try {
+            const token = await AsyncStorage.getItem('access_token');
+            
+            if (!token) {
+                return;
+            }
 
-  const handleInvite = async (partnerUsername: string) => {
-    setSelectedPartner(partnerUsername);
-    
-    try {
-      const token = await AsyncStorage.getItem('access_token');
-      if (!token) return;
+            const BASE_URL = await getBaseUrl();
+            
+            const response = await fetch(`${BASE_URL}/api/partnerships/all`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                }
+            });
 
-      const BASE_URL = await getBaseUrl();
-      
-      const response = await fetch(`${BASE_URL}/api/partnerships/create`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ partner_username: partnerUsername })
-      });
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Partners:', data);
+                setPartners(data);
+            }
 
-      const data = await response.json();
+        } catch (err: any) {
+            console.error('Error fetching partners:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-      if (response.ok) {
-        Alert.alert(
-          "Partnership Created! 🎉",
-          `You're now partnered with ${data.partnership.partner_username}!`
-        );
+    const handleSelectPartner = (partnerId: string, partnerName: string) => {
+        onSelectPartner(partnerId, partnerName);
         onClose();
-      } else {
-        Alert.alert("Failed", data.detail || "Unable to create partnership.");
-      }
-    } catch (err) {
-      console.error('Invite error:', err);
-      Alert.alert("Error", "Unable to send invite.");
-    } finally {
-      setSelectedPartner(null);
-    }
-  };
+    };
 
-  const renderItem = ({ item }: { item: Partner }) => (
-    <TouchableOpacity
-      className="flex-row items-center justify-between bg-white/20 rounded-lg p-3 mb-2 w-full"
-      onPress={() => handleInvite(item.username)}
-      disabled={selectedPartner === item.username}
-    >
-      <View className="flex-row items-center">
-        <Ionicons name="person-circle-outline" size={24} color="#FFFFFF" className="mr-2" />
-        <View>
-          <Text className="text-white text-base font-semibold">{item.name}</Text>
-          <Text className="text-white/70 text-sm">@{item.username}</Text>
-        </View>
-      </View>
-      {selectedPartner === item.username ? (
-        <ActivityIndicator size="small" color="#ffffff" />
-      ) : (
-        <Ionicons name="add-circle" size={24} color="#FFFFFF" />
-      )}
-    </TouchableOpacity>
-  );
+    const getInitial = (name: string) => {
+        return name ? name.charAt(0).toUpperCase() : '?';
+    };
 
-  return (
-    <TouchableWithoutFeedback onPress={onClose}>
-      <View className="absolute inset-0 justify-center items-center bg-black/50">
-        <TouchableWithoutFeedback>
-          <View className="bg-[#9A84A2] rounded-2xl p-6 w-80 max-h-[500px]">
-            <Text className="text-[#291133] text-[32px] font-semibold mb-4 text-center">
-              Invite Partners
-            </Text>
+    return (
+        <Modal
+            visible={visible}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={onClose}
+        >
+            <View className="flex-1 bg-black/80 justify-center items-center">
+                <View className="bg-[#2D1B4E] rounded-[30px] w-[60%] max-h-[70%] p-6">
+                    {/* Header */}
+                    <View className="flex-row items-center justify-between mb-4">
+                        <Text className="font-wix text-white text-[28px] font-semibold">
+                            Invite Partner
+                        </Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <Text className="font-wix text-white text-[24px]">✕</Text>
+                        </TouchableOpacity>
+                    </View>
 
-            <TextInput
-              className="bg-white/90 rounded-xl p-3 mb-3"
-              placeholder="Search username..."
-              placeholderTextColor="#666"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              autoCapitalize="none"
-            />
+                    <Text className="font-wix text-white/70 text-[14px] mb-4 text-center">
+                        Select a partner for this habit
+                    </Text>
 
-            <TouchableOpacity
-              className="bg-[#291133] py-2 px-6 rounded-xl mb-4"
-              onPress={handleSearch}
-              disabled={loading}
-            >
-              <Text className="text-white font-semibold text-center">
-                {loading ? "SEARCHING..." : "SEARCH"}
-              </Text>
-            </TouchableOpacity>
+                    {/* Partners List */}
+                    {loading ? (
+                        <View className="items-center py-10">
+                            <ActivityIndicator size="large" color="#ffffff" />
+                            <Text className="text-white mt-4 font-wix">Loading partners...</Text>
+                        </View>
+                    ) : partners.length === 0 ? (
+                        <View className="items-center py-10">
+                            <Text className="font-wix text-white/50 text-[16px] text-center">
+                                No partners yet
+                            </Text>
+                            <Text className="font-wix text-white/40 text-[14px] text-center mt-2">
+                                Go to Partnerships to add partners first!
+                            </Text>
+                        </View>
+                    ) : (
+                        <ScrollView className="max-h-[400px]">
+                            {partners.map((partner) => (
+                                <TouchableOpacity
+                                    key={partner.partnership_id}
+                                    onPress={() => handleSelectPartner(partner.partner_id, partner.display_name || partner.username)}
+                                    className="bg-white/85 rounded-[20px] p-4 mb-3 flex-row items-center"
+                                >
+                                    <View 
+                                        className="w-[50px] h-[50px] rounded-full items-center justify-center"
+                                        style={{ backgroundColor: 'rgba(139, 92, 246, 0.8)' }}
+                                    >
+                                        <Text className="text-white text-[20px] font-wix font-bold">
+                                            {getInitial(partner.display_name || partner.username)}
+                                        </Text>
+                                    </View>
+                                    
+                                    <View className="flex-1 ml-3">
+                                        <Text className="font-wix text-gray-800 text-[16px] font-semibold">
+                                            {partner.display_name || partner.username}
+                                        </Text>
+                                        <Text className="font-wix text-gray-600 text-[13px]">
+                                            {partner.shared_habits} shared habit{partner.shared_habits !== 1 ? 's' : ''}
+                                        </Text>
+                                    </View>
 
-            <ScrollView className="mb-4" style={{ maxHeight: 250 }}>
-              {loading ? (
-                <ActivityIndicator size="large" color="#291133" />
-              ) : searchResults.length > 0 ? (
-                searchResults.map((partner) => (
-                  <View key={partner.id}>
-                    {renderItem({ item: partner })}
-                  </View>
-                ))
-              ) : (
-                <Text className="text-white/70 text-center py-4">
-                  Search for users to invite
-                </Text>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity
-              className="bg-white/20 py-2 px-8 rounded-xl"
-              onPress={onClose}
-            >
-              <Text className="text-white font-semibold text-center">CLOSE</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableWithoutFeedback>
-      </View>
-    </TouchableWithoutFeedback>
-  );
-};
-
-export default InvitePartners;
+                                    <View className="rounded-[12px] px-5 py-2.5" style={{ backgroundColor: 'rgba(139, 92, 246, 0.8)' }}>
+                                        <Text className="font-wix text-white text-[12px] font-bold">
+                                            SELECT
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    )}
+                </View>
+            </View>
+        </Modal>
+    );
+}
