@@ -12,7 +12,7 @@ from app.models.dashboard import (
 from app.utils.security import decode_access_token
 from config.database import get_database
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -51,7 +51,7 @@ async def get_dashboard_home(
     - User greeting info
     - All habits with current streaks
     - Today's check-in status for each habit
-    - Partner's recent activity (placeholder for now)
+    - Partner's recent activity (last 24-48 hours)
     - Partnership summary
     """
     # 1. Get current user ID from token
@@ -139,16 +139,44 @@ async def get_dashboard_home(
         for habit in habits
     ]
     
-    # 11. Partner activity - PLACEHOLDER
-    # TODO: Implement partner activity query
-    # Query partner's recent check-ins from last 24-48 hours
-    # Filters needed:
-    #   - user_id = partner_id (not current user)
-    #   - logged_at >= (datetime.utcnow() - timedelta(days=2))
-    #   - completed = True
-    # Sort by logged_at DESC, limit to 5-10 results
-    # Join with habits collection to get habit_name
+    # 11. Partner activity - Query partner's recent check-ins from last 24-48 hours
+    hours_ago_48 = datetime.utcnow() - timedelta(hours=48)
+    
+    # Query partner's completed habit logs from last 48 hours
+    partner_logs = await db.habit_logs.find({
+        "user_id": partner_id,
+        "logged_at": {"$gte": hours_ago_48},
+        "completed": True
+    }).sort("logged_at", -1).limit(10).to_list(10)
+    
+    # If we have partner logs, fetch the corresponding habit names
     partner_progress: List[PartnerActivityItemResponse] = []
+    
+    if partner_logs:
+        # Get unique habit IDs from the logs
+        partner_habit_ids = list(set(log["habit_id"] for log in partner_logs))
+        
+        # Fetch habits to get names
+        partner_habits = await db.habits.find({
+            "_id": {"$in": [ObjectId(hid) for hid in partner_habit_ids]}
+        }).to_list(100)
+        
+        # Create a lookup map: habit_id -> habit_name
+        habits_lookup = {
+            str(habit["_id"]): habit["habit_name"] 
+            for habit in partner_habits
+        }
+        
+        # Build the partner progress list
+        partner_progress = [
+            PartnerActivityItemResponse(
+                partner_name=partner.get("display_name", partner["username"]),
+                habit_name=habits_lookup.get(log["habit_id"], "Unknown Habit"),
+                checked_in_at=log["logged_at"],
+                hours_ago=calculate_hours_ago(log["logged_at"])
+            )
+            for log in partner_logs
+        ]
     
     # 12. Build partnership summary
     partnership_summary = PartnershipSummaryResponse(

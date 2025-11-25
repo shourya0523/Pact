@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, Image, ActivityIndicator, ScrollView, RefreshControl, Alert, TouchableOpacity, Dimensions } from "react-native";
+import { View, Text, Image, ActivityIndicator, ScrollView, RefreshControl, Alert, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBaseUrl } from "../../../config";
 import HomeUI from "../../components/common/ui/home-ui";
 import HabitSelect from "../../components/common/ui/habitSelect";
 import ProgressCheck from "../../components/common/ui/progressCheck";
-import WhiteParticles from "../../components/space/whiteStarsParticlesBackground";
+import PurpleParticles from "../../components/space/purpleStarsParticlesBackground";
 import StreakIndicator from "../../components/habit/StreakIndicator";
-import { scaleFont, scaleSize } from "../../utils/constants";
 
 interface DashboardData {
   user: {
@@ -45,7 +44,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const screenWidth = Dimensions.get('window').width;
 
   const fetchDashboardData = async () => {
     try {
@@ -162,8 +160,8 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <View className="flex-1 relative items-center justify-center">
-        <WhiteParticles />
+      <View className="flex-1 bg-black items-center justify-center">
+        <PurpleParticles />
         <ActivityIndicator size="large" color="#ffffff" />
         <Text className="text-white mt-4">Loading Dashboard...</Text>
       </View>
@@ -172,8 +170,8 @@ export default function HomePage() {
 
   if (!dashboardData) {
     return (
-      <View className="flex-1 relative items-center justify-center px-6">
-        <WhiteParticles />
+      <View className="flex-1 bg-black items-center justify-center px-6">
+        <PurpleParticles />
         <Text className="text-white text-xl mb-4">⚠️ Failed to load dashboard</Text>
         <TouchableOpacity onPress={() => fetchDashboardData()}>
           <Text className="text-blue-400 text-lg underline">Tap to Retry</Text>
@@ -192,43 +190,34 @@ export default function HomePage() {
     <View className="flex-1 bg-black">
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={true}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
         }
       >
-        <View className="relative">
-          <WhiteParticles />
+        <View className="flex-1 relative">
+          <PurpleParticles />
           
           <Image
             source={require("../../images/space/nebula.png")}
-            className="absolute top-0 right-0"
-            style={{ width: Math.min(screenWidth, 500), height: Math.min(screenWidth * 0.84, 420) }}
+            className="absolute top-0 left-0"
+            style={{ width: 500, height: 420 }}
             resizeMode="cover"
           />
-          
-          <Image
-            source={require("../../../assets/images/favicon.png")}
-            className="absolute top-0 right-0"
-            style={{ width: scaleSize(150), height: scaleSize(150), opacity: 0.8 }}
-            resizeMode="contain"
-          />
 
-          <View className="w-full bg-white/10 pt-16 pb-6 px-4">
-            <Text className="text-white font-wix" style={{ fontSize: scaleFont(36) }}>
+          <View className="w-full bg-white/10 pt-12 pb-6 px-6">
+            <Text className="text-white text-[36px] font-wix">
               Hello, {dashboardData.user.display_name || dashboardData.user.username}!
             </Text>
           </View>
 
           <View className="mt-6 px-6">
-            <Text className="text-white font-semibold mb-1" style={{ fontSize: scaleFont(28) }}>Streaks</Text>
+            <Text className="text-white text-[28px] font-semibold mb-1">Streaks</Text>
             <View className="h-[1px] mb-2 bg-white" />
             
             {dashboardData.streaks.length > 0 ? (
               dashboardData.streaks.map((item) => (
                 <View key={item.habit_id} className="flex-row justify-between mb-2">
-                  <Text className="text-white ml-2" style={{ fontSize: scaleFont(18) }}>{item.habit_name}</Text>
+                  <Text className="text-white text-[18px] ml-2">{item.habit_name}</Text>
                   <StreakIndicator currentStreak={item.current_streak} isActive={true} />
                 </View>
               ))
@@ -243,9 +232,9 @@ export default function HomePage() {
           </View>
 
           <View className="mt-8 px-6">
-            <Text className="text-white font-semibold" style={{ fontSize: scaleFont(28) }}>Check In</Text>
+            <Text className="text-white text-[28px] font-semibold">Check In</Text>
             <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-white" style={{ fontSize: scaleFont(22) }}>Today's Goals</Text>
+              <Text className="text-white text-[22px]">Today's Goals</Text>
               <TouchableOpacity onPress={() => router.push('/screens/dashboard/HabitViews')}>
                 <Text className="text-gray-300 text-xs">View All</Text>
               </TouchableOpacity>
@@ -270,7 +259,7 @@ export default function HomePage() {
           </View>
 
           <View className="mt-8 px-6 mb-20">
-            <Text className="text-white font-semibold mb-3" style={{ fontSize: scaleFont(28) }}>Partner Progress</Text>
+            <Text className="text-white text-[28px] font-semibold mb-3">Partner Progress</Text>
             
             {dashboardData.partner_progress.length > 0 ? (
               dashboardData.partner_progress.map((activity, index) => (

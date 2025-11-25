@@ -36,14 +36,20 @@ async def get_current_user_id(credentials: HTTPAuthorizationCredentials = Depend
 
 def format_habit_response(habit: dict) -> HabitResponse:
     """Helper to format habit dict into HabitResponse"""
+    # Convert goal to string if it's an integer
+    goal_value = habit.get("goal")
+    if isinstance(goal_value, int):
+        goal_value = str(goal_value)
+    
     return HabitResponse(
         id=str(habit["_id"]),
         habit_name=habit["habit_name"],
         habit_type=habit["habit_type"],
         category=habit.get("category", habit.get("habit_category", "")),
         description=habit.get("description", habit.get("habit_description")),
-        goal=habit.get("goal"),
+        goal=goal_value,
         count_checkins=habit.get("count_checkins", 0),
+        current_streak=habit.get("current_streak", 0),
         frequency=habit.get("frequency", "daily"),
         partnership_id=habit.get("partnership_id"),
         status=habit["status"],

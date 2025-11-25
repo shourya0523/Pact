@@ -15,12 +15,15 @@ database = None
 async def connect_to_mongo():
     global client, database
     try:
+        import certifi
+        
         client = AsyncIOMotorClient(
             MONGODB_URL,
             server_api=ServerApi('1'),
             serverSelectionTimeoutMS=5000,
             connectTimeoutMS=10000,
-            socketTimeoutMS=10000
+            socketTimeoutMS=10000,
+            tlsCAFile=certifi.where()
         )
 
         # Ping to verify connection

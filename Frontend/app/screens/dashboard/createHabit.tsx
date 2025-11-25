@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, Image, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -159,7 +159,11 @@ export default function StudyHabitCreation() {
     }
 
     return (
-        <View className="flex-1 relative">
+        <KeyboardAvoidingView 
+            className="flex-1 relative"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <WhiteParticles />
             <Image
                 source={require('app/images/space/spark.png')}
@@ -173,7 +177,13 @@ export default function StudyHabitCreation() {
                 style={{ height: 380, left: 260, bottom: 600 }}
                 resizeMode="cover"
             />
-            <View className="flex-1 justify-center items-center">
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 140, paddingTop: 20 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                <View className="flex-1 justify-center items-center">
                 <Text className="font-wix text-white text-[38px] mt-12 text-center">Create Habit</Text>
                 <TextInput
                     className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-12"
@@ -231,8 +241,13 @@ export default function StudyHabitCreation() {
                         </Text>
                         <PurpleButton 
                             onPress={() => setGoalPopupVisible(true)}
-                            text="SET"
+                            text={goalType ? goalType.toUpperCase() : "SET"}
                         />
+                        {goalType && (
+                            <Text className="text-white/70 text-xs mt-2">
+                                {goalType === 'completion' ? 'Completion goal selected' : 'Frequency goal selected'}
+                            </Text>
+                        )}
                     </View>
                 </View>
                 <Text className="font-wix text-white text-[24px] text-center mt-6">Repeat</Text>
@@ -275,13 +290,17 @@ export default function StudyHabitCreation() {
                 {loading && (
                     <ActivityIndicator size="large" color="#ffffff" />
                 )}
-            </View>
+                </View>
+            </ScrollView>
             <GoalType
                 visible={goalPopupVisible}
                 onClose={() => setGoalPopupVisible(false)}
                 onSelect={(type) => {
-                setGoalType(type)
-                setGoalPopupVisible(false)
+                    console.log('🎯 Goal type selected:', type)
+                    setGoalType(type)
+                    setGoalPopupVisible(false)
+                    // Note: Navigation to goal screen will happen after habit creation
+                    // Goal type is saved in state and will be used when habit is created
                 }}
             />
             <InvitePartners
@@ -293,6 +312,6 @@ export default function StudyHabitCreation() {
                 console.log('Partner selected:', partnerName, partnerId);
                 }}
             />
-        </View>
+        </KeyboardAvoidingView>
     )
 }

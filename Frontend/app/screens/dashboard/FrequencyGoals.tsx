@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, Pressable, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -37,8 +37,9 @@ export default function FrequencyGoals() {
             const BASE_URL = await getBaseUrl()
 
             // Check if user already has a goal for this habit
+            const userId = user.id || user._id || user.user_id
             const goalResponse = await fetch(
-                `${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal`,
+                `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -98,12 +99,20 @@ export default function FrequencyGoals() {
             }
 
             const user = JSON.parse(userData)
+            const userId = user.id || user._id || user.user_id
+            
+            if (!userId) {
+                Alert.alert("Error", "Unable to get user ID. Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+            
             const BASE_URL = await getBaseUrl()
             
             // DEBUG LOGGING
             console.log('🐛 DEBUG INFO:')
             console.log('habitId:', habitId)
-            console.log('user.id:', user.id)
+            console.log('userId:', userId)
             console.log('BASE_URL:', BASE_URL)
             
             // Map frequency to backend format
@@ -125,7 +134,7 @@ export default function FrequencyGoals() {
 
             console.log('Creating frequency goal:', goalData)
 
-            const response = await fetch(`${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal/frequency`, {
+            const response = await fetch(`${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal/frequency`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -164,7 +173,11 @@ export default function FrequencyGoals() {
     }
 
     return (
-        <View className="flex-1 relative">
+        <KeyboardAvoidingView 
+            className="flex-1 relative"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <WhiteParticles />
             
             {/* Back button */}
@@ -172,8 +185,14 @@ export default function FrequencyGoals() {
                 <BackwardButton />
             </View>
 
-            {/* Main content */}
-            <View className="flex-1 justify-start items-center pt-20 px-6">
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 140, paddingTop: 20 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Main content */}
+                <View className="flex-1 justify-start items-center pt-20 px-6">
                 {/* Title */}
                 <Text className="font-wix text-white text-[38px] text-center max-w-[80%]">
                     Create Frequency Goal
@@ -267,7 +286,8 @@ export default function FrequencyGoals() {
                         <ActivityIndicator size="large" color="#ffffff" />
                     </View>
                 )}
-            </View>
+                </View>
+            </ScrollView>
 
             {/* Buttons fixed at bottom */}
             <View className="absolute bottom-12 w-full px-6 flex-row justify-center" style={{ gap: 16 }}>
@@ -284,6 +304,6 @@ export default function FrequencyGoals() {
                     disabled={loading}
                 />
             </View>
-        </View>
+        </KeyboardAvoidingView>
     )
 }

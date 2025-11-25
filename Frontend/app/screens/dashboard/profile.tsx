@@ -1,77 +1,329 @@
-import React from 'react'
-import { View, Text, Pressable, Switch } from 'react-native'
+import React, { useState, useEffect } from 'react'
+import { View, Text, Pressable, Switch, Alert, TextInput, ActivityIndicator, Image, TouchableOpacity, ScrollView } from 'react-native'
 import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground'
 import { useRouter } from 'expo-router'
+import AsyncStorage from '@react-native-async-storage/async-storage'
+import { getBaseUrl } from '../../../config'
+import { Ionicons } from '@expo/vector-icons'
 
 export default function Profile() {
     const router = useRouter()
-    const [notifications, setNotifications] = React.useState({
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+    const [displayName, setDisplayName] = useState('')
+    const [profilePhotoUrl, setProfilePhotoUrl] = useState('')
+    const [showPhotoInput, setShowPhotoInput] = useState(false)
+    const [notifications, setNotifications] = useState({
         nudges: false,
         partnerRequests: false,
         habitReminders: false,
         goalReminders: false,
     })
 
-    const toggleNotification = (key) => {
+    useEffect(() => {
+        loadUserProfile()
+    }, [])
+
+    const loadUserProfile = async () => {
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            if (!token) {
+                router.replace('/screens/auth/LoginScreen')
+                return
+            }
+
+            const BASE_URL = await getBaseUrl()
+            
+            // Load user profile
+            const userResponse = await fetch(`${BASE_URL}/users/me`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (userResponse.ok) {
+                const userData = await userResponse.json()
+                console.log('📥 Loaded user data:', userData)
+                setDisplayName(userData.display_name || userData.username)
+                setProfilePhotoUrl(userData.profile_photo_url || '')
+            }
+            
+            // Load notification preferences
+            const notifResponse = await fetch(`${BASE_URL}/users/me/notifications`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            
+            if (notifResponse.ok) {
+                const notifData = await notifResponse.json()
+                console.log('📥 Loaded notification preferences:', notifData)
+                
+                const prefs = notifData.notification_preferences || {}
+                setNotifications({
+                    nudges: prefs.nudges || false,
+                    partnerRequests: prefs.partner_requests || false,
+                    habitReminders: prefs.habit_reminders || false,
+                    goalReminders: prefs.goal_reminders || false,
+                })
+            }
+        } catch (error) {
+            console.error('Error loading profile:', error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const toggleNotification = (key: string) => {
         setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
+    }
+
+    const handleSave = async () => {
+        if (!displayName.trim()) {
+            Alert.alert('Error', 'Display name cannot be empty')
+            return
+        }
+
+        setSaving(true)
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            if (!token) {
+                Alert.alert('Error', 'Not authenticated')
+                return
+            }
+
+            const BASE_URL = await getBaseUrl()
+            
+            console.log('💾 Saving profile:', {
+                display_name: displayName.trim(),
+                profile_photo_url: profilePhotoUrl.trim(),
+                notifications
+            })
+            
+            // Update profile (display name and photo)
+            const profileResponse = await fetch(`${BASE_URL}/users/me`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    display_name: displayName.trim(),
+                    profile_photo_url: profilePhotoUrl.trim() || null
+                })
+            })
+
+            console.log('📡 Profile save response status:', profileResponse.status)
+
+            if (!profileResponse.ok) {
+                const errorData = await profileResponse.json()
+                console.error('❌ Profile save failed:', errorData)
+                Alert.alert('Error', errorData.detail || 'Failed to update profile')
+                setSaving(false)
+                return
+            }
+            
+            // Update notification preferences
+            const notifResponse = await fetch(`${BASE_URL}/users/me/notifications`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    notification_preferences: {
+                        nudges: notifications.nudges,
+                        partner_requests: notifications.partnerRequests,
+                        habit_reminders: notifications.habitReminders,
+                        goal_reminders: notifications.goalReminders
+                    }
+                })
+            })
+            
+            console.log('📡 Notifications save response status:', notifResponse.status)
+            
+            if (notifResponse.ok) {
+                const userData = await profileResponse.json()
+                console.log('✅ Profile saved:', userData)
+                
+                // Update local storage
+                await AsyncStorage.setItem('user_data', JSON.stringify(userData))
+                
+                Alert.alert('Success', 'Profile and notification preferences updated!', [
+                    {
+                        text: 'OK',
+                        onPress: () => router.back()
+                    }
+                ])
+            } else {
+                const errorData = await notifResponse.json()
+                console.error('❌ Notification save failed:', errorData)
+                Alert.alert('Warning', 'Profile saved but notifications failed to update')
+            }
+        } catch (error) {
+            console.error('Error saving profile:', error)
+            Alert.alert('Error', 'Failed to save changes')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleSignOut = async () => {
+        try {
+            await AsyncStorage.clear()
+            console.log('✅ Signed out successfully - AsyncStorage cleared')
+            router.replace('/screens/auth/WelcomeScreen')
+        } catch (error) {
+            console.error('Sign out error:', error)
+            Alert.alert('Error', 'Failed to sign out. Please try again.')
+        }
+    }
+
+    if (loading) {
+        return (
+            <View className="flex-1 relative bg-[#1a0033] items-center justify-center">
+                <PurpleParticles />
+                <ActivityIndicator size="large" color="#ffffff" />
+                <Text className="text-white mt-4">Loading Profile...</Text>
+            </View>
+        )
     }
 
     return (
         <View className="flex-1 relative bg-[#1a0033]">
             <PurpleParticles />
 
-            {/* Top text container */}
-            <View className="pt-20 w-full">
-                <Text className="text-white font-wix text-[36px] ml-12">
-                    Set Up
-                </Text>
-                <Text className="text-white font-wix text-[36px] mt-2 ml-12">
-                    Your Profile
-                </Text>
-            </View>
+            {/* Back Button */}
+            <TouchableOpacity 
+                onPress={() => router.back()}
+                className="absolute top-12 left-6 z-20"
+                style={{ zIndex: 20 }}
+            >
+                <Ionicons name="arrow-back" size={28} color="white" />
+            </TouchableOpacity>
 
-            {/* Main content */}
-            <View className="flex-1 justify-start items-center mt-6 px-6">
-                {/* Display Name Box */}
-                <View className="w-[90%] bg-white/85 rounded-2xl mt-12 px-6 py-4 flex-row justify-between items-center">
-                    <Text className="text-black font-wix text-[16px]">John Doe</Text>
-                    <Text className="text-green-500 font-bold text-[20px]">✔</Text>
-                </View>
-
-                {/* Push Notifications Box */}
-                <View className="w-[90%] bg-white/85 rounded-2xl mt-6 px-6 py-4">
-                    <Text className="text-gray-700 font-wix text-[16px] mb-3 text-center">
-                        Push Notifications
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 140 }}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Top text container */}
+                <View className="pt-20 w-full">
+                    <Text className="text-white font-wix text-[36px] ml-12">
+                        Edit Profile
                     </Text>
-                    {[
-                        { key: 'nudges', label: 'Nudges' },
-                        { key: 'partnerRequests', label: 'Partner Requests' },
-                        { key: 'habitReminders', label: 'Habit Reminders' },
-                        { key: 'goalReminders', label: 'Goal Reminders' },
-                    ].map((item) => (
-                        <View
-                            key={item.key}
-                            className="flex-row justify-between items-center mb-3"
-                        >
-                            <Text className="text-gray-700 font-wix text-[16px]">{item.label}</Text>
-                            <Switch
-                                value={notifications[item.key]}
-                                onValueChange={() => toggleNotification(item.key)}
-                                trackColor={{ false: "#ccc", true: "#7C4DFF" }}
-                                thumbColor={notifications[item.key] ? "#fff" : "#fff"}
-                            />
-                        </View>
-                    ))}
                 </View>
-            </View>
 
-            {/* Edit Account Button fixed at bottom */}
+                {/* Main content */}
+                <View className="flex-1 justify-start items-center mt-6 px-6">
+                    {/* Profile Photo Section */}
+                    <View className="items-center mb-8">
+                        <View className="relative">
+                            {profilePhotoUrl ? (
+                                <Image 
+                                    source={{ uri: profilePhotoUrl }}
+                                    className="w-32 h-32 rounded-full border-4 border-white"
+                                    onError={() => {
+                                        console.log('❌ Failed to load image:', profilePhotoUrl)
+                                        Alert.alert('Error', 'Failed to load image. Check the URL.')
+                                    }}
+                                />
+                            ) : (
+                                <View className="w-32 h-32 rounded-full border-4 border-white bg-white/20 items-center justify-center">
+                                    <Ionicons name="person" size={64} color="white" />
+                                </View>
+                            )}
+                            
+                            <TouchableOpacity 
+                                className="absolute bottom-0 right-0 bg-white rounded-full p-2"
+                                onPress={() => setShowPhotoInput(!showPhotoInput)}
+                            >
+                                <Ionicons name={showPhotoInput ? "checkmark" : "add"} size={24} color="#1a0033" />
+                            </TouchableOpacity>
+                        </View>
+                        
+                        {showPhotoInput && (
+                            <View className="w-full mt-4">
+                                <TextInput
+                                    value={profilePhotoUrl}
+                                    onChangeText={setProfilePhotoUrl}
+                                    placeholder="Enter image URL (https://...)"
+                                    placeholderTextColor="#999"
+                                    className="bg-white/85 rounded-2xl px-4 py-3 text-black"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                />
+                                <Text className="text-white/60 text-xs mt-2 text-center">
+                                    Paste an image URL from the web
+                                </Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {/* Display Name Input */}
+                    <View className="w-[90%] bg-white/85 rounded-2xl px-6 py-4 flex-row justify-between items-center">
+                        <TextInput
+                            value={displayName}
+                            onChangeText={setDisplayName}
+                            placeholder="Display name"
+                            placeholderTextColor="#999"
+                            className="flex-1 text-black font-wix text-[16px]"
+                        />
+                        {displayName.trim() && (
+                            <Text className="text-green-500 font-bold text-[20px]">✔</Text>
+                        )}
+                    </View>
+
+                    {/* Push Notifications Box */}
+                    <View className="w-[90%] bg-white/85 rounded-2xl mt-6 px-6 py-4">
+                        <Text className="text-gray-700 font-wix text-[16px] mb-3 text-center">
+                            Push Notifications
+                        </Text>
+                        {[
+                            { key: 'nudges', label: 'Nudges' },
+                            { key: 'partnerRequests', label: 'Partner Requests' },
+                            { key: 'habitReminders', label: 'Habit Reminders' },
+                            { key: 'goalReminders', label: 'Goal Reminders' },
+                        ].map((item) => (
+                            <View
+                                key={item.key}
+                                className="flex-row justify-between items-center mb-3"
+                            >
+                                <Text className="text-gray-700 font-wix text-[16px]">{item.label}</Text>
+                                <Switch
+                                    value={notifications[item.key as keyof typeof notifications]}
+                                    onValueChange={() => toggleNotification(item.key)}
+                                    trackColor={{ false: "#ccc", true: "#7C4DFF" }}
+                                    thumbColor={notifications[item.key as keyof typeof notifications] ? "#fff" : "#fff"}
+                                />
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            </ScrollView>
+
+            {/* Save and Sign Out Buttons */}
             <View className="absolute bottom-5 w-full px-6">
                 <Pressable
-                    className="w-[85%] bg-white rounded-full py-4 items-center mx-auto mt-4"
-                    onPress={() => console.log('Edit Account Pressed')}
+                    className="w-[85%] bg-white rounded-full py-4 items-center mx-auto"
+                    onPress={handleSave}
+                    disabled={saving}
                 >
-                    <Text className="text-black font-wix text-[18px]">EDIT ACCOUNT</Text>
+                    {saving ? (
+                        <ActivityIndicator color="#000" />
+                    ) : (
+                        <Text className="text-black font-wix text-[18px]">SAVE</Text>
+                    )}
+                </Pressable>
+                
+                {/* Sign Out Button */}
+                <Pressable
+                    className="w-[85%] bg-red-600 rounded-full py-4 items-center mx-auto mt-3"
+                    onPress={handleSignOut}
+                >
+                    <Text className="text-white font-wix text-[18px]">SIGN OUT</Text>
                 </Pressable>
             </View>
         </View>

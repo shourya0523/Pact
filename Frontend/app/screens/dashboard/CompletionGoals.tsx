@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
@@ -61,8 +61,9 @@ export default function Goals() {
             console.log('✅ Habit exists:', habitData.habit_name)
 
             // Check if user already has a goal for this habit
+            const userId = user.id || user._id || user.user_id
             const goalResponse = await fetch(
-                `${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal`,
+                `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -111,11 +112,19 @@ export default function Goals() {
             }
 
             const user = JSON.parse(userData)
+            const userId = user.id || user._id || user.user_id
+            
+            if (!userId) {
+                Alert.alert("Error", "Unable to get user ID. Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+            
             const BASE_URL = await getBaseUrl()
             
             console.log('🐛 DEBUG INFO:')
             console.log('habitId:', habitId)
-            console.log('user.id:', user.id)
+            console.log('userId:', userId)
             console.log('BASE_URL:', BASE_URL)
 
             const goalData = {
@@ -123,7 +132,7 @@ export default function Goals() {
                 goal_name: goalName.trim()
             }
 
-            const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${user.id}/goal/completion`
+            const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal/completion`
             console.log('📡 Full URL:', url)
             console.log('📦 Goal Data:', goalData)
 
@@ -170,14 +179,24 @@ export default function Goals() {
     }
 
     return (
-        <View className="flex-1 relative">
+        <KeyboardAvoidingView 
+            className="flex-1 relative"
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
             <WhiteParticles />
             {/* Back button */}
             <View className="absolute mt-6 left-8 z-50">
                 <BackwardButton />
             </View>
-            {/* Main content */}
-            <View className="flex-1 justify-start items-center pt-20 px-6">
+            <ScrollView 
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 140, paddingTop: 20 }}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Main content */}
+                <View className="flex-1 justify-start items-center pt-20 px-6">
                 {/* Title */}
                 <Text className="font-wix text-white text-[38px] text-center max-w-[80%]">
                     Create Completion Goal
@@ -225,7 +244,8 @@ export default function Goals() {
                         <ActivityIndicator size="large" color="#ffffff" />
                     </View>
                 )}
-            </View>
+                </View>
+            </ScrollView>
             <View className="absolute bottom-12 w-full px-6 flex-row justify-center" style={{ gap: 16 }}>
                 <GreyButton
                     onPress={handleCreate}
@@ -240,6 +260,6 @@ export default function Goals() {
                     disabled={loading}
                 />
             </View>
-        </View>
+        </KeyboardAvoidingView>
     )
 }
