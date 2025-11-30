@@ -1,40 +1,67 @@
 import React from 'react'
-import { ScrollView, FlatList, Text, View } from 'react-native'
+import { View, ScrollView, Text } from 'react-native'
+import BackwardButton from '@/components/ui/backwardButton'
+import Notification from '@/components/ui/notification'
+import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground'
 import { useRouter } from 'expo-router'
-import GradientBackground from 'app/components/space/whiteStarsParticlesBackground'
 
-const NOTIFICATIONS = [
-    { id: '1', title: "Hey, it's time for lunch.", timeStatus: "About 1 minute ago"},
-    { id: '2', title: "Don't miss your lower body workout", timeStatus: "About 4 hours ago"},
-    { id: '3', title: "Hey, let's add some meals for your b...", timeStatus: "About 1 week ago"},
-    { id: '4', title: "Congratulations! You have finished...", timeStatus: "About 2 weeks ago"},
-    { id: '5', title: "Hey, it's time for lunch.", timeStatus: "5 May"},
-    { id: '6', title: "You missed your lower bod...", timeStatus: "8 April"}
-]
+// test data
+const notificationsData = [
+    {
+        id: '1',
+        title: 'New connection request from Sarah Connor',
+        time: '5 min ago',
+        type: 'request' as const, 
+    },
+    {
+        id: '2',
+        title: 'Check-in required for Stellar Project',
+        time: '1 hour ago',
+        type: 'checkin' as const,
+    },
+    {
+        id: '3',
+        title: 'Upcoming meeting with Kyle Reese in 15 mins',
+        time: '2 hours ago',
+        type: 'reminder' as const,
+    },
+    {
+        id: '4',
+        title: 'John Doe accepted your request.',
+        time: 'Yesterday',
+        type: 'checkin' as const,
+    },
+];
 
 export default function Notifications() {
-    const router = useRouter()
+    const router = useRouter();
 
     return (
-        <GradientBackground>
-            <ScrollView
-                className="flex-1"
-                contentContainerStyle={{ alignItems: 'center' }}
-            >
-                <Text className="text-white text-[28px] m-4">NOTIFICATIONS</Text>
-                <FlatList
-                    data={NOTIFICATIONS}
-                    renderItem={({ item }) => (
-                        <View className="p-3 my-2">
-                            <Text className="text-white font-semibold">{item.title}</Text>
-                            <Text className="text-white/70">{item.timeStatus}</Text>
-                        </View>
-                    )}
-                    ItemSeparatorComponent={() => (
-                        <View className="h-px bg-white/20" />
-                    )}
-                />
+        <View className="flex-1">
+            <ScrollView className="flex-1">
+                <View className="relative">
+                    <PurpleParticles />
+
+                    <View className="absolute mt-6 left-8 z-50">
+                        <BackwardButton />
+                    </View>
+
+                    <View className="mb-16">
+                        <Text className="font-wix text-white text-[38px] mt-12 text-center">Notifications</Text>
+                    </View>
+                </View>
+
+                <View className="mx-4 rounded-xl p-2 mb-8">
+                    {notificationsData.map((notif) => (
+                        <Notification 
+                            key={notif.id}
+                            title={notif.title}
+                            time={notif.time}
+                            type={notif.type}
+                        />
+                    ))}
+                </View>
             </ScrollView>
-        </GradientBackground>
+        </View>
     )
 }
