@@ -5,7 +5,7 @@ import LightGreyButton from './lightGreyButton';
 interface NotificationProps {
     title: string;
     time: string;
-    type: 'checkin' | 'request' | 'reminder';
+    type: 'nudge' | 'request' | 'habit-reminder' | 'goal-reminder';
 
     onCheckinPress?: () => void;
     onAcceptPress?: () => void;
@@ -25,7 +25,7 @@ const notification: React.FC<NotificationProps> = ({
 }) => {
     const renderButtonsOnType = () => {
         switch (type) {
-            case 'checkin':
+            case 'nudge':
                 return (
                     <LightGreyButton
                         onPress={() => {
@@ -66,7 +66,12 @@ const notification: React.FC<NotificationProps> = ({
                         </Pressable>
                     </>
                 )
-            case 'reminder':
+            case 'habit-reminder':
+                return (
+                    <>
+                    </>
+                )
+            case 'goal-reminder':
                 return (
                     <>
                     </>
