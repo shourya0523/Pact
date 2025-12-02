@@ -199,6 +199,37 @@ class NotificationService:
             data={"goal_name": goal_name},
             partnership_id=partnership_id
         )
+    
+    async def send_goal_milestone_notification(
+            self,
+    user_id: str,
+    goal_name: str,
+    milestone_percentage: int,
+    habit_name: str,
+    partnership_id: Optional[str] = None
+    ):
+        """
+        Send notif when user reaches a goal 
+        
+        takes in:
+            user_id: User to notify
+            goal_name: Name of the goal
+            milestone_percentage: Percentage reached 
+            habit_name: Name of the habit
+            partnership_id: Optional partnership ID
+        """
+        await self.send_notification(
+            user_id=user_id,
+            notification_type="goal_reminder",
+            title=f"🎯 Goal Milestone: {milestone_percentage}%!",
+            description=f"You've reached {milestone_percentage}% of your goal '{goal_name}' for {habit_name}!",
+            data={
+                "goal_name": goal_name,
+                "milestone_percentage": milestone_percentage,
+                "habit_name": habit_name
+            },
+            partnership_id=partnership_id
+        )
 
 
 # Global notification service instance
