@@ -14,6 +14,7 @@ from bson import ObjectId
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from app.services.notification_service import notification_service
 
 router = APIRouter(tags=["Habit Logging"])
 security = HTTPBearer()
@@ -125,6 +126,30 @@ async def log_habit_completion(
     # Get current streak value from persistent cache
     current_streak_doc = await db.streaks.find_one({"habit_id": ObjectId(habit_id)})
     current_streak_val = 0 if not current_streak_doc else current_streak_doc.get("current_streak", 0)
+
+    # Send notif to partner when user checks in
+    if log_data.completed and partnership_id:
+        # get partner's info
+        partnership = await db.partnerships.find_one({"_id": partnership_id})
+        if partnership:
+            # find who the partner is
+            partner_id = None
+            if str(partnership["user_id_1"]) == user_id:
+                partner_id = str(partnership["user_id_2"])
+            else:
+                partner_id = str(partnership["user_id_1"])
+            
+            # Get current user's info for notification
+            current_user = await db.users.find_one({"_id": ObjectId(user_id)})
+            current_username = current_user.get("username", "Your partner") if current_user else "Your partner"
+            
+            # send notif to partner
+            await notification_service.send_partner_checkin_notification(
+                user_id=partner_id,
+                partner_username=current_username,
+                habit_name=habit["habit_name"],
+                partnership_id=str(partnership_id)
+            )
 
     # Return response
     return HabitLogResponse(
