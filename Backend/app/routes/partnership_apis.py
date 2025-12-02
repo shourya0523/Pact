@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.services.notification_service import notification_service
 from app.models.partnership_model import (
     PartnershipCreate,
     PartnershipStatus,
@@ -205,6 +206,13 @@ async def send_partnership_invite(
 
     # Fetch sender info once for response
     sender = await db.users.find_one({"_id": ObjectId(sender_id)})
+
+    # Send notif to receiver about new partnership request
+    await notification_service.send_partner_request_notification(
+        receiver_id=receiver_id,
+        sender_id=sender_id,
+        sender_username=sender["username"]
+    )
 
     return PartnerRequestResponse(
         id=str(result.inserted_id),
