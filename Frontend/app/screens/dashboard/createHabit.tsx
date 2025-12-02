@@ -18,7 +18,10 @@ export default function StudyHabitCreation() {
     const [description, setDescription] = useState('')
     const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly'>('daily')
     const [partnershipId, setPartnershipId] = useState<string | null>(null)
+    const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null)
+    const [selectedPartnerName, setSelectedPartnerName] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const [createdHabitId, setCreatedHabitId] = useState<string | null>(null)
 
     const [goalPopupVisible, setGoalPopupVisible] = useState(false)
     const [goalType, setGoalType] = useState<'completion' | 'frequency' | null>(null)
@@ -58,104 +61,98 @@ export default function StudyHabitCreation() {
     }
 
     const handleCreate = async () => {
-        if (!habitName.trim()) {
-            Alert.alert("Missing Habit Name", "Please enter a habit name.")
-            return
-        }
-
-        if (!partnershipId) {
-            Alert.alert(
-                "No Partnership",
-                "You need a partner to create habits. Would you like to invite one?",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    { text: "Invite Partner", onPress: () => router.push('/screens/dashboard/InvitePartners') }
-                ]
-            )
-            return
-        }
-
-        setLoading(true)
-
-        try {
-            const token = await AsyncStorage.getItem('access_token')
-            
-            if (!token) {
-                Alert.alert("Not Authenticated", "Please log in again.")
-                router.replace("/screens/auth/LoginScreen")
-                return
-            }
-
-            const BASE_URL = await getBaseUrl()
-            
-            const habitData = {
-                habit_name: habitName.trim(),
-                habit_type: habitType,
-                category: 'productivity',
-                description: description.trim() || undefined,
-                frequency: frequency,
-                partnership_id: partnershipId
-            }
-
-            console.log('Creating habit with data:', habitData)
-
-            const response = await fetch(`${BASE_URL}/api/habits`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(habitData)
-            })
-
-            const data = await response.json()
-            console.log('Response:', data)
-
-            if (response.ok) {
-                const createdHabit = data
-                const habitId = createdHabit.id
-                console.log('✅ Habit created successfully:', createdHabit)
-                console.log('📋 Goal type in state:', goalType)
-                console.log('🆔 Habit ID:', habitId)
-                
-                // If a goal type was selected, navigate to goal creation
-                if (goalType && habitId) {
-                    console.log('🎯 Navigating to goal creation:', goalType, 'for habit:', habitId)
-                    // Small delay to ensure state is properly set
-                    setTimeout(() => {
-                        if (goalType === 'completion') {
-                            router.push({
-                                pathname: '/screens/dashboard/CompletionGoals',
-                                params: { habitId }
-                            })
-                        } else if (goalType === 'frequency') {
-                            router.push({
-                                pathname: '/screens/dashboard/FrequencyGoals',
-                                params: { habitId }
-                            })
-                        }
-                    }, 100)
-                } else {
-                    Alert.alert(
-                        "Habit Created! ✅",
-                        `"${habitName}" has been created and is pending partner approval.\n\nIt will appear in your habits once your partner approves it.`,
-                        [{
-                            text: "View Habits",
-                            onPress: () => router.replace("/screens/dashboard/HabitViews")
-                        }]
-                    )
-                }
-            } else {
-                console.error('Creation failed:', data)
-                Alert.alert("Creation Failed", data.detail || "Unable to create habit.")
-            }
-        } catch (err: any) {
-            console.error('Habit creation error:', err)
-            Alert.alert("Error", "Unable to create habit. Please check your connection.")
-        } finally {
-            setLoading(false)
-        }
+    if (!habitName.trim()) {
+        Alert.alert("Missing Habit Name", "Please enter a habit name.")
+        return
     }
+
+    if (!selectedPartnerId) {
+        Alert.alert("No Partner Selected", "Please invite a partner before creating the habit.")
+        return
+    }
+
+    setLoading(true)
+
+    try {
+        const token = await AsyncStorage.getItem('access_token')
+        
+        if (!token) {
+            Alert.alert("Not Authenticated", "Please log in again.")
+            router.replace("/screens/auth/LoginScreen")
+            return
+        }
+
+        const BASE_URL = await getBaseUrl()
+        
+        // First, find the partnership_id between current user and selected partner
+        const partnershipsResponse = await fetch(`${BASE_URL}/api/partnerships/all`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            }
+        })
+
+        if (!partnershipsResponse.ok) {
+            Alert.alert("Error", "Unable to find partnership.")
+            setLoading(false)
+            return
+        }
+
+        const partnerships = await partnershipsResponse.json()
+        const partnership = partnerships.find((p: any) => p.partner_id === selectedPartnerId)
+
+        if (!partnership) {
+            Alert.alert("Error", "Partnership not found with selected partner.")
+            setLoading(false)
+            return
+        }
+
+        // Now create the habit with the partnership_id
+        const habitData = {
+            habit_name: habitName.trim(),
+            habit_type: habitType,
+            category: 'productivity',
+            description: description.trim() || undefined,
+            frequency: frequency,
+            partnership_id: partnership.partnership_id
+        }
+
+        console.log('Creating habit with data:', habitData)
+
+        const response = await fetch(`${BASE_URL}/api/habits`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(habitData)
+        })
+
+        const data = await response.json()
+        console.log('Response:', data)
+
+        if (response.ok) {
+            console.log('✅ Habit created successfully:', data)
+            setCreatedHabitId(data.id)
+            
+            Alert.alert(
+                "Habit Created! ✅",
+                `"${habitName}" has been created and sent to ${selectedPartnerName} for approval!`,
+                [{
+                    text: "View Habits",
+                    onPress: () => router.replace("./screens/dashboard/habitViews")
+                }]
+            )
+        } else {
+            console.error('Creation failed:', data)
+            Alert.alert("Creation Failed", data.detail || "Unable to create habit.")
+        }
+    } catch (err: any) {
+        console.error('Habit creation error:', err)
+        Alert.alert("Error", "Unable to create habit. Please check your connection.")
+    } finally {
+        setLoading(false)
+    }
+}
 
     const handleSave = () => {
         Alert.alert("Draft Saved", "Habit saved as draft (feature coming soon!)")
@@ -309,9 +306,10 @@ export default function StudyHabitCreation() {
             <InvitePartners
                 visible={invitePopupVisible}
                 onClose={() => setInvitePopupVisible(false)}
-                onSelect={(type) => {
-                setGoalType(type)
-                setInvitePopupVisible(false)
+                onSelectPartner={(partnerId, partnerName) => {
+                setSelectedPartnerId(partnerId);
+                setSelectedPartnerName(partnerName);
+                console.log('Partner selected:', partnerName, partnerId);
                 }}
             />
         </KeyboardAvoidingView>
