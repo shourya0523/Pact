@@ -195,6 +195,15 @@ async def log_habit_completion(
                 habit_name=habit["habit_name"],
                 partnership_id=str(partnership_id)
             )
+    # Check for goal milestones and send notif if reached
+        if log_data.completed and partnership_id:
+            await check_goal_milestones(
+                db=db,
+                habit_id=habit_id,
+                user_id=user_id,
+                habit=habit,
+                partnership_id=str(partnership_id)
+            )
 
     # Return response
     return HabitLogResponse(
