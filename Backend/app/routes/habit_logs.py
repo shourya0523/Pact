@@ -16,6 +16,51 @@ from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.services.notification_service import notification_service
 
+async def check_goal_milestones(
+    db,
+    habit_id: str,
+    user_id: str,
+    habit: dict,
+    partnership_id: str
+):
+    """
+    Check if user reached a goal milestone and send notif
+    
+    Milestones: 25%, 50%, 75%, 100%
+    """
+    # Check if user has a goal for this habit
+    goals = habit.get("goals", {})
+    if user_id not in goals:
+        return
+    
+    goal_data = goals[user_id]
+    
+    # Calculate progress percentage
+    count_checkins = goal_data.get("count_checkins", 0)
+    total_required = goal_data.get("total_checkins_required")
+    
+    if not total_required or total_required == 0:
+        return
+    
+    # Calculate current and previous progress percentages
+    current_progress = (count_checkins / total_required) * 100
+    previous_progress = ((count_checkins - 1) / total_required) * 100 if count_checkins > 0 else 0
+    
+    # Check which milestone was just crossed
+    milestones = [25, 50, 75, 100]
+    for milestone in milestones:
+        if previous_progress < milestone <= current_progress:
+            # Milestone is reached and will send notif
+            await notification_service.send_goal_milestone_notification(
+                user_id=user_id,
+                goal_name=goal_data.get("goal_name", "Your goal"),
+                milestone_percentage=milestone,
+                habit_name=habit.get("habit_name", "habit"),
+                partnership_id=partnership_id
+            )
+            print(f"🎯 Goal milestone notification sent: {milestone}% for user {user_id}")
+            break  # Only send one notif for each check-in
+
 router = APIRouter(tags=["Habit Logging"])
 security = HTTPBearer()
 
