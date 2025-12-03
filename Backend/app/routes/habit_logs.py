@@ -15,6 +15,52 @@ from bson import ObjectId
 from datetime import datetime, date, timedelta
 from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from app.services.notification_service import notification_service
+
+async def check_goal_milestones(
+    db,
+    habit_id: str,
+    user_id: str,
+    habit: dict,
+    partnership_id: str
+):
+    """
+    Check if user reached a goal milestone and send notif
+    
+    Milestones: 25%, 50%, 75%, 100%
+    """
+    # Check if user has a goal for this habit
+    goals = habit.get("goals", {})
+    if user_id not in goals:
+        return
+    
+    goal_data = goals[user_id]
+    
+    # Calculate progress percentage
+    count_checkins = goal_data.get("count_checkins", 0)
+    total_required = goal_data.get("total_checkins_required")
+    
+    if not total_required or total_required == 0:
+        return
+    
+    # Calculate current and previous progress percentages
+    current_progress = (count_checkins / total_required) * 100
+    previous_progress = ((count_checkins - 1) / total_required) * 100 if count_checkins > 0 else 0
+    
+    # Check which milestone was just crossed
+    milestones = [25, 50, 75, 100]
+    for milestone in milestones:
+        if previous_progress < milestone <= current_progress:
+            # Milestone is reached and will send notif
+            await notification_service.send_goal_milestone_notification(
+                user_id=user_id,
+                goal_name=goal_data.get("goal_name", "Your goal"),
+                milestone_percentage=milestone,
+                habit_name=habit.get("habit_name", "habit"),
+                partnership_id=partnership_id
+            )
+            print(f"🎯 Goal milestone notification sent: {milestone}% for user {user_id}")
+            break  # Only send one notif for each check-in
 
 router = APIRouter(tags=["Habit Logging"])
 security = HTTPBearer()
@@ -134,6 +180,39 @@ async def log_habit_completion(
     # Get current streak value from persistent cache
     current_streak_doc = await db.streaks.find_one({"habit_id": ObjectId(habit_id)})
     current_streak_val = 0 if not current_streak_doc else current_streak_doc.get("current_streak", 0)
+
+    # Send notif to partner when user checks in
+    if log_data.completed and partnership_id:
+        # get partner's info
+        partnership = await db.partnerships.find_one({"_id": partnership_id})
+        if partnership:
+            # find who the partner is
+            partner_id = None
+            if str(partnership["user_id_1"]) == user_id:
+                partner_id = str(partnership["user_id_2"])
+            else:
+                partner_id = str(partnership["user_id_1"])
+            
+            # Get current user's info for notification
+            current_user = await db.users.find_one({"_id": ObjectId(user_id)})
+            current_username = current_user.get("username", "Your partner") if current_user else "Your partner"
+            
+            # send notif to partner
+            await notification_service.send_partner_checkin_notification(
+                user_id=partner_id,
+                partner_username=current_username,
+                habit_name=habit["habit_name"],
+                partnership_id=str(partnership_id)
+            )
+    # Check for goal milestones and send notif if reached
+    if log_data.completed and partnership_id:
+        await check_goal_milestones(
+            db=db,
+            habit_id=habit_id,
+            user_id=user_id,
+            habit=habit,
+            partnership_id=str(partnership_id)
+        )
 
     # Return response
     return HabitLogResponse(

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from app.services.notification_service import notification_service
 from app.models.partnership_model import (
     PartnershipCreate,
     PartnershipStatus,

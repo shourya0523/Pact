@@ -13,6 +13,10 @@ from app.routes.streaks import router as streaks_router
 import os
 from dotenv import load_dotenv
 
+from fastapi import WebSocket, WebSocketDisconnect
+from app.services.websocket import manager
+from app.utils.security import decode_access_token
+
 load_dotenv()
 
 @asynccontextmanager
@@ -73,6 +77,21 @@ async def root():
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
+
+# WebSocket endpoint for the real-time notifications
+@app.websocket("/ws/{user_id}")
+async def websocket_endpoint(websocket: WebSocket, user_id: str):
+    await manager.connect(user_id, websocket)
+    try:
+        while True:
+            # Keep connection alive and listen for any messages from client
+            data = await websocket.receive_text()
+            # Client can send pings, we just acknowledge
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        await manager.disconnect(user_id)
+        print(f"Client {user_id} disconnected")
 
 if __name__ == "__main__":
     import uvicorn
