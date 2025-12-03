@@ -9,6 +9,7 @@ from app.models.habit_log import (
 )
 from app.utils.security import decode_access_token
 from app.services.streak_service import StreakCalculationService
+from app.utils.notification_helpers import notify_partner_on_checkin
 from config.database import get_database
 from bson import ObjectId
 from datetime import datetime, date, timedelta
@@ -118,6 +119,14 @@ async def log_habit_completion(
     )
     # Invalidate in-memory cache for this habit so next read is fresh
     StreakCalculationService.invalidate_mem_cache(habit_id)
+
+    # Notify partner about check-in (only if completed is True)
+    if log_data.completed:
+        try:
+            await notify_partner_on_checkin(db, habit_id, user_id)
+        except Exception as e:
+            # Don't fail the check-in if notification fails
+            print(f"Warning: Failed to send partner notification: {e}")
 
     # Get the log
     log = await db.habit_logs.find_one({"_id": log_id})

@@ -19,11 +19,13 @@ export default function LoginScreen() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
-    // Google Auth Setup
+    // Google Auth Setup with Expo Auth Proxy
     const [request, response, promptAsync] = Google.useAuthRequest({
         androidClientId: '1038322012717-h1iqh7jv8s3pb6q6dm85390po4eamlso.apps.googleusercontent.com',
         iosClientId: '1038322012717-hnel4l1370fh5tam9ccovut6av4clrik.apps.googleusercontent.com',
         webClientId: '1038322012717-73h7qf0ba1qmtefufbd4v4hea4ggrv9t.apps.googleusercontent.com',
+        // Use Expo's auth proxy for development
+        expoClientId: '1038322012717-73h7qf0ba1qmtefufbd4v4hea4ggrv9t.apps.googleusercontent.com',
     });
 
     useEffect(() => {
@@ -40,7 +42,7 @@ export default function LoginScreen() {
             const BASE_URL = await getBaseUrl();
             
             // Send Google token to your backend
-            const backendResponse = await fetch(`${BASE_URL}/auth/google`, {
+            const backendResponse = await fetch(`${BASE_URL}/api/auth/google`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -93,10 +95,10 @@ export default function LoginScreen() {
         
         try {
             const BASE_URL = await getBaseUrl();
-            console.log('🔗 Attempting login to:', `${BASE_URL}/auth/login`);
+            console.log('🔗 Attempting login to:', `${BASE_URL}/api/auth/login`);
             console.log('📧 Email:', email.trim().toLowerCase());
             
-            const response = await fetch(`${BASE_URL}/auth/login`, {
+            const response = await fetch(`${BASE_URL}/api/auth/login`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json"

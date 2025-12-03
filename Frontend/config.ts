@@ -7,9 +7,8 @@ const getBaseUrlSync = (): string => {
     // Android emulator uses 10.0.2.2 to access host machine
     return 'http://10.0.2.2:8000';
   } else {
-    // iOS - use local IP for physical device (works for simulator too if on same network)
-    // Replace with your machine's local IP if different
-    return 'http://10.0.0.242:8000';
+    // iOS simulator - use localhost
+    return 'http://localhost:8000';
   }
 };
 
