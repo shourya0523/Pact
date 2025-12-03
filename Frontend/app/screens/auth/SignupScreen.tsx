@@ -20,11 +20,13 @@ export default function SignupScreen() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
-    // Google Auth Setup
+    // Google Auth Setup with Expo Auth Proxy
     const [request, response, promptAsync] = Google.useAuthRequest({
         androidClientId: '1038322012717-h1iqh7jv8s3pb6q6dm85390po4eamlso.apps.googleusercontent.com',
         iosClientId: '1038322012717-hnel4l1370fh5tam9ccovut6av4clrik.apps.googleusercontent.com',
         webClientId: '1038322012717-73h7qf0ba1qmtefufbd4v4hea4ggrv9t.apps.googleusercontent.com',
+        // Use Expo's auth proxy for development
+        expoClientId: '1038322012717-73h7qf0ba1qmtefufbd4v4hea4ggrv9t.apps.googleusercontent.com',
     });
 
     useEffect(() => {

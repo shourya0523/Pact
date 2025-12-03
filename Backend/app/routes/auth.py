@@ -75,14 +75,32 @@ async def login(
     
     Returns profile_completed flag so frontend can route to profile setup if needed.
     """
+    print(f"🔍 LOGIN ATTEMPT - Email: {credentials.email}")
+    
     # Find user by email
     user = await db.users.find_one({"email": credentials.email})
-
-    if not user or not verify_password(credentials.password, user["password"]):
+    
+    if not user:
+        print(f"❌ User not found: {credentials.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
         )
+    
+    print(f"✅ User found: {user.get('username')}")
+    print(f"🔐 Verifying password...")
+    
+    password_valid = verify_password(credentials.password, user["password"])
+    print(f"🔐 Password valid: {password_valid}")
+    
+    if not password_valid:
+        print(f"❌ Password verification failed")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+    
+    print(f"✅ Login successful for: {user.get('username')}")
 
     # Create access token
     access_token = create_access_token(

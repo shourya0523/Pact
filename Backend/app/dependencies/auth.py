@@ -43,10 +43,13 @@ async def get_current_user(
     Dependency to get full current user object from database
     Raises 401 if token invalid, 404 if user not found
     """
+    print(f"🔐 get_current_user called")
     token = credentials.credentials
+    print(f"   Token: {token[:20]}...")
     payload = decode_access_token(token)
 
     if payload is None:
+        print("   ❌ Token decode failed")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
@@ -54,22 +57,29 @@ async def get_current_user(
         )
 
     user_id = payload.get("sub")
+    print(f"   User ID from token: {user_id}")
 
     db = get_database()
     user = await db.users.find_one({"_id": ObjectId(user_id)})
 
     if user is None:
+        print(f"   ❌ User not found in DB")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
 
+    print(f"   ✅ User found: {user.get('username')}")
+    print(f"   is_active: {user.get('is_active', 'NOT SET')}")
+    
     if not user.get("is_active", True):
+        print(f"   ❌ User is not active! Returning 403")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User account is inactive"
         )
 
+    print(f"   ✅ Auth successful for: {user.get('username')}")
     return user
 
 

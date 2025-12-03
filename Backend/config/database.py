@@ -28,7 +28,7 @@ async def connect_to_mongo():
 
         # Ping to verify connection
         await client.admin.command('ping')
-        database = client.get_database("pact")
+        database = client.get_database(os.getenv("DATABASE_NAME", "pact_db"))
         print("✅ Connected to MongoDB successfully!")
     except Exception as e:
         print(f"❌ Error connecting to MongoDB: {e}")
