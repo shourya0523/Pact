@@ -5,13 +5,60 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBaseUrl } from '../../../config';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import { api } from '../../services/api';
 
 export default function SetUpProfile() {
     const router = useRouter();
     const [saving, setSaving] = useState(false);
+    const [uploading, setUploading] = useState(false);
     const [displayName, setDisplayName] = useState('');
     const [profilePhotoUrl, setProfilePhotoUrl] = useState('');
-    const [showPhotoInput, setShowPhotoInput] = useState(false);
+
+    const pickImage = async () => {
+        // Request permission
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to make this work!');
+            return;
+        }
+
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.5,
+        });
+
+        if (!result.canceled) {
+            handleImageUpload(result.assets[0].uri);
+        }
+    };
+
+    const handleImageUpload = async (uri: string) => {
+        setUploading(true);
+        try {
+            const token = await AsyncStorage.getItem('access_token');
+            if (!token) {
+                Alert.alert('Error', 'Authentication token not found');
+                return;
+            }
+
+            const response = await api.uploadProfilePicture(uri, token);
+            
+            if (response.success && response.data?.url) {
+                setProfilePhotoUrl(response.data.url);
+                console.log('✅ Image uploaded:', response.data.url);
+            } else {
+                Alert.alert('Upload Failed', response.error || 'Failed to upload image');
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            Alert.alert('Error', 'Failed to upload image');
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const handleSave = async () => {
         console.log('🔘 Continue button pressed!');
@@ -21,13 +68,6 @@ export default function SetUpProfile() {
         if (!displayName.trim()) {
             console.log('❌ Validation failed: Display name empty');
             Alert.alert('Required', 'Please enter your display name to continue');
-            return;
-        }
-
-        // Profile photo is now optional - only validate format if provided
-        if (profilePhotoUrl.trim() && !profilePhotoUrl.trim().startsWith('http://') && !profilePhotoUrl.trim().startsWith('https://')) {
-            console.log('❌ Validation failed: Invalid URL format');
-            Alert.alert('Invalid URL', 'Profile photo URL must start with http:// or https://');
             return;
         }
 
@@ -111,45 +151,41 @@ export default function SetUpProfile() {
                     {/* Profile Photo Section */}
                     <View className="items-center mb-8">
                         <View className="relative">
-                            {profilePhotoUrl ? (
-                                <Image 
-                                    source={{ uri: profilePhotoUrl }}
-                                    className="w-32 h-32 rounded-full border-4 border-white"
-                                    onError={() => {
-                                        console.log('❌ Failed to load image:', profilePhotoUrl);
-                                        Alert.alert('Error', 'Failed to load image. Check the URL.');
-                                    }}
-                                />
-                            ) : (
-                                <View className="w-32 h-32 rounded-full border-4 border-white bg-white/20 items-center justify-center">
-                                    <Ionicons name="person" size={64} color="white" />
-                                </View>
-                            )}
+                            <TouchableOpacity onPress={pickImage} disabled={uploading}>
+                                {profilePhotoUrl ? (
+                                    <Image 
+                                        source={{ uri: profilePhotoUrl }}
+                                        className="w-32 h-32 rounded-full border-4 border-white"
+                                        onError={() => {
+                                            console.log('❌ Failed to load image:', profilePhotoUrl);
+                                        }}
+                                    />
+                                ) : (
+                                    <View className="w-32 h-32 rounded-full border-4 border-white bg-white/20 items-center justify-center">
+                                        <Ionicons name="person" size={64} color="white" />
+                                    </View>
+                                )}
+                                
+                                {/* Uploading Indicator Overlay */}
+                                {uploading && (
+                                    <View className="absolute inset-0 rounded-full bg-black/50 items-center justify-center">
+                                        <ActivityIndicator color="white" />
+                                    </View>
+                                )}
+                            </TouchableOpacity>
                             
                             <TouchableOpacity 
                                 className="absolute bottom-0 right-0 bg-white rounded-full p-2"
-                                onPress={() => setShowPhotoInput(!showPhotoInput)}
+                                onPress={pickImage}
+                                disabled={uploading}
                             >
-                                <Ionicons name={showPhotoInput ? "checkmark" : "add"} size={24} color="#1a0033" />
+                                <Ionicons name="camera" size={24} color="#1a0033" />
                             </TouchableOpacity>
                         </View>
                         
-                        {showPhotoInput && (
-                            <View className="w-full mt-4">
-                                <TextInput
-                                    value={profilePhotoUrl}
-                                    onChangeText={setProfilePhotoUrl}
-                                    placeholder="Enter image URL (https://...)"
-                                    placeholderTextColor="#999"
-                                    className="bg-white/85 rounded-2xl px-4 py-3 text-black"
-                                    autoCapitalize="none"
-                                    autoCorrect={false}
-                                />
-                                <Text className="text-white/60 text-xs mt-2 text-center">
-                                    Paste an image URL from the web
-                                </Text>
-                            </View>
-                        )}
+                        <Text className="text-white/60 text-xs mt-2 text-center">
+                            Tap to upload a profile photo
+                        </Text>
                     </View>
 
                     {/* Display Name Input */}
@@ -184,10 +220,10 @@ export default function SetUpProfile() {
                         paddingVertical: 16,
                         alignItems: 'center',
                         marginHorizontal: 'auto',
-                        opacity: saving ? 0.5 : 1,
+                        opacity: saving || uploading ? 0.5 : 1,
                     }}
                     onPress={handleSave}
-                    disabled={saving}
+                    disabled={saving || uploading}
                 >
                     {saving ? (
                         <ActivityIndicator color="#000" />
