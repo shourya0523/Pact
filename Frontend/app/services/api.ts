@@ -128,6 +128,67 @@ class ApiService {
       },
     });
   }
+
+  async uploadProfilePicture(imageUri: string, token: string): Promise<ApiResponse<{ url: string; message: string }>> {
+    try {
+      const formData = new FormData();
+      const filename = imageUri.split('/').pop() || 'profile.jpg';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+      // @ts-ignore - React Native FormData expects an object with uri, name, type
+      formData.append('file', {
+        uri: imageUri,
+        name: filename,
+        type,
+      });
+
+      console.log('Uploading image...', { uri: imageUri, type, name: filename });
+
+      const response = await fetch(`${this.baseURL}/upload/profile-picture`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Accept': 'application/json',
+          // Do NOT set Content-Type here, let fetch set it for multipart/form-data
+        },
+        body: formData,
+      });
+
+      console.log('Upload response status:', response.status);
+      
+      const text = await response.text();
+      console.log('Upload response text:', text);
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        return {
+          success: false,
+          error: `Server returned invalid JSON. Status: ${response.status}`,
+        };
+      }
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.detail || `Upload failed with status ${response.status}`,
+        };
+      }
+
+      return {
+        success: true,
+        data,
+      };
+    } catch (error) {
+      console.error('Image upload failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Network error during upload',
+      };
+    }
+  }
 }
 
 export const api = new ApiService();
