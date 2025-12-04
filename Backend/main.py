@@ -1,4 +1,4 @@
-from app.routes import partnership_apis, dashboard_apis  # ← Add dashboard import
+from app.routes import partnership_apis, dashboard_apis, upload  # ← Add dashboard import
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -53,6 +53,7 @@ app.include_router(auth_router)
 app.include_router(partnership_router)
 app.include_router(habits_router)
 app.include_router(streaks_router)
+app.include_router(upload.router)
 
 # Include routers with /api prefix
 app.include_router(auth.router, prefix="/api")
