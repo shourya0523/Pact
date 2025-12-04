@@ -8,6 +8,7 @@ import HabitSelect from "../../components/common/ui/habitSelect";
 import ProgressCheck from "../../components/common/ui/progressCheck";
 import PurpleParticles from "../../components/space/purpleStarsParticlesBackground";
 import StreakIndicator from "../../components/habit/StreakIndicator";
+import SearchPartnerPopup from '@/components/popups/search-partner';  // Add this import at top
 
 interface DashboardData {
   user: {
@@ -44,6 +45,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [searchPartnerVisible, setSearchPartnerVisible] = useState(false);
+
 
   const fetchDashboardData = async () => {
     try {
@@ -259,8 +262,13 @@ export default function HomePage() {
           </View>
 
           <View className="mt-8 px-6 mb-20">
-            <Text className="text-white text-[28px] font-semibold mb-3">Partner Progress</Text>
-            
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-white text-[28px] font-semibold">Partner Progress</Text>
+              <TouchableOpacity onPress={() => router.push('/screens/dashboard/ViewAllPartnerships')}>
+                <Text className="text-gray-300 text-xs">View All</Text>
+              </TouchableOpacity>
+            </View>
+    
             {dashboardData.partner_progress.length > 0 ? (
               dashboardData.partner_progress.map((activity, index) => (
                 <ProgressCheck 
@@ -269,25 +277,30 @@ export default function HomePage() {
                 />
               ))
             ) : dashboardData.partnership ? (
-              <View className="bg-white/10 rounded-2xl p-6 items-center">
-                <Text className="text-white/60">No recent partner activity</Text>
-                <Text className="text-white/40 text-sm mt-1">
-                  Your partner hasn't checked in yet today
-                </Text>
-              </View>
+                <View className="bg-white/10 rounded-2xl p-6 items-center">
+                  <Text className="text-white/60">No recent partner activity</Text>
+                  <Text className="text-white/40 text-sm mt-1">
+                    Your partner hasn't checked in yet today
+                  </Text>
+                </View>
             ) : (
-              <View className="bg-purple-600/30 rounded-2xl p-6 border-2 border-purple-400/50">
-                <Text className="text-white text-lg font-bold mb-2">🤝 No Partner Yet</Text>
-                <Text className="text-white/80 mb-4">
-                  Invite a friend to start tracking habits together!
-                </Text>
-                <TouchableOpacity 
-                  className="bg-white rounded-full py-3 px-6 self-start"
-                  onPress={() => router.push('/screens/dashboard/InvitePartners')}
-                >
-                  <Text className="text-purple-900 font-semibold">Invite Partner</Text>
-                </TouchableOpacity>
-              </View>
+                <View className="bg-purple-600/30 rounded-2xl p-6 border-2 border-purple-400/50">
+                  <Text className="text-white text-lg font-bold mb-2">🤝 No Partner Yet</Text>
+                  <Text className="text-white/80 mb-4">
+                    Invite a friend to start tracking habits together!
+                  </Text>
+                  <TouchableOpacity 
+                    className="bg-white rounded-full py-3 px-6 self-start"
+                    onPress={() => setSearchPartnerVisible(true)}
+                  >
+                    <Text className="text-purple-900 font-semibold">Invite Partner</Text>
+                  </TouchableOpacity>
+
+                  <SearchPartnerPopup
+                    visible={searchPartnerVisible}
+                    onClose={() => setSearchPartnerVisible(false)}
+                  />
+                </View>
             )}
           </View>
         </View>

@@ -26,6 +26,7 @@ export default function StudyHabitCreation() {
     const [goalPopupVisible, setGoalPopupVisible] = useState(false)
     const [goalType, setGoalType] = useState<'completion' | 'frequency' | null>(null)
     const [invitePopupVisible, setInvitePopupVisible] = useState(false)
+    const [goalSet, setGoalSet] = useState(false)
 
     useEffect(() => {
         fetchPartnership()
@@ -203,6 +204,9 @@ export default function StudyHabitCreation() {
                             width: '140px',
                             backgroundColor: habitType === 'build' ? 'white' : 'rgba(129, 132, 152, 0.4)'
                         }}
+                        textStyle={{
+                            color: habitType === 'build' ? '#2D1B4E' : 'white'
+                        }}
                     />
                     <LightGreyButton 
                         onPress={() => setHabitType('break')}
@@ -210,6 +214,9 @@ export default function StudyHabitCreation() {
                         style={{ 
                             width: '140px', 
                             backgroundColor: habitType === 'break' ? 'white' : 'rgba(129, 132, 152, 0.4)'
+                        }}
+                        textStyle={{
+                            color: habitType === 'break' ? '#2D1B4E' : 'white'
                         }}
                     />
                 </View>
@@ -227,13 +234,26 @@ export default function StudyHabitCreation() {
                 />
                 <View className="flex-row justify-center space-x-16 mt-4">
                     <View className="items-center">
-                        <Text className="font-wix text-white text-[24px] text-center mb-8">
-                        Invite Partner!
-                        </Text>
-                        <PurpleButton 
-                            onPress={() => setInvitePopupVisible(true)}
-                            text="INVITE"
-                        />
+                        {selectedPartnerName ? (
+                            <View className="items-center">
+                                <Text className="font-wix text-white text-[24px] text-center mt-4 mb-2">
+                                Add Partner!
+                                </Text>
+                                <Text className="font-wix text-green-400 text-[16px] text-center mt-4 mb-4">
+                                    ✓ {selectedPartnerName} added as partner
+                                </Text>
+                            </View>
+                        ) : (
+                            <>
+                                <Text className="font-wix text-white text-[24px] text-center mt-4 mb-4">
+                                Add Partner!
+                                </Text>
+                                <PurpleButton 
+                                    onPress={() => setInvitePopupVisible(true)}
+                                    text="ADD"
+                                />
+                            </>
+                        )}
                     </View>
                     <View className="items-center">
                         <Text className="font-wix text-white text-[24px] text-center mb-8">
@@ -258,6 +278,9 @@ export default function StudyHabitCreation() {
                         style={{
                             backgroundColor: frequency === 'daily' ? 'white' : 'rgba(129, 132, 152, 0.4)'
                         }}
+                        textStyle={{
+                            color: frequency === 'daily' ? '#2D1B4E' : 'white'
+                        }}
                     />
                     <LightGreyButton 
                         onPress={() => setFrequency('weekly')}
@@ -265,12 +288,18 @@ export default function StudyHabitCreation() {
                         style={{
                             backgroundColor: frequency === 'weekly' ? 'white' : 'rgba(129, 132, 152, 0.4)'
                         }}
+                        textStyle={{
+                            color: frequency === 'weekly' ? '#2D1B4E' : 'white'
+                        }}
                     />
                     <LightGreyButton 
                         onPress={() => setFrequency('monthly')}
                         text="Monthly"
                         style={{
                             backgroundColor: frequency === 'monthly' ? 'white' : 'rgba(129, 132, 152, 0.4)'
+                        }}
+                        textStyle={{
+                            color: frequency === 'monthly' ? '#2D1B4E' : 'white'
                         }}
                     />
                 </View>
@@ -314,4 +343,4 @@ export default function StudyHabitCreation() {
             />
         </KeyboardAvoidingView>
     )
-}
+} 
