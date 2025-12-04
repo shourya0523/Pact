@@ -5,12 +5,15 @@ interface lightGreyButtonProps {
     onPress: () => void;
     text: string;
     style?: object;
+    textStyle?: object;  // Add this line
+
 }
 
 const lightGreyButton: React.FC<lightGreyButtonProps> = ({
     onPress,
     text,
-    style
+    style,
+    textStyle
 }) => {
     return (
         <Pressable
@@ -21,7 +24,9 @@ const lightGreyButton: React.FC<lightGreyButtonProps> = ({
                 height: '40px'
             }, style]} 
         >
-            <Text className="text-[16px] font-wix text-white text-center">
+            <Text className="text-[16px] font-wix text-white text-center"
+                style={[{ color: 'white' }, textStyle]}
+            >
                 {text}
             </Text>
         </Pressable>
