@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react'
+import React, {useEffect, useState, useMemo, useCallback} from 'react'
 import {View, ScrollView, Text, ActivityIndicator, Alert, RefreshControl, TouchableOpacity, Modal} from 'react-native'
 import {useRouter, useLocalSearchParams} from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -8,6 +8,7 @@ import BackwardButton from '../../components/common/ui/backwardButton'
 import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground'
 import HabitBox from '../../components/common/ui/habitBox'
 import GreyButton from '../../components/common/ui/greyButton'
+import { logger } from '../../utils/logger'
 
 interface Goal {
     user_id: string;
@@ -159,14 +160,15 @@ export default function HabitDetails() {
         return new Date(year, month + 1, 0).getDate()
     }
 
-    const isDayCompleted = (day: number) => {
+    // Memoize day completion check to avoid recalculating on every render
+    const isDayCompleted = useCallback((day: number) => {
         const now = new Date()
         const checkDate = new Date(now.getFullYear(), now.getMonth(), day)
         const dateStr = checkDate.toISOString().split('T')[0]
-        console.log('🔍 Checking day:', day, 'Date string:', dateStr)
+        logger.log('🔍 Checking day:', day, 'Date string:', dateStr)
 
         const logsForDate = logs.filter(log => log.date === dateStr && log.completed)
-        console.log('📊 Logs for', dateStr, ':', logsForDate)
+        logger.log('📊 Logs for', dateStr, ':', logsForDate.length)
 
         const uniqueUsers = new Set(logsForDate.map(log => log.user_id))
 
@@ -175,7 +177,7 @@ export default function HabitDetails() {
             userCount: uniqueUsers.size,
             bothCompleted: uniqueUsers.size === 2
         }
-    }
+    }, [logs])
 
     const getDayColor = (completionStatus: { completed: boolean, userCount: number, bothCompleted: boolean }) => {
         if (!completionStatus.completed) {

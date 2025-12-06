@@ -1,4 +1,5 @@
 import { BASE_URL } from '../../config';
+import { logger } from '../utils/logger';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -46,7 +47,7 @@ class ApiService {
 
   constructor() {
     this.baseURL = BASE_URL;
-    console.log('ApiService initialized with URL:', this.baseURL);
+    logger.log('ApiService initialized with URL:', this.baseURL);
   }
 
   private async request<T>(
@@ -55,8 +56,7 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseURL}${endpoint}`;
-      console.log(`Making request to: ${url}`);
-      console.log('Request options:', options);
+      logger.log(`Making request to: ${url}`);
 
       const response = await fetch(url, {
         ...options,
@@ -66,19 +66,17 @@ class ApiService {
         },
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+      logger.log('Response status:', response.status);
 
       // Get response text first
       const text = await response.text();
-      console.log('Response text:', text);
 
       // Check if it's actually JSON
       let data;
       try {
         data = JSON.parse(text);
       } catch (parseError) {
-        console.error('Failed to parse JSON. Response was:', text);
+        logger.error('Failed to parse JSON. Response was:', text);
         return {
           success: false,
           error: `Server returned invalid JSON. Status: ${response.status}. Make sure backend is running.`,
@@ -97,7 +95,7 @@ class ApiService {
         data,
       };
     } catch (error) {
-      console.error('API request failed:', error);
+      logger.error('API request failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error - make sure backend is running',
@@ -143,7 +141,7 @@ class ApiService {
         type,
       });
 
-      console.log('Uploading image...', { uri: imageUri, type, name: filename });
+      logger.log('Uploading image...', { uri: imageUri, type, name: filename });
 
       const response = await fetch(`${this.baseURL}/upload/profile-picture`, {
         method: 'POST',
@@ -155,10 +153,9 @@ class ApiService {
         body: formData,
       });
 
-      console.log('Upload response status:', response.status);
+      logger.log('Upload response status:', response.status);
       
       const text = await response.text();
-      console.log('Upload response text:', text);
 
       let data;
       try {
@@ -182,7 +179,7 @@ class ApiService {
         data,
       };
     } catch (error) {
-      console.error('Image upload failed:', error);
+      logger.error('Image upload failed:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Network error during upload',

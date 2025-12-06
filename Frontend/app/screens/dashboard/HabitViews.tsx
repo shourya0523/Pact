@@ -9,6 +9,7 @@ import HabitBox from '@/components/ui/habitBox'
 import GreyButton from '@/components/ui/greyButton'
 import { Ionicons } from '@expo/vector-icons'
 import { scaleFont, scaleSize } from '../../utils/constants'
+import { logger } from '../../utils/logger'
 
 interface Habit {
     id: string;
@@ -40,7 +41,7 @@ export default function HabitViews() {
     }, [])
 
     const fetchHabitsWithProgress = async () => {
-        console.log('🚀 STARTING fetchHabitsWithProgress')
+        logger.log('🚀 STARTING fetchHabitsWithProgress')
         try {
             const token = await AsyncStorage.getItem('access_token')
 
@@ -51,20 +52,37 @@ export default function HabitViews() {
             }
 
             const BASE_URL = await getBaseUrl()
-            console.log('🔍 Fetching habits and goals...')
+            logger.log('🔍 Fetching habits and goals...')
 
-            // Fetch habits
-            const habitsResponse = await fetch(`${BASE_URL}/api/habits`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            })
+            // OPTIMIZATION: Fetch all data in parallel instead of sequentially
+            const [habitsResponse, goalsResponse, userResponse] = await Promise.all([
+                fetch(`${BASE_URL}/api/habits`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }),
+                fetch(`${BASE_URL}/api/goals/users/me/goals`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                }),
+                fetch(`${BASE_URL}/api/users/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                })
+            ])
 
-            console.log('📡 Habits response status:', habitsResponse.status)
+            logger.log('📡 All responses received')
 
-            if (habitsResponse.status === 401) {
+            // Check all responses for 401 (unauthorized) - any 401 means token is expired/invalid
+            if (habitsResponse.status === 401 || goalsResponse.status === 401 || userResponse.status === 401) {
                 await AsyncStorage.clear()
                 Alert.alert("Session Expired", "Please log in again.")
                 router.replace("/screens/auth/LoginScreen")
@@ -73,7 +91,7 @@ export default function HabitViews() {
 
             if (!habitsResponse.ok) {
                 const errorData = await habitsResponse.json()
-                console.error('❌ Failed to fetch habits:', errorData)
+                logger.error('❌ Failed to fetch habits:', errorData)
                 Alert.alert("Error", errorData.detail || "Failed to fetch habits")
                 setHabits([])
                 setLoading(false)
@@ -81,22 +99,27 @@ export default function HabitViews() {
             }
 
             const habitsData = await habitsResponse.json()
-            console.log('✅ Fetched habits:', habitsData)
+            logger.log('✅ Fetched habits:', habitsData.length)
 
-            // Fetch goals
-            const goalsResponse = await fetch(`${BASE_URL}/api/goals/users/me/goals`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            })
+            // Handle goals response
+            let goalsData: Goal[] = []
+            if (goalsResponse.ok) {
+                goalsData = await goalsResponse.json()
+                logger.log('✅ Goals data:', goalsData.length)
+            } else {
+                logger.error('❌ Failed to fetch goals')
+            }
 
-            console.log('📡 Goals response status:', goalsResponse.status)
-
-            if (!goalsResponse.ok) {
-                console.error('❌ Failed to fetch goals')
-                // If goals fail, just show habits without progress
+            // Handle user response - CRITICAL: we need user ID to properly match goals
+            let currentUserId: string | null = null
+            if (userResponse.ok) {
+                const userData = await userResponse.json()
+                currentUserId = userData.id || userData._id || userData.user_id
+                logger.log('👤 Current user ID:', currentUserId)
+            } else {
+                logger.error('❌ Failed to fetch user info')
+                // Without user ID, we cannot properly match goals (user vs partner)
+                // Return early with zero progress to prevent corrupted data
                 const habitsWithZeroProgress = habitsData.map((habit: Habit) => ({
                     ...habit,
                     userProgress: 0,
@@ -106,50 +129,10 @@ export default function HabitViews() {
                 setLoading(false)
                 return
             }
-
-            const goalsData = await goalsResponse.json()
-            console.log('✅ Goals data:', goalsData)
-
-            // Debug goals in detail
-            goalsData.forEach((goal: any, index: number) => {
-                console.log(`Goal ${index}:`, {
-                    user_id: goal.user_id,
-                    habit_id: goal.habit_id,
-                    progress_percentage: goal.progress_percentage,
-                    count_checkins: goal.count_checkins,
-                    total_checkins_required: goal.total_checkins_required
-                })
-            })
-
-            // Fetch current user info
-            const userResponse = await fetch(`${BASE_URL}/api/users/me`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            })
-
-            if (!userResponse.ok) {
-                console.error('❌ Failed to fetch user info')
-                const habitsWithZeroProgress = habitsData.map((habit: Habit) => ({
-                    ...habit,
-                    userProgress: 0,
-                    partnerProgress: 0
-                }))
-                setHabits(habitsWithZeroProgress)
-                setLoading(false)
-                return
-            }
-
-            const userData = await userResponse.json()
-            const currentUserId = userData.id || userData._id || userData.user_id
-            console.log('👤 Current user ID:', currentUserId)
 
             // Match habits with goals and calculate progress
+            // currentUserId is guaranteed to be non-null at this point
             const habitsWithProgress: HabitWithProgress[] = habitsData.map((habit: Habit) => {
-                console.log(`🔍 Processing habit: ${habit.habit_name} (${habit.id})`)
-
                 // Find user's goal for this habit
                 const userGoal = goalsData.find((g: Goal) =>
                     g.habit_id === habit.id && g.user_id === currentUserId
@@ -163,10 +146,6 @@ export default function HabitViews() {
                 const userProgress = userGoal?.progress_percentage || 0
                 const partnerProgress = partnerGoal?.progress_percentage || 0
 
-                console.log(`  📊 User progress: ${userProgress}%`)
-                console.log(`  📊 Partner progress: ${partnerProgress}%`)
-                console.log(`  📊 Average: ${Math.ceil((userProgress + partnerProgress) / 2)}%`)
-
                 return {
                     ...habit,
                     userProgress,
@@ -174,7 +153,7 @@ export default function HabitViews() {
                 }
             })
 
-            console.log('✅ Habits with progress:', habitsWithProgress)
+            logger.log('✅ Habits with progress:', habitsWithProgress.length)
             setHabits(habitsWithProgress)
 
             if (habitsWithProgress.length === 0) {
@@ -187,7 +166,7 @@ export default function HabitViews() {
                 }, 500)
             }
         } catch (err) {
-            console.error('💥 Fetch habits error:', err)
+            logger.error('💥 Fetch habits error:', err)
             setHabits([])
         } finally {
             setLoading(false)
@@ -197,9 +176,7 @@ export default function HabitViews() {
     const activeHabits = habits.filter(h => h.status === 'active')
     const inactiveHabits = habits.filter(h => h.status !== 'active')
 
-    console.log('📊 Total habits:', habits.length)
-    console.log('✅ Active habits:', activeHabits.length)
-    console.log('❌ Inactive habits:', inactiveHabits.length)
+    logger.log('📊 Total habits:', habits.length, 'Active:', activeHabits.length)
 
     if (loading) {
         return (
@@ -229,7 +206,15 @@ export default function HabitViews() {
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-                <Text className="font-wix text-white text-center mt-16" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
+                <View className="flex-row items-center justify-center mt-16 px-4">
+                    <Text className="font-wix text-white text-center flex-1" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
+                    <TouchableOpacity
+                        onPress={() => router.push('/screens/dashboard/HabitDrafts')}
+                        className="bg-white/20 rounded-full px-3 py-1.5 ml-2"
+                    >
+                        <Text className="text-white text-xs" style={{ fontSize: scaleFont(12) }}>View Drafts</Text>
+                    </TouchableOpacity>
+                </View>
 
                 <View className="items-center justify-center mt-4 mb-10">
                     {activeHabits.length > 0 ? (
@@ -237,7 +222,7 @@ export default function HabitViews() {
                             <TouchableOpacity
                                 key={habit.id}
                                 onPress={() => {
-                                    console.log('Navigating to habit:', habit.id, habit.habit_name)
+                                    logger.log('Navigating to habit:', habit.id)
                                     router.push({
                                         pathname: '/screens/dashboard/HabitDetails',
                                         params: { habitId: habit.id }

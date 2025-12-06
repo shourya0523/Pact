@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { View, Text, Image, ActivityIndicator, ScrollView, RefreshControl, Alert, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,7 +8,8 @@ import HabitSelect from "../../components/common/ui/habitSelect";
 import ProgressCheck from "../../components/common/ui/progressCheck";
 import PurpleParticles from "../../components/space/purpleStarsParticlesBackground";
 import StreakIndicator from "../../components/habit/StreakIndicator";
-import SearchPartnerPopup from '@/components/popups/search-partner';  // Add this import at top
+import SearchPartnerPopup from '@/components/popups/search-partner';
+import { logger } from '../../utils/logger';
 
 interface DashboardData {
   user: {
@@ -48,7 +49,7 @@ export default function HomePage() {
   const [searchPartnerVisible, setSearchPartnerVisible] = useState(false);
 
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('access_token');
       
@@ -100,7 +101,7 @@ export default function HomePage() {
       const data = await response.json();
       setDashboardData(data);
     } catch (err: any) {
-      console.error('Dashboard fetch error:', err);
+      logger.error('Dashboard fetch error:', err);
       
       const userData = await AsyncStorage.getItem('user_data');
       const user = userData ? JSON.parse(userData) : null;
@@ -119,18 +120,18 @@ export default function HomePage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [fetchDashboardData]);
 
-  const onRefresh = () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchDashboardData();
-  };
+  }, [fetchDashboardData]);
 
-  const handleCheckIn = async (habitId: string, habitName: string, currentStatus: boolean) => {
+  const handleCheckIn = useCallback(async (habitId: string, habitName: string, currentStatus: boolean) => {
     try {
       const token = await AsyncStorage.getItem('access_token');
       
@@ -156,10 +157,20 @@ export default function HomePage() {
       fetchDashboardData();
       
     } catch (err: any) {
-      console.error('Check-in error:', err);
+      logger.error('Check-in error:', err);
       Alert.alert("Check-in Failed", "Unable to check in. Please try again.");
     }
-  };
+  }, []);
+
+  // Memoize goals transformation to avoid recalculating on every render
+  const goals = useMemo(() => {
+    if (!dashboardData) return [];
+    return dashboardData.todays_goals.map(goal => ({
+      id: goal.habit_id,
+      name: goal.habit_name,
+      checked: goal.checked_in_today
+    }));
+  }, [dashboardData?.todays_goals]);
 
   if (loading) {
     return (
@@ -182,12 +193,6 @@ export default function HomePage() {
       </View>
     );
   }
-
-  const goals = dashboardData.todays_goals.map(goal => ({
-    id: goal.habit_id,
-    name: goal.habit_name,
-    checked: goal.checked_in_today
-  }));
 
    return (
     <View className="flex-1 bg-black">
