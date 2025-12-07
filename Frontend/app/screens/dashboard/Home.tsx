@@ -160,7 +160,7 @@ export default function HomePage() {
       logger.error('Check-in error:', err);
       Alert.alert("Check-in Failed", "Unable to check in. Please try again.");
     }
-  }, []);
+  }, [fetchDashboardData]);
 
   // Memoize goals transformation to avoid recalculating on every render
   const goals = useMemo(() => {

@@ -36,28 +36,46 @@ export default function Profile() {
 
             const BASE_URL = await getBaseUrl()
             
-            // Load user profile
-            const userResponse = await fetch(`${BASE_URL}/users/me`, {
+            // Load user profile - FIX: Added /api prefix
+            const userResponse = await fetch(`${BASE_URL}/api/users/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
 
+            // Handle 401 (unauthorized) - token expired
+            if (userResponse.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace('/screens/auth/LoginScreen')
+                return
+            }
+
             if (userResponse.ok) {
                 const userData = await userResponse.json()
                 console.log('📥 Loaded user data:', userData)
                 setDisplayName(userData.display_name || userData.username)
                 setProfilePhotoUrl(userData.profile_photo_url || '')
+            } else {
+                // If user fetch fails, still try to load notifications
+                console.error('Failed to load user profile:', userResponse.status)
             }
             
-            // Load notification preferences
-            const notifResponse = await fetch(`${BASE_URL}/users/me/notifications`, {
+            // Load notification preferences - FIX: Added /api prefix
+            const notifResponse = await fetch(`${BASE_URL}/api/users/me/notifications`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
             })
+            
+            if (notifResponse.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace('/screens/auth/LoginScreen')
+                return
+            }
             
             if (notifResponse.ok) {
                 const notifData = await notifResponse.json()
@@ -70,15 +88,19 @@ export default function Profile() {
                     habitReminders: prefs.habit_reminders || false,
                     goalReminders: prefs.goal_reminders || false,
                 })
+            } else {
+                console.error('Failed to load notification preferences:', notifResponse.status)
+                // Continue with default notification settings
             }
         } catch (error) {
             console.error('Error loading profile:', error)
+            Alert.alert('Error', 'Failed to load profile. Please try again.')
         } finally {
             setLoading(false)
         }
     }
 
-    const toggleNotification = (key: string) => {
+    const toggleNotification = (key: keyof typeof notifications) => {
         setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
     }
 
@@ -148,8 +170,8 @@ export default function Profile() {
                 notifications
             })
             
-            // Update profile (display name and photo)
-            const profileResponse = await fetch(`${BASE_URL}/users/me`, {
+            // Update profile (display name and photo) - FIX: Added /api prefix
+            const profileResponse = await fetch(`${BASE_URL}/api/users/me`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -171,8 +193,8 @@ export default function Profile() {
                 return
             }
             
-            // Update notification preferences
-            const notifResponse = await fetch(`${BASE_URL}/users/me/notifications`, {
+            // Update notification preferences - FIX: Added /api prefix
+            const notifResponse = await fetch(`${BASE_URL}/api/users/me/notifications`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -325,10 +347,10 @@ export default function Profile() {
                             Push Notifications
                         </Text>
                         {[
-                            { key: 'nudges', label: 'Nudges' },
-                            { key: 'partnerRequests', label: 'Partner Requests' },
-                            { key: 'habitReminders', label: 'Habit Reminders' },
-                            { key: 'goalReminders', label: 'Goal Reminders' },
+                            { key: 'nudges' as const, label: 'Nudges' },
+                            { key: 'partnerRequests' as const, label: 'Partner Requests' },
+                            { key: 'habitReminders' as const, label: 'Habit Reminders' },
+                            { key: 'goalReminders' as const, label: 'Goal Reminders' },
                         ].map((item) => (
                             <View
                                 key={item.key}
@@ -336,10 +358,10 @@ export default function Profile() {
                             >
                                 <Text className="text-gray-700 font-wix text-[16px]">{item.label}</Text>
                                 <Switch
-                                    value={notifications[item.key as keyof typeof notifications]}
+                                    value={notifications[item.key]}
                                     onValueChange={() => toggleNotification(item.key)}
                                     trackColor={{ false: "#ccc", true: "#7C4DFF" }}
-                                    thumbColor={notifications[item.key as keyof typeof notifications] ? "#fff" : "#fff"}
+                                    thumbColor={notifications[item.key] ? "#fff" : "#fff"}
                                 />
                             </View>
                         ))}
