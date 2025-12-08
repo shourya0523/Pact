@@ -1,32 +1,47 @@
-name: deploy.yml
+name: Deploy to EC2
+
 on:
   push:
     branches:
       - main
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Get secrets from AWS Secrets Manager
-        id: secrets
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Get EC2 config from Secrets Manager
+        id: get-config
         run: |
-          # Get SSH key
-          echo "$(aws secretsmanager get-secret-value --secret-id pact/ec2/ssh-key --query SecretString --output text | jq -r '.ec2_private_key')" > ssh_key.pem
+          SECRET=$(aws secretsmanager get-secret-value --secret-id pact/ec2/config --query SecretString --output text)
+          echo "EC2_HOST=$(echo $SECRET | jq -r '.ec2_host')" >> $GITHUB_OUTPUT
+          echo "EC2_USER=$(echo $SECRET | jq -r '.ec2_user')" >> $GITHUB_OUTPUT
+
+      - name: Get SSH key from Secrets Manager
+        run: |
+          SECRET=$(aws secretsmanager get-secret-value --secret-id pact/ec2/ssh-key --query SecretString --output text)
+          echo "$SECRET" | jq -r '.ec2_private_key' > ssh_key.pem
           chmod 600 ssh_key.pem
-          # Get EC2 config
-          export EC2_HOST=$(aws secretsmanager get-secret-value --secret-id pact/ec2/config --query SecretString --output text | jq -r '.ec2_host')
-          export EC2_USER=$(aws secretsmanager get-secret-value --secret-id pact/ec2/config --query SecretString --output text | jq -r '.ec2_user')
-          
-          echo "EC2_HOST=$EC2_HOST" >>$GITHUB_ENV
-          echo "EC2_USER=$EC2_USER" >> $GITHUB_ENV
+
       - name: Deploy to EC2
+        env:
+          EC2_HOST: ${{ steps.get-config.outputs.EC2_HOST }}
+          EC2_USER: ${{ steps.get-config.outputs.EC2_USER }}
         run: |
-          ssh -i ssh_key.pem -o StrictHostKeyChecking=no ${{ env.EC2_USER }}@${{ env.EC2_HOST }} << 'EOF'
+          ssh -i ssh_key.pem -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << 'EOF'
             cd Pact
             git pull origin main
             docker-compose down
             docker-compose up -d --build
-            docker logs pact-backend
+            echo "Deployment complete!"
           EOF
