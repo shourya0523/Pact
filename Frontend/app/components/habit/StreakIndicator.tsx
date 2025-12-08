@@ -15,20 +15,20 @@ interface StreakIndicatorProps {
 export default function StreakIndicator({
   currentStreak,
   isActive,
-  flameSize = 16,
-  numberSize = 16,
+  flameSize = 18,
+  numberSize = 18,
   numberColor = 'white',
-  spacing = 4,
+  spacing = 6,
   containerStyle = {},
 }: StreakIndicatorProps) {
   return (
     <View
-      style={[{ flexDirection: 'row', alignItems: 'center' }, containerStyle]}
+      style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }, containerStyle]}
     >
       {isActive && (
         <Text style={{ fontSize: flameSize, marginRight: spacing }}>🔥</Text>
       )}
-      <Text style={{ fontSize: numberSize, color: numberColor, fontWeight: 'bold' }}>
+      <Text className="font-wix" style={{ fontSize: numberSize, color: numberColor, fontWeight: '600' }}>
         {currentStreak}
       </Text>
     </View>

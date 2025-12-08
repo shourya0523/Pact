@@ -261,20 +261,20 @@ const whiteParticles: React.FC<ParticlesProps> = ({
     disableRotation
   ]);
 
-  // Initialize mobile particles
+  // Initialize mobile particles - static positions
   useEffect(() => {
     if (Platform.OS === 'web') return;
     
     const particleColors = defaultColors;
-    const count = Math.min(particleCount || 300, 150); // Limit for performance
+    const count = Math.min(particleCount || 300, 120); // Limit for performance
     const particles = [];
     
     for (let i = 0; i < count; i++) {
       particles.push({
-        x: new Animated.Value(Math.random() * screenDimensions.width),
-        y: new Animated.Value(Math.random() * screenDimensions.height),
-        opacity: new Animated.Value(0.3 + Math.random() * 0.7),
-        size: 2 + Math.random() * 3,
+        x: new Animated.Value(Math.random() * screenDimensions.width), // Fixed position
+        y: new Animated.Value(Math.random() * screenDimensions.height), // Fixed position
+        opacity: new Animated.Value(0.2 + Math.random() * 0.6), // Initial opacity for twinkling
+        size: 1.5 + Math.random() * 2.5, // Smaller, more subtle
         color: particleColors[Math.floor(Math.random() * particleColors.length)],
       });
     }
@@ -282,39 +282,32 @@ const whiteParticles: React.FC<ParticlesProps> = ({
     setMobileParticles(particles);
   }, [particleCount, screenDimensions]);
 
-  // Animate mobile particles
+  // Animate mobile particles - static positions with twinkling opacity only
   useEffect(() => {
     if (Platform.OS === 'web' || mobileParticles.length === 0) return;
     
-    const animations = mobileParticles.map((particle, index) => {
-      const duration = 8000 + Math.random() * 4000; // 8-12s (much faster)
+    const animations = mobileParticles.map((particle) => {
+      const minOpacity = 0.2 + Math.random() * 0.2; // 0.2-0.4
+      const maxOpacity = 0.6 + Math.random() * 0.4; // 0.6-1.0
+      const duration = 2000 + Math.random() * 3000; // 2-5s per twinkle
+      const delay = Math.random() * 2000; // Random start delay
+      
+      // Set initial random opacity
+      particle.opacity.setValue(minOpacity + Math.random() * (maxOpacity - minOpacity));
       
       return Animated.loop(
         Animated.sequence([
-          Animated.parallel([
-            Animated.timing(particle.x, {
-              toValue: Math.random() * screenDimensions.width,
-              duration: duration,
-              useNativeDriver: true,
-            }),
-            Animated.timing(particle.y, {
-              toValue: Math.random() * screenDimensions.height,
-              duration: duration,
-              useNativeDriver: true,
-            }),
-            Animated.sequence([
-              Animated.timing(particle.opacity, {
-                toValue: 0.8,
-                duration: duration / 2,
-                useNativeDriver: true,
-              }),
-              Animated.timing(particle.opacity, {
-                toValue: 0.3,
-                duration: duration / 2,
-                useNativeDriver: true,
-              }),
-            ]),
-          ]),
+          Animated.delay(delay),
+          Animated.timing(particle.opacity, {
+            toValue: maxOpacity,
+            duration: duration / 2,
+            useNativeDriver: true,
+          }),
+          Animated.timing(particle.opacity, {
+            toValue: minOpacity,
+            duration: duration / 2,
+            useNativeDriver: true,
+          }),
         ]),
         { iterations: -1 }
       );
@@ -322,17 +315,17 @@ const whiteParticles: React.FC<ParticlesProps> = ({
     
     animations.forEach(anim => anim.start());
     
-    // Subtle pulsing animation
+    // Subtle background pulsing
     Animated.loop(
       Animated.sequence([
         Animated.timing(fadeAnim, {
-          toValue: 0.4,
-          duration: 4000,
+          toValue: 0.3,
+          duration: 3000,
           useNativeDriver: false,
         }),
         Animated.timing(fadeAnim, {
-          toValue: 0.2,
-          duration: 4000,
+          toValue: 0.15,
+          duration: 3000,
           useNativeDriver: false,
         }),
       ])
@@ -342,7 +335,7 @@ const whiteParticles: React.FC<ParticlesProps> = ({
     Animated.loop(
       Animated.timing(shimmerAnim, {
         toValue: 1,
-        duration: 5000,
+        duration: 4000,
         useNativeDriver: false,
       })
     ).start();

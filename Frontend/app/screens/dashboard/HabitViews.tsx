@@ -1,14 +1,12 @@
-import React, { useEffect, useState } from 'react'
-import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, ScrollView } from 'react-native'
+import React, { useEffect, useState, useRef } from 'react'
+import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensions, ScrollView, Animated } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getBaseUrl } from '../../../config'
+import { BASE_URL } from '../../../config'
 import HomeUI from "@/components/ui/home-ui";
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import HabitBox from '@/components/ui/habitBox'
-import GreyButton from '@/components/ui/greyButton'
 import { Ionicons } from '@expo/vector-icons'
-import { scaleFont, scaleSize } from '../../utils/constants'
 import { logger } from '../../utils/logger'
 
 interface Habit {
@@ -17,6 +15,7 @@ interface Habit {
     status: string;
     count_checkins: number;
     current_streak?: number;
+    partnership_id?: string;
 }
 
 interface Goal {
@@ -28,16 +27,36 @@ interface Goal {
 interface HabitWithProgress extends Habit {
     userProgress: number;
     partnerProgress: number;
+    userName?: string;
+    userAvatar?: string;
+    partnerName?: string;
+    partnerAvatar?: string;
 }
 
 export default function HabitViews() {
     const router = useRouter()
     const [habits, setHabits] = useState<HabitWithProgress[]>([])
     const [loading, setLoading] = useState(true)
-    const screenWidth = Dimensions.get('window').width
+    const fadeAnim = useRef(new Animated.Value(0)).current
+    const slideAnim = useRef(new Animated.Value(30)).current
 
     useEffect(() => {
         fetchHabitsWithProgress()
+        
+        // Entrance animations
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                tension: 50,
+                friction: 8,
+                useNativeDriver: true,
+            }),
+        ]).start()
     }, [])
 
     const fetchHabitsWithProgress = async () => {
@@ -51,7 +70,6 @@ export default function HabitViews() {
                 return
             }
 
-            const BASE_URL = await getBaseUrl()
             logger.log('🔍 Fetching habits and goals...')
 
             // OPTIMIZATION: Fetch all data in parallel instead of sequentially
@@ -112,9 +130,13 @@ export default function HabitViews() {
 
             // Handle user response - CRITICAL: we need user ID to properly match goals
             let currentUserId: string | null = null
+            let currentUserName = 'You'
+            let currentUserAvatar = ''
             if (userResponse.ok) {
                 const userData = await userResponse.json()
                 currentUserId = userData.id || userData._id || userData.user_id
+                currentUserName = userData.display_name || userData.username || 'You'
+                currentUserAvatar = userData.profile_photo_url || ''
                 logger.log('👤 Current user ID:', currentUserId)
             } else {
                 logger.error('❌ Failed to fetch user info')
@@ -128,6 +150,22 @@ export default function HabitViews() {
                 setHabits(habitsWithZeroProgress)
                 setLoading(false)
                 return
+            }
+
+            // Get partner info from partnership (fetch once for all habits)
+            let partnerName = 'Partner'
+            let partnerAvatar = ''
+            try {
+                const partnershipResponse = await fetch(`${BASE_URL}/api/partnerships/current`, {
+                    headers: {'Authorization': `Bearer ${token}`}
+                })
+                if (partnershipResponse.ok) {
+                    const partnershipData = await partnershipResponse.json()
+                    partnerName = partnershipData.partner?.username || partnershipData.partner?.display_name || 'Partner'
+                    partnerAvatar = partnershipData.partner?.profile_picture || partnershipData.partner?.profile_photo_url || ''
+                }
+            } catch (err) {
+                logger.error('Error fetching partner info:', err)
             }
 
             // Match habits with goals and calculate progress
@@ -149,7 +187,11 @@ export default function HabitViews() {
                 return {
                     ...habit,
                     userProgress,
-                    partnerProgress
+                    partnerProgress,
+                    userName: currentUserName,
+                    userAvatar: currentUserAvatar,
+                    partnerName,
+                    partnerAvatar
                 }
             })
 
@@ -180,88 +222,114 @@ export default function HabitViews() {
 
     if (loading) {
         return (
-            <View className="flex-1 relative">
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
                 <WhiteParticles />
                 <View className="flex-1 items-center justify-center">
                     <ActivityIndicator size="large" color="#ffffff" />
-                    <Text className="text-white mt-4">Loading Habits...</Text>
+                    <Text className="text-white mt-4 font-wix">Loading Habits...</Text>
                 </View>
             </View>
         )
     }
 
     return (
-        <View className="flex-1 relative">
+        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
             <WhiteParticles />
             <Image
                 source={require('app/images/space/galaxy.png')}
                 className="absolute bottom-0 right-0"
-                style={{ height: scaleSize(300), width: scaleSize(300) }}
+                style={{ height: 250, width: 250, opacity: 0.3 }}
                 resizeMode="cover"
             />
-
-            <ScrollView 
-                className="flex-1"
-                contentContainerStyle={{ paddingBottom: 100 }}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
+            <Animated.View 
+                style={{ 
+                    flex: 1,
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }]
+                }}
             >
-                <View className="flex-row items-center justify-center mt-16 px-4">
-                    <Text className="font-wix text-white text-center flex-1" style={{ fontSize: scaleFont(38) }}>All Habits</Text>
-                    <TouchableOpacity
-                        onPress={() => router.push('/screens/dashboard/HabitDrafts')}
-                        className="bg-white/20 rounded-full px-3 py-1.5 ml-2"
-                    >
-                        <Text className="text-white text-xs" style={{ fontSize: scaleFont(12) }}>View Drafts</Text>
-                    </TouchableOpacity>
-                </View>
+                <ScrollView 
+                    className="flex-1"
+                    contentContainerStyle={{ 
+                        paddingTop: 60,
+                        paddingBottom: 120,
+                        paddingHorizontal: 20
+                    }}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                >
+                    <View className="flex-row items-center justify-center mb-8">
+                        <Text className="font-wix text-white text-[36px] text-center flex-1">All Habits</Text>
+                        <TouchableOpacity
+                            onPress={() => router.push('/screens/dashboard/HabitDrafts')}
+                            activeOpacity={0.8}
+                            className="bg-white/20 rounded-full px-4 py-2 ml-2 border border-white/30"
+                        >
+                            <Text className="text-white text-xs font-wix">View Drafts</Text>
+                        </TouchableOpacity>
+                    </View>
 
-                <View className="items-center justify-center mt-4 mb-10">
                     {activeHabits.length > 0 ? (
-                        activeHabits.map((habit) => (
-                            <TouchableOpacity
-                                key={habit.id}
-                                onPress={() => {
-                                    logger.log('Navigating to habit:', habit.id)
-                                    router.push({
-                                        pathname: '/screens/dashboard/HabitDetails',
-                                        params: { habitId: habit.id }
-                                    })
-                                }}
-                                activeOpacity={0.8}
-                                className="w-full items-center"
-                            >
-                                <HabitBox
-                                    title={habit.habit_name}
-                                    userProgress={habit.userProgress}
-                                    partnerProgress={habit.partnerProgress}
-                                    streak={habit.current_streak || 0}
-                                />
-                            </TouchableOpacity>
-                        ))
+                        <View className="gap-4 mb-6">
+                            {activeHabits.map((habit) => (
+                                <TouchableOpacity
+                                    key={habit.id}
+                                    onPress={() => {
+                                        logger.log('Navigating to habit:', habit.id)
+                                        router.push({
+                                            pathname: '/screens/dashboard/HabitDetails',
+                                            params: { habitId: habit.id }
+                                        })
+                                    }}
+                                    activeOpacity={0.8}
+                                >
+                                    <HabitBox
+                                        title={habit.habit_name}
+                                        userProgress={habit.userProgress}
+                                        partnerProgress={habit.partnerProgress}
+                                        streak={habit.current_streak || 0}
+                                        leftAvatar={habit.userAvatar}
+                                        rightAvatar={habit.partnerAvatar}
+                                        userName={habit.userName}
+                                        partnerName={habit.partnerName}
+                                    />
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     ) : (
-                        <View className="py-8">
-                            <Text className="text-white/60 text-center text-lg">No active habits yet</Text>
-                            <Text className="text-white/40 text-center mt-2">Create your first habit below!</Text>
+                        <View className="py-16 px-6 items-center bg-white/5 rounded-2xl border border-white/10 mb-6">
+                            <Text className="text-white/70 text-center text-lg font-wix mb-2">No active habits yet</Text>
+                            <Text className="text-white/50 text-center text-sm mb-8">Create your first habit below!</Text>
                         </View>
                     )}
 
-                    {inactiveHabits.length > 0 && (
-                        <GreyButton
-                            text="INACTIVE HABITS"
-                            onPress={() => console.log('Show inactive habits')}
-                            style={{ width: '80%', backgroundColor: '#3E1B56', marginTop: 20 }}
-                        />
-                    )}
-
+                    {/* Always show add habit button */}
                     <TouchableOpacity
-                        className="mt-6 bg-white/50 rounded-full p-4 shadow-lg"
+                        className="h-[56px] w-full bg-white rounded-2xl items-center justify-center mb-6"
+                        activeOpacity={0.8}
                         onPress={() => router.push('/screens/dashboard/createHabit')}
                     >
-                        <Ionicons name="add" size={32} color="white" />
+                        <View className="flex-row items-center gap-2">
+                            <Ionicons name="add" size={24} color="#291133" />
+                            <Text className="font-wix text-[#291133] text-[16px] font-semibold">
+                                Create Habit
+                            </Text>
+                        </View>
                     </TouchableOpacity>
-                </View>
-            </ScrollView>
+
+                    {inactiveHabits.length > 0 && (
+                        <TouchableOpacity
+                            className="h-[56px] w-full bg-white/10 rounded-2xl items-center justify-center border border-white/20 mb-6"
+                            activeOpacity={0.8}
+                            onPress={() => console.log('Show inactive habits')}
+                        >
+                            <Text className="font-wix text-white/70 text-[16px]">
+                                INACTIVE HABITS ({inactiveHabits.length})
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+                </ScrollView>
+            </Animated.View>
             
             <HomeUI />
         </View>

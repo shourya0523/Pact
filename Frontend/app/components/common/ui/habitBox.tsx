@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, Image, ImageSourcePropType } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import ProgressCircle from 'app/components/habit/ProgressCircle';
 import StreakIndicator from 'app/components/habit/StreakIndicator';
 
@@ -10,6 +11,7 @@ interface HabitBoxProps {
     streak?: number;
     leftAvatar?: string | ImageSourcePropType;
     rightAvatar?: string | ImageSourcePropType;
+    userName?: string;
     partnerName?: string;
 }
 
@@ -20,22 +22,26 @@ const HabitBox: React.FC<HabitBoxProps> = ({
   streak = 0,
   leftAvatar,
   rightAvatar,
-  partnerName = 'Partner',
+  userName,
+  partnerName,
 }) => {
-  // ADD DEBUG LOG
-  console.log(`🎯 HabitBox "${title}":`, {
-    userProgress,
-    partnerProgress,
-    average: Math.ceil((userProgress + partnerProgress) / 2)
-  });
-
   // Calculate average progress and ceiling it
   const averageProgress = Math.ceil((userProgress + partnerProgress) / 2);
 
+  // Default avatar component
+  const DefaultAvatar = ({ size = 40 }: { size?: number }) => (
+    <View 
+      className="rounded-full bg-white/20 items-center justify-center border border-white/30"
+      style={{ width: size, height: size }}
+    >
+      <Ionicons name="person" size={size * 0.6} color="white" />
+    </View>
+  );
+
   return (
-    <View className="flex-row items-center justify-between bg-white/90 rounded-2xl px-4 py-3 w-[80%] mt-4 h-[110px]">
+    <View className="flex-row items-center justify-between bg-white/10 rounded-2xl px-4 py-4 w-full border border-white/20 h-[120px]">
       <View className="items-center">
-        {leftAvatar && (
+        {leftAvatar ? (
           <Image
             source={
               typeof leftAvatar === 'string'
@@ -43,29 +49,34 @@ const HabitBox: React.FC<HabitBoxProps> = ({
                 : (leftAvatar as ImageSourcePropType)
             }
             className="w-10 h-10 rounded-full"
+            style={{ borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' }}
           />
+        ) : (
+          <DefaultAvatar size={40} />
         )}
-        <Text className="text-black text-[16px] mt-1">You</Text>
+        <Text className="text-white/80 text-[14px] mt-1 font-wix" numberOfLines={1}>
+          {userName || 'You'}
+        </Text>
       </View>
 
-      <View className="flex-1 items-center">
-        <Text className="text-black text-[24px] mb-2">{title}</Text>
-        <View className="flex-row items-center space-x-4">
+      <View className="flex-1 items-center px-2">
+        <Text className="text-white text-[20px] mb-2 font-wix text-center">{title}</Text>
+        <View className="flex-row items-center gap-3">
           {/* Show average progress - NOT multiplied by 100! */}
           <ProgressCircle progress={averageProgress} size={50} strokeWidth={8} />
           <StreakIndicator
             currentStreak={streak}
             isActive={streak > 0}
-            flameSize={36}
-            numberSize={24}
-            numberColor="black"
-            spacing={0}
+            flameSize={20}
+            numberSize={20}
+            numberColor="white"
+            spacing={4}
           />
         </View>
       </View>
 
       <View className="items-center">
-        {rightAvatar && (
+        {rightAvatar ? (
           <Image
             source={
               typeof rightAvatar === 'string'
@@ -73,9 +84,14 @@ const HabitBox: React.FC<HabitBoxProps> = ({
                 : (rightAvatar as ImageSourcePropType)
             }
             className="w-10 h-10 rounded-full"
+            style={{ borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' }}
           />
+        ) : (
+          <DefaultAvatar size={40} />
         )}
-        <Text className="text-black text-[16px] mt-1">{partnerName}</Text>
+        <Text className="text-white/80 text-[14px] mt-1 font-wix" numberOfLines={1}>
+          {partnerName || 'Partner'}
+        </Text>
       </View>
     </View>
   )

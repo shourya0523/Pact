@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
-import { View, ScrollView, Text, Alert, RefreshControl, ActivityIndicator } from 'react-native'
+import React, { useEffect, useState, useRef } from 'react'
+import { View, ScrollView, Text, Alert, RefreshControl, ActivityIndicator, Animated } from 'react-native'
 import BackwardButton from '@/components/ui/backwardButton'
 import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground'
 import Notification from 'app/components/common/ui/notification'
@@ -15,9 +15,26 @@ export default function Notifications() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [processingAction, setProcessingAction] = useState<string | null>(null);
+    const fadeAnim = useRef(new Animated.Value(0)).current
+    const slideAnim = useRef(new Animated.Value(30)).current
 
     useEffect(() => {
         loadNotifications();
+        
+        // Entrance animations
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                tension: 50,
+                friction: 8,
+                useNativeDriver: true,
+            }),
+        ]).start()
     }, []);
 
     const loadNotifications = async () => {
@@ -200,89 +217,107 @@ export default function Notifications() {
 
     if (loading) {
         return (
-            <View className="flex-1 justify-center items-center bg-[#0A0A0A]">
-                <ActivityIndicator size="large" color="#A855F7" />
-                <Text className="text-white/70 mt-4 font-wix">Loading notifications...</Text>
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+                <PurpleParticles />
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#A855F7" />
+                    <Text className="text-white/70 mt-4 font-wix">Loading notifications...</Text>
+                </View>
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-[#0A0A0A]">
-            <ScrollView 
-                className="flex-1"
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={onRefresh}
-                        tintColor="#A855F7"
-                    />
-                }
+        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+            <PurpleParticles />
+            <View className="absolute bottom-0 right-0">
+                <View style={{height: 250, width: 250, opacity: 0.3}}>
+                    <View className="absolute inset-0" style={{backgroundColor: '#291133'}} />
+                </View>
+            </View>
+            <View className="absolute mt-6 left-8 z-50">
+                <BackwardButton />
+            </View>
+            <Animated.View 
+                style={{ 
+                    flex: 1,
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }]
+                }}
             >
-                <View className="relative">
-                    <PurpleParticles />
-                    <View className="absolute mt-6 left-8 z-50">
-                        <BackwardButton />
-                    </View>
-                    <View className="mb-8">
-                        <Text className="font-wix text-white text-[38px] mt-12 text-center">
-                            Notifications
-                        </Text>
-                    </View>
-                </View>
-
-                {notifications.length === 0 ? (
-                    <View className="mx-4 mt-8 bg-white/5 rounded-2xl p-8 items-center">
-                        <Text className="text-white/70 text-center text-lg font-wix mb-2">
-                            🔔 No Notifications
-                        </Text>
-                        <Text className="text-white/50 text-center text-sm">
-                            You're all caught up! Check back later for updates from your partner.
-                        </Text>
-                    </View>
-                ) : (
-                    <>
-                        <View className="mx-4 mb-4 flex-row justify-between items-center">
-                            <Text className="text-white/70 text-sm">
-                                {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
-                            </Text>
-                            <Text className="text-white/50 text-xs">
-                                Pull to refresh
-                            </Text>
-                        </View>
-
-                        <View className="mx-4 rounded-xl mb-8">
-                            {notifications.map((notif) => (
-                                <View key={notif.id} className="mb-2">
-                                    <Notification
-                                        id={notif.id}
-                                        title={notif.title}
-                                        time={notif.time_ago}
-                                        type={notif.type}
-                                        relatedId={notif.related_id}
-                                        actionTaken={notif.action_taken}
-                                        onCheckInPress={handleCheckIn}
-                                        onAcceptPress={handleAcceptPartnership}
-                                        onDeclinePress={handleDeclinePartnership}
-                                        onNotificationPress={handleNotificationPress}
-                                    />
-                                    {processingAction === notif.id && (
-                                        <View className="absolute right-4 top-1/2 -translate-y-1/2">
-                                            <ActivityIndicator size="small" color="#A855F7" />
-                                        </View>
-                                    )}
-                                </View>
-                            ))}
-                        </View>
-                    </>
-                )}
-
-                <View className="mx-4 mb-8 bg-white/10 rounded-2xl p-4">
-                    <Text className="text-white/70 text-sm text-center">
-                        💡 Tip: Notifications help you stay accountable and connected with your partner. Make sure to enable push notifications in your device settings!
+                <ScrollView 
+                    className="flex-1"
+                    contentContainerStyle={{ 
+                        paddingTop: 80,
+                        paddingBottom: 120,
+                        paddingHorizontal: 20
+                    }}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={onRefresh}
+                            tintColor="#A855F7"
+                        />
+                    }
+                    showsVerticalScrollIndicator={false}
+                >
+                    <Text className="font-wix text-white text-[36px] text-center mb-8">
+                        Notifications
                     </Text>
-                </View>
-            </ScrollView>
+
+                    {notifications.length === 0 ? (
+                        <View className="bg-white/5 rounded-2xl p-8 items-center border border-white/10">
+                            <Text className="text-white/70 text-center text-lg font-wix mb-2">
+                                🔔 No Notifications
+                            </Text>
+                            <Text className="text-white/50 text-center text-sm">
+                                You're all caught up! Check back later for updates from your partner.
+                            </Text>
+                        </View>
+                    ) : (
+                        <>
+                            <View className="mb-4 flex-row justify-between items-center">
+                                <Text className="text-white/70 text-sm font-wix">
+                                    {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
+                                </Text>
+                                <Text className="text-white/50 text-xs">
+                                    Pull to refresh
+                                </Text>
+                            </View>
+
+                            <View className="gap-2 mb-6">
+                                {notifications.map((notif) => (
+                                    <View key={notif.id} className="relative">
+                                        <Notification
+                                            id={notif.id}
+                                            title={notif.title}
+                                            time={notif.time_ago}
+                                            type={notif.type}
+                                            relatedId={notif.related_id}
+                                            actionTaken={notif.action_taken}
+                                            onCheckInPress={handleCheckIn}
+                                            onAcceptPress={handleAcceptPartnership}
+                                            onDeclinePress={handleDeclinePartnership}
+                                            onNotificationPress={handleNotificationPress}
+                                        />
+                                        {processingAction === notif.id && (
+                                            <View className="absolute right-4 top-1/2" style={{ transform: [{ translateY: -10 }] }}>
+                                                <ActivityIndicator size="small" color="#A855F7" />
+                                            </View>
+                                        )}
+                                    </View>
+                                ))}
+                            </View>
+                        </>
+                    )}
+
+                    <View className="bg-white/10 rounded-2xl p-4 border border-white/20">
+                        <Text className="text-white/70 text-sm text-center font-wix">
+                            💡 Tip: Notifications help you stay accountable and connected with your partner. Make sure to enable push notifications in your device settings!
+                        </Text>
+                    </View>
+                </ScrollView>
+            </Animated.View>
             <HomeUI />
         </View>
     );

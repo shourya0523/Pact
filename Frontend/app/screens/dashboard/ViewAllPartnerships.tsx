@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+import { View, Text, TextInput, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Alert, Animated } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getBaseUrl } from '../../../config'
+import { BASE_URL } from '../../../config'
 import BackwardButton from '@/components/ui/backwardButton'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import HomeUI from '@/components/ui/home-ui'
@@ -37,9 +37,26 @@ export default function ViewAllPartnerships() {
     const [refreshing, setRefreshing] = useState(false)
     const [sendingRequest, setSendingRequest] = useState(false)
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
+    const fadeAnim = useRef(new Animated.Value(0)).current
+    const slideAnim = useRef(new Animated.Value(30)).current
 
     useEffect(() => {
         fetchData()
+        
+        // Entrance animations
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                tension: 50,
+                friction: 8,
+                useNativeDriver: true,
+            }),
+        ]).start()
     }, [])
 
     useEffect(() => {
@@ -62,8 +79,6 @@ export default function ViewAllPartnerships() {
                 router.replace("/screens/auth/LoginScreen")
                 return
             }
-
-            const BASE_URL = await getBaseUrl()
 
             // Fetch pending requests
             const requestsResponse = await fetch(`${BASE_URL}/api/partnerships/requests/pending`, {
@@ -121,8 +136,6 @@ export default function ViewAllPartnerships() {
                 return
             }
 
-            const BASE_URL = await getBaseUrl()
-            
             const response = await fetch(`${BASE_URL}/api/partnerships/requests/send?partner_username=${searchQuery.trim()}`, {
                 method: 'POST',
                 headers: {
@@ -156,8 +169,6 @@ export default function ViewAllPartnerships() {
                 return
             }
 
-            const BASE_URL = await getBaseUrl()
-            
             const response = await fetch(`${BASE_URL}/api/partnerships/requests/${requestId}/accept`, {
                 method: 'POST',
                 headers: {
@@ -189,8 +200,6 @@ export default function ViewAllPartnerships() {
                 return
             }
 
-            const BASE_URL = await getBaseUrl()
-            
             const response = await fetch(`${BASE_URL}/api/partnerships/requests/${requestId}/decline`, {
                 method: 'POST',
                 headers: {
@@ -232,8 +241,6 @@ export default function ViewAllPartnerships() {
                                 return
                             }
 
-                            const BASE_URL = await getBaseUrl()
-                            
                             const response = await fetch(`${BASE_URL}/api/partnerships/${partnershipId}`, {
                                 method: 'DELETE',
                                 headers: {
@@ -264,17 +271,24 @@ export default function ViewAllPartnerships() {
 
     if (loading) {
         return (
-            <View className="flex-1 bg-black items-center justify-center">
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
                 <WhiteParticles />
-                <ActivityIndicator size="large" color="#ffffff" />
-                <Text className="text-white mt-4 font-wix">Loading partnerships...</Text>
+                <View className="flex-1 items-center justify-center">
+                    <ActivityIndicator size="large" color="#ffffff" />
+                    <Text className="text-white mt-4 font-wix">Loading partnerships...</Text>
+                </View>
             </View>
         )
     }
 
     return (
-        <View className="flex-1 relative">
+        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
             <WhiteParticles />
+            <View className="absolute bottom-0 right-0">
+                <View style={{height: 250, width: 250, opacity: 0.3}}>
+                    <View className="absolute inset-0" style={{backgroundColor: '#291133'}} />
+                </View>
+            </View>
             
             {/* Back button */}
             <View className="absolute mt-6 left-8 z-50">
@@ -302,29 +316,39 @@ export default function ViewAllPartnerships() {
                 </View>
             )}
 
-            <ScrollView 
-                className="flex-1" 
-                contentContainerStyle={{ paddingBottom: 40 }}
-                refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#ffffff" />
-                }
+            <Animated.View 
+                style={{ 
+                    flex: 1,
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }]
+                }}
             >
-                {/* Main content */}
-                <View className="flex-1 justify-start items-center pt-20 px-6">
+                <ScrollView 
+                    className="flex-1" 
+                    contentContainerStyle={{ 
+                        paddingTop: 80,
+                        paddingBottom: 120,
+                        paddingHorizontal: 20
+                    }}
+                    refreshControl={
+                        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />
+                    }
+                    showsVerticalScrollIndicator={false}
+                >
                     {/* Title */}
-                    <Text className="font-wix text-white text-[38px] text-center max-w-[80%] mb-10">
+                    <Text className="font-wix text-white text-[36px] text-center mb-8">
                         Partnerships
                     </Text>
 
                     {/* Search Section */}
-                    <Text className="font-wix text-white text-[24px] text-center mb-4">
-                        Find Partners
-                    </Text>
-                    <View className="w-[80%] mb-3">
+                    <View className="mb-6">
+                        <Text className="font-wix text-white text-[18px] mb-3 ml-1">
+                            Find Partners
+                        </Text>
                         <TextInput
-                            className="w-full h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix"
+                            className="w-full h-[56px] bg-white/90 rounded-2xl text-[16px] font-wix"
                             placeholder="Search by username..."
-                            placeholderTextColor="#3F414E"
+                            placeholderTextColor="#6B7280"
                             style={{ paddingHorizontal: 20 }}
                             value={searchQuery}
                             onChangeText={setSearchQuery}
@@ -335,17 +359,21 @@ export default function ViewAllPartnerships() {
                     <TouchableOpacity 
                         onPress={handleSendRequest}
                         disabled={sendingRequest || !searchQuery.trim()}
-                        className="rounded-[15px] px-6 py-3 mb-10"
+                        activeOpacity={0.8}
+                        className="h-[56px] w-full rounded-2xl items-center justify-center mb-8"
                         style={{ 
                             backgroundColor: sendingRequest || !searchQuery.trim() 
-                                ? 'rgba(139, 92, 246, 0.3)' 
-                                : 'rgba(139, 92, 246, 0.6)' 
+                                ? 'rgba(255, 255, 255, 0.15)' 
+                                : 'white',
+                            opacity: (sendingRequest || !searchQuery.trim()) ? 0.6 : 1
                         }}
                     >
                         {sendingRequest ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
+                            <ActivityIndicator size="small" color="#291133" />
                         ) : (
-                            <Text className="font-wix text-white text-[14px] font-bold">
+                            <Text className="font-wix text-[16px] font-semibold" style={{ 
+                                color: searchQuery.trim() ? '#291133' : 'white' 
+                            }}>
                                 Send Request
                             </Text>
                         )}
@@ -353,16 +381,16 @@ export default function ViewAllPartnerships() {
 
                     {/* Pending Requests Section */}
                     {pendingRequests.length > 0 && (
-                        <View className="w-[80%] mb-10">
-                            <View className="flex-row items-center justify-center mb-4">
-                                <Text className="font-wix text-white text-[24px]">
+                        <View className="w-full mb-8">
+                            <View className="flex-row items-center mb-4">
+                                <Text className="font-wix text-white text-[20px]">
                                     Pending Requests
                                 </Text>
                                 <View 
-                                    className="ml-2 rounded-full px-2.5 py-0.5 min-w-[24px] items-center justify-center"
-                                    style={{ backgroundColor: 'rgba(139, 92, 246, 0.6)' }}
+                                    className="ml-2 rounded-full px-3 py-1 min-w-[28px] items-center justify-center"
+                                    style={{ backgroundColor: 'rgba(168, 85, 247, 0.6)' }}
                                 >
-                                    <Text className="font-wix text-white text-[12px] font-bold">
+                                    <Text className="font-wix text-white text-[14px] font-bold">
                                         {pendingRequests.length}
                                     </Text>
                                 </View>
@@ -371,43 +399,45 @@ export default function ViewAllPartnerships() {
                             {pendingRequests.map((request) => (
                                 <View 
                                     key={request.request_id}
-                                    className="bg-white/85 rounded-[20px] p-4 mb-3 flex-row items-center"
+                                    className="bg-white/10 rounded-2xl p-4 mb-3 flex-row items-center border border-white/20"
                                 >
                                     <View 
-                                        className="w-[50px] h-[50px] rounded-full items-center justify-center"
-                                        style={{ backgroundColor: 'rgba(139, 92, 246, 0.8)' }}
+                                        className="w-[48px] h-[48px] rounded-full items-center justify-center"
+                                        style={{ backgroundColor: 'rgba(168, 85, 247, 0.8)' }}
                                     >
-                                        <Text className="text-white text-[20px] font-wix font-bold">
+                                        <Text className="text-white text-[18px] font-wix font-bold">
                                             {getInitial(request.display_name || request.username)}
                                         </Text>
                                     </View>
                                     
                                     <View className="flex-1 ml-3">
-                                        <Text className="font-wix text-gray-800 text-[16px] font-semibold">
+                                        <Text className="font-wix text-white text-[16px] font-semibold">
                                             {request.display_name || request.username}
                                         </Text>
-                                        <Text className="font-wix text-gray-600 text-[13px]">
+                                        <Text className="font-wix text-white/60 text-[13px]">
                                             wants to be partners!
                                         </Text>
                                     </View>
 
-                                    <View className="flex-row" style={{ gap: 6 }}>
+                                    <View className="flex-row gap-2">
                                         <TouchableOpacity
                                             onPress={() => handleAcceptRequest(request.request_id, request.display_name || request.username)}
-                                            className="rounded-[12px] px-4 py-2"
-                                            style={{ backgroundColor: '#a7f3d0' }}
+                                            activeOpacity={0.8}
+                                            className="rounded-xl px-4 py-2"
+                                            style={{ backgroundColor: 'rgba(16, 185, 129, 0.8)' }}
                                         >
-                                            <Text className="font-wix text-[12px] font-bold" style={{ color: '#065f46' }}>
+                                            <Text className="font-wix text-[13px] font-bold text-white">
                                                 Accept
                                             </Text>
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
                                             onPress={() => handleDeclineRequest(request.request_id, request.display_name || request.username)}
-                                            className="rounded-[12px] px-4 py-2"
-                                            style={{ backgroundColor: '#fca5a5' }}
+                                            activeOpacity={0.8}
+                                            className="rounded-xl px-4 py-2"
+                                            style={{ backgroundColor: 'rgba(248, 113, 113, 0.8)' }}
                                         >
-                                            <Text className="font-wix text-[12px] font-bold" style={{ color: '#7f1d1d' }}>
+                                            <Text className="font-wix text-[13px] font-bold text-white">
                                                 Decline
                                             </Text>
                                         </TouchableOpacity>
@@ -418,14 +448,14 @@ export default function ViewAllPartnerships() {
                     )}
 
                     {/* Current Partners Section */}
-                    <View className="w-[80%] mb-6">
-                        <Text className="font-wix text-white text-[24px] text-center mb-4">
+                    <View className="w-full mb-6">
+                        <Text className="font-wix text-white text-[20px] mb-4">
                             Current Partners
                         </Text>
 
                         {currentPartners.length === 0 ? (
-                            <View className="items-center py-10">
-                                <Text className="font-wix text-white/50 text-[14px]">
+                            <View className="items-center py-10 bg-white/5 rounded-2xl border border-white/10">
+                                <Text className="font-wix text-white/60 text-[14px]">
                                     No partners yet
                                 </Text>
                                 <Text className="font-wix text-white/40 text-[12px] mt-2">
@@ -436,32 +466,33 @@ export default function ViewAllPartnerships() {
                             currentPartners.map((partner) => (
                                 <View 
                                     key={partner.partnership_id}
-                                    className="bg-white/85 rounded-[20px] p-4 mb-3 flex-row items-center"
+                                    className="bg-white/10 rounded-2xl p-4 mb-3 flex-row items-center border border-white/20"
                                 >
                                     <View 
-                                        className="w-[50px] h-[50px] rounded-full items-center justify-center"
-                                        style={{ backgroundColor: 'rgba(139, 92, 246, 0.8)' }}
+                                        className="w-[48px] h-[48px] rounded-full items-center justify-center"
+                                        style={{ backgroundColor: 'rgba(168, 85, 247, 0.8)' }}
                                     >
-                                        <Text className="text-white text-[20px] font-wix font-bold">
+                                        <Text className="text-white text-[18px] font-wix font-bold">
                                             {getInitial(partner.display_name || partner.username)}
                                         </Text>
                                     </View>
                                     
                                     <View className="flex-1 ml-3">
-                                        <Text className="font-wix text-gray-800 text-[16px] font-semibold">
+                                        <Text className="font-wix text-white text-[16px] font-semibold">
                                             {partner.display_name || partner.username}
                                         </Text>
-                                        <Text className="font-wix text-gray-600 text-[13px]">
+                                        <Text className="font-wix text-white/60 text-[13px]">
                                             {partner.shared_habits} shared habit{partner.shared_habits !== 1 ? 's' : ''}
                                         </Text>
                                     </View>
 
                                     <TouchableOpacity
                                         onPress={() => handleRemovePartner(partner.partnership_id, partner.display_name || partner.username)}
-                                        className="rounded-[12px] px-4 py-2"
-                                        style={{ backgroundColor: '#f87171' }}
+                                        activeOpacity={0.8}
+                                        className="rounded-xl px-4 py-2"
+                                        style={{ backgroundColor: 'rgba(248, 113, 113, 0.8)' }}
                                     >
-                                        <Text className="font-wix text-white text-[12px] font-bold">
+                                        <Text className="font-wix text-white text-[13px] font-bold">
                                             Remove
                                         </Text>
                                     </TouchableOpacity>
@@ -469,8 +500,8 @@ export default function ViewAllPartnerships() {
                             ))
                         )}
                     </View>
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </Animated.View>
             
             <HomeUI />
         </View>

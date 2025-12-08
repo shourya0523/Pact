@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
+import React, { useState, useEffect, useRef } from 'react'
+import { View, Text, TextInput, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Animated, TouchableOpacity, Dimensions } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getBaseUrl } from '../../../config'
+import { BASE_URL } from '../../../config'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton';
 import LightGreyButton from '@/components/ui/lightGreyButton'
@@ -32,6 +32,11 @@ export default function StudyHabitCreation() {
     const [goalType, setGoalType] = useState<'completion' | 'frequency' | null>(null)
     const [invitePopupVisible, setInvitePopupVisible] = useState(false)
     const [goalSet, setGoalSet] = useState(false)
+    
+    // Animation refs
+    const fadeAnim = useRef(new Animated.Value(0)).current
+    const slideAnim = useRef(new Animated.Value(50)).current
+    const screenWidth = Dimensions.get('window').width
 
     useEffect(() => {
         if (draftId) {
@@ -39,6 +44,21 @@ export default function StudyHabitCreation() {
         } else {
             fetchPartnership()
         }
+        
+        // Entrance animations
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 600,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                tension: 50,
+                friction: 8,
+                useNativeDriver: true,
+            }),
+        ]).start()
     }, [draftId])
 
     const loadDraft = async () => {
@@ -53,7 +73,6 @@ export default function StudyHabitCreation() {
                 return
             }
 
-            const BASE_URL = await getBaseUrl()
             const response = await fetch(`${BASE_URL}/api/habits/drafts/${draftId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -99,7 +118,6 @@ export default function StudyHabitCreation() {
             const token = await AsyncStorage.getItem('access_token')
             if (!token) return
 
-            const BASE_URL = await getBaseUrl()
             const response = await fetch(`${BASE_URL}/api/partnerships/current`, {
                 method: 'GET',
                 headers: {
@@ -183,8 +201,6 @@ export default function StudyHabitCreation() {
                 return
             }
 
-            const BASE_URL = await getBaseUrl()
-            
             // First, find the partnership_id between current user and selected partner
             let partnershipsResponse
             try {
@@ -320,8 +336,6 @@ export default function StudyHabitCreation() {
                 return
             }
 
-            const BASE_URL = await getBaseUrl()
-            
             const draftData = {
                 habit_name: habitName.trim(),
                 habit_type: habitType,
@@ -399,180 +413,201 @@ export default function StudyHabitCreation() {
     return (
         <KeyboardAvoidingView 
             className="flex-1 relative"
+            style={{ backgroundColor: '#291133' }}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
         >
             <WhiteParticles />
             <Image
-                source={require('app/images/space/spark.png')}
+                source={require('app/images/space/galaxy.png')}
                 className="absolute bottom-0 right-0"
-                style={{ height: 300, right: 165 }}
+                style={{ height: 250, width: 250, opacity: 0.3 }}
                 resizeMode="cover"
             />
-            <Image
-                source={require('app/images/space/spark.png')}
-                className="absolute bottom-0 right-0"
-                style={{ height: 380, left: 260, bottom: 600 }}
-                resizeMode="cover"
-            />
-            <ScrollView 
-                className="flex-1"
-                contentContainerStyle={{ paddingBottom: 140, paddingTop: 20 }}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
+            <Animated.View 
+                style={{ 
+                    flex: 1,
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }]
+                }}
             >
-                <View className="flex-1 justify-center items-center">
-                <Text className="font-wix text-white text-[38px] mt-12 text-center">
-                    {isEditingDraft ? 'Edit Draft' : 'Create Habit'}
-                </Text>
-                <View className="w-[80%] mt-12">
-                    <Text className="font-wix text-white text-[16px] mb-2">
-                        Habit Name <Text className="text-red-400">*</Text>
-                    </Text>
-                    <TextInput
-                        className="h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix"
-                        placeholder="Study everyday"
-                        placeholderTextColor="#3F414E"
-                        style={{ paddingHorizontal: 20 }}
-                        value={habitName}
-                        onChangeText={setHabitName}
-                        editable={!loading && !saving}
-                    />
-                </View>
-                <Text className="font-wix text-white text-[24px] text-center mt-4">Habit Type</Text>
-                <View className="flex-row justify-center space-x-8 mt-4">
-                    <LightGreyButton 
-                        onPress={() => setHabitType('build')}
-                        text="Build"
-                        style={{ 
-                            width: '140px',
-                            backgroundColor: habitType === 'build' ? 'white' : 'rgba(129, 132, 152, 0.4)'
-                        }}
-                        textStyle={{
-                            color: habitType === 'build' ? '#2D1B4E' : 'white'
-                        }}
-                    />
-                    <LightGreyButton 
-                        onPress={() => setHabitType('break')}
-                        text="Break"
-                        style={{ 
-                            width: '140px', 
-                            backgroundColor: habitType === 'break' ? 'white' : 'rgba(129, 132, 152, 0.4)'
-                        }}
-                        textStyle={{
-                            color: habitType === 'break' ? '#2D1B4E' : 'white'
-                        }}
-                    />
-                </View>
-                <Text className="font-wix text-white text-[24px] text-center mt-4">Description</Text>
-                <TextInput
-                    className="w-[80%] h-[120px] bg-white/85 rounded-[20px] text-[16px] font-wix mt-4"
-                    placeholder="Habit descripton"
-                    placeholderTextColor="#3F414E"
-                    multiline
-                    textAlignVertical="top"
-                    style={{ padding: 20 }}
-                    value={description}
-                    onChangeText={setDescription}
-                    editable={!loading}
-                />
-                <View className="flex-row justify-center space-x-16 mt-4">
+                <ScrollView 
+                    className="flex-1"
+                    contentContainerStyle={{ 
+                        paddingBottom: Platform.OS === 'ios' ? 180 : 140, 
+                        paddingTop: Platform.OS === 'ios' ? 60 : 40,
+                        paddingHorizontal: 20
+                    }}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     <View className="items-center">
-                        {selectedPartnerName ? (
-                            <View className="items-center">
-                                <Text className="font-wix text-white text-[24px] text-center mt-4 mb-2">
-                                    Add Partner! <Text className="text-red-400">*</Text>
-                                </Text>
-                                <Text className="font-wix text-green-400 text-[16px] text-center mt-4 mb-4">
-                                    ✓ {selectedPartnerName} added as partner
-                                </Text>
-                            </View>
-                        ) : (
-                            <>
-                                <Text className="font-wix text-white text-[24px] text-center mt-4 mb-4">
-                                    Add Partner! <Text className="text-red-400">*</Text>
-                                </Text>
-                                <PurpleButton 
-                                    onPress={() => setInvitePopupVisible(true)}
-                                    text="ADD"
-                                />
-                            </>
-                        )}
-                    </View>
-                    <View className="items-center">
-                        <Text className="font-wix text-white text-[24px] text-center mb-8">
-                            Set Goal
+                        <Text className="font-wix text-white text-[36px] mb-8 text-center">
+                            {isEditingDraft ? 'Edit Draft' : 'Create Habit'}
                         </Text>
-                        <PurpleButton 
-                            onPress={() => setGoalPopupVisible(true)}
-                            text={goalType ? goalType.toUpperCase() : "SET"}
-                        />
-                        {goalType && (
-                            <Text className="text-white/70 text-xs mt-2">
-                                {goalType === 'completion' ? 'Completion goal selected' : 'Frequency goal selected'}
+                        
+                        {/* Habit Name Input */}
+                        <View className="w-full mb-6">
+                            <Text className="font-wix text-white text-[16px] mb-3 ml-1">
+                                Habit Name <Text className="text-red-400">*</Text>
                             </Text>
-                        )}
+                            <TextInput
+                                className="h-[56px] bg-white/90 rounded-2xl text-[16px] font-wix"
+                                placeholder="e.g., Study everyday"
+                                placeholderTextColor="#6B7280"
+                                style={{ paddingHorizontal: 20 }}
+                                value={habitName}
+                                onChangeText={setHabitName}
+                                editable={!loading && !saving}
+                            />
+                        </View>
+                        {/* Habit Type */}
+                        <View className="w-full mb-6">
+                            <Text className="font-wix text-white text-[18px] mb-3 ml-1">Habit Type</Text>
+                            <View className="flex-row justify-between gap-3">
+                                <TouchableOpacity
+                                    onPress={() => setHabitType('build')}
+                                    activeOpacity={0.7}
+                                    className="flex-1 h-[52px] rounded-2xl items-center justify-center"
+                                    style={{ 
+                                        backgroundColor: habitType === 'build' ? 'white' : 'rgba(255, 255, 255, 0.15)',
+                                        borderWidth: habitType === 'build' ? 0 : 1,
+                                        borderColor: 'rgba(255, 255, 255, 0.3)'
+                                    }}
+                                >
+                                    <Text className="font-wix text-[16px]" style={{ color: habitType === 'build' ? '#291133' : 'white' }}>
+                                        Build
+                                    </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    onPress={() => setHabitType('break')}
+                                    activeOpacity={0.7}
+                                    className="flex-1 h-[52px] rounded-2xl items-center justify-center"
+                                    style={{ 
+                                        backgroundColor: habitType === 'break' ? 'white' : 'rgba(255, 255, 255, 0.15)',
+                                        borderWidth: habitType === 'break' ? 0 : 1,
+                                        borderColor: 'rgba(255, 255, 255, 0.3)'
+                                    }}
+                                >
+                                    <Text className="font-wix text-[16px]" style={{ color: habitType === 'break' ? '#291133' : 'white' }}>
+                                        Break
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                        
+                        {/* Description */}
+                        <View className="w-full mb-6">
+                            <Text className="font-wix text-white text-[18px] mb-3 ml-1">Description</Text>
+                            <TextInput
+                                className="w-full min-h-[120px] bg-white/90 rounded-2xl text-[16px] font-wix"
+                                placeholder="Add a description (optional)"
+                                placeholderTextColor="#6B7280"
+                                multiline
+                                textAlignVertical="top"
+                                style={{ padding: 20 }}
+                                value={description}
+                                onChangeText={setDescription}
+                                editable={!loading}
+                            />
+                        </View>
+                        {/* Partner & Goal Section */}
+                        <View className="w-full mb-6">
+                            <View className="flex-row gap-3 mb-4">
+                                <View className="flex-1">
+                                    <Text className="font-wix text-white text-[16px] mb-3 ml-1">
+                                        Partner <Text className="text-red-400">*</Text>
+                                    </Text>
+                                    {selectedPartnerName ? (
+                                        <View className="h-[52px] bg-green-500/20 rounded-2xl items-center justify-center border border-green-500/30">
+                                            <Text className="font-wix text-green-400 text-[14px]">
+                                                ✓ {selectedPartnerName}
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <TouchableOpacity
+                                            onPress={() => setInvitePopupVisible(true)}
+                                            activeOpacity={0.7}
+                                            className="h-[52px] bg-white/15 rounded-2xl items-center justify-center border border-white/30"
+                                        >
+                                            <Text className="font-wix text-white text-[16px]">Add Partner</Text>
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                                <View className="flex-1">
+                                    <Text className="font-wix text-white text-[16px] mb-3 ml-1">Goal</Text>
+                                    <TouchableOpacity
+                                        onPress={() => setGoalPopupVisible(true)}
+                                        activeOpacity={0.7}
+                                        className="h-[52px] bg-white/15 rounded-2xl items-center justify-center border border-white/30"
+                                    >
+                                        <Text className="font-wix text-white text-[16px]">
+                                            {goalType ? goalType.charAt(0).toUpperCase() + goalType.slice(1) : 'Set Goal'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+                        
+                        {/* Frequency */}
+                        <View className="w-full mb-8">
+                            <Text className="font-wix text-white text-[18px] mb-3 ml-1">Repeat</Text>
+                            <View className="flex-row justify-between gap-2">
+                                {(['daily', 'weekly', 'monthly'] as const).map((freq) => (
+                                    <TouchableOpacity
+                                        key={freq}
+                                        onPress={() => setFrequency(freq)}
+                                        activeOpacity={0.7}
+                                        className="flex-1 h-[52px] rounded-2xl items-center justify-center"
+                                        style={{ 
+                                            backgroundColor: frequency === freq ? 'white' : 'rgba(255, 255, 255, 0.15)',
+                                            borderWidth: frequency === freq ? 0 : 1,
+                                            borderColor: 'rgba(255, 255, 255, 0.3)'
+                                        }}
+                                    >
+                                        <Text className="font-wix text-[14px]" style={{ color: frequency === freq ? '#291133' : 'white' }}>
+                                            {freq.charAt(0).toUpperCase() + freq.slice(1)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+                        {/* Action Buttons */}
+                        <View className="w-full flex-row gap-3 mb-6">
+                            <TouchableOpacity
+                                onPress={handleCreate}
+                                disabled={loading || saving}
+                                activeOpacity={0.8}
+                                className="flex-1 h-[56px] bg-white rounded-2xl items-center justify-center"
+                                style={{ opacity: (loading || saving) ? 0.6 : 1 }}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator size="small" color="#291133" />
+                                ) : (
+                                    <Text className="font-wix text-[#291133] text-[16px] font-semibold">
+                                        CREATE
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={handleSave}
+                                disabled={loading || saving}
+                                activeOpacity={0.8}
+                                className="flex-1 h-[56px] bg-white/20 rounded-2xl items-center justify-center border border-white/30"
+                                style={{ opacity: (loading || saving) ? 0.6 : 1 }}
+                            >
+                                {saving ? (
+                                    <ActivityIndicator size="small" color="#ffffff" />
+                                ) : (
+                                    <Text className="font-wix text-white text-[16px] font-semibold">
+                                        SAVE DRAFT
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
-                <Text className="font-wix text-white text-[24px] text-center mt-6">Repeat</Text>
-                <View className="flex-row justify-center space-x-4 mt-10">
-                    <LightGreyButton 
-                        onPress={() => setFrequency('daily')}
-                        text="Daily"
-                        style={{
-                            backgroundColor: frequency === 'daily' ? 'white' : 'rgba(129, 132, 152, 0.4)'
-                        }}
-                        textStyle={{
-                            color: frequency === 'daily' ? '#2D1B4E' : 'white'
-                        }}
-                    />
-                    <LightGreyButton 
-                        onPress={() => setFrequency('weekly')}
-                        text="Weekly"
-                        style={{
-                            backgroundColor: frequency === 'weekly' ? 'white' : 'rgba(129, 132, 152, 0.4)'
-                        }}
-                        textStyle={{
-                            color: frequency === 'weekly' ? '#2D1B4E' : 'white'
-                        }}
-                    />
-                    <LightGreyButton 
-                        onPress={() => setFrequency('monthly')}
-                        text="Monthly"
-                        style={{
-                            backgroundColor: frequency === 'monthly' ? 'white' : 'rgba(129, 132, 152, 0.4)'
-                        }}
-                        textStyle={{
-                            color: frequency === 'monthly' ? '#2D1B4E' : 'white'
-                        }}
-                    />
-                </View>
-                <View className="flex-row justify-center mt-20 mb-10">
-                    <GreyButton
-                        onPress={() => {
-                            console.log('🔘 CREATE button pressed', { loading, saving, habitName, selectedPartnerId })
-                            handleCreate()
-                        }}
-                        text={loading ? "CREATING..." : "CREATE"}
-                        disabled={loading || saving}
-                        style={{ marginRight: 14, width: '200px', height: '65px' }}
-                    />
-                    <GreyButton
-                        onPress={() => {
-                            console.log('🔘 SAVE button pressed', { loading, saving })
-                            handleSave()
-                        }}
-                        text={saving ? "SAVING..." : "SAVE"}
-                        disabled={loading || saving}
-                        style={{ width: '200px', height: '65px' }}
-                    />
-                </View>
-                
-                {(loading || saving) && (
-                    <ActivityIndicator size="large" color="#ffffff" />
-                )}
-                </View>
-            </ScrollView>
+                </ScrollView>
+            </Animated.View>
             <GoalType
                 visible={goalPopupVisible}
                 onClose={() => setGoalPopupVisible(false)}

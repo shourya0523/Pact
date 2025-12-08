@@ -3,7 +3,8 @@ import Constants from 'expo-constants';
 
 // Your computer's local IP address - update this if your IP changes
 // Find it with: ifconfig | grep "inet " | grep -v 127.0.0.1
-const LOCAL_IP = '10.0.0.64';
+const LOCAL_IP = '10.0.0.168';
+
 
 const getBaseUrlSync = (): string => {
   if (Platform.OS === 'web') {
