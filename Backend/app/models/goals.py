@@ -58,7 +58,7 @@ class UserGoal(BaseModel):
     )
 
     # Progress tracking (moved from habit level to per-user)
-    goal_progress: int = Field(default=0, ge=0, description="Current progress (count for frequency, accumulated value for completion)")
+    goal_progress: float = Field(default=0, ge=0, description="Current progress (count for frequency, accumulated value for completion)")
     count_checkins: int = Field(default=0, ge=0, description="Number of check-ins completed")
     checked_in: bool = Field(default=False, description="Checked in for current period")
 
@@ -184,7 +184,7 @@ class UserGoalResponse(BaseModel):
     target_value: Optional[float]
 
     # Progress
-    goal_progress: int
+    goal_progress: float
     count_checkins: int
     total_checkins_required: Optional[int]
     progress_percentage: float

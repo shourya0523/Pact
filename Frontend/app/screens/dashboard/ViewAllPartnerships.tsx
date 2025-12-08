@@ -27,10 +27,20 @@ interface Partner {
     created_at: string
 }
 
+interface SearchUser {
+    id: string
+    username: string
+    display_name: string
+    profile_photo_url?: string
+    email: string
+}
+
 export default function ViewAllPartnerships() {
     const router = useRouter()
     
     const [searchQuery, setSearchQuery] = useState('')
+    const [searchResults, setSearchResults] = useState<SearchUser[]>([])
+    const [searchLoading, setSearchLoading] = useState(false)
     const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([])
     const [currentPartners, setCurrentPartners] = useState<Partner[]>([])
     const [loading, setLoading] = useState(true)
@@ -39,6 +49,7 @@ export default function ViewAllPartnerships() {
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
     const fadeAnim = useRef(new Animated.Value(0)).current
     const slideAnim = useRef(new Animated.Value(30)).current
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
     useEffect(() => {
         fetchData()
@@ -65,6 +76,64 @@ export default function ViewAllPartnerships() {
             return () => clearTimeout(timer)
         }
     }, [message])
+
+    // Debounced search function
+    useEffect(() => {
+        // Clear previous timeout
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current)
+        }
+
+        // If search query is empty, clear results
+        if (!searchQuery.trim()) {
+            setSearchResults([])
+            return
+        }
+
+        // Set loading state
+        setSearchLoading(true)
+
+        // Debounce search by 500ms
+        searchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const token = await AsyncStorage.getItem('access_token')
+                
+                if (!token) {
+                    setSearchResults([])
+                    setSearchLoading(false)
+                    return
+                }
+
+                const response = await fetch(
+                    `${BASE_URL}/api/users/search?query=${encodeURIComponent(searchQuery.trim())}&limit=10`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                        }
+                    }
+                )
+
+                if (response.ok) {
+                    const data = await response.json()
+                    setSearchResults(data)
+                } else {
+                    setSearchResults([])
+                }
+            } catch (err: any) {
+                logger.error('Error searching users:', err)
+                setSearchResults([])
+            } finally {
+                setSearchLoading(false)
+            }
+        }, 500)
+
+        // Cleanup function
+        return () => {
+            if (searchTimeoutRef.current) {
+                clearTimeout(searchTimeoutRef.current)
+            }
+        }
+    }, [searchQuery])
 
     const showMessage = (text: string, type: 'success' | 'error') => {
         setMessage({ text, type })
@@ -120,9 +189,11 @@ export default function ViewAllPartnerships() {
         fetchData()
     }
 
-    const handleSendRequest = async () => {
-        if (!searchQuery.trim()) {
-            showMessage("Please enter a username", "error")
+    const handleSendRequest = async (username?: string) => {
+        const targetUsername = username || searchQuery.trim()
+        
+        if (!targetUsername) {
+            showMessage("Please select a user", "error")
             return
         }
 
@@ -136,7 +207,7 @@ export default function ViewAllPartnerships() {
                 return
             }
             
-            const response = await fetch(`${BASE_URL}/api/partnerships/requests/send?partner_username=${searchQuery.trim()}`, {
+            const response = await fetch(`${BASE_URL}/api/partnerships/requests/send?partner_username=${targetUsername}`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -146,8 +217,11 @@ export default function ViewAllPartnerships() {
             const data = await response.json()
 
             if (response.ok) {
-                showMessage(`Request sent to ${searchQuery}!`, "success")
+                const displayName = searchResults.find(u => u.username === targetUsername)?.display_name || targetUsername
+                showMessage(`Request sent to ${displayName}!`, "success")
                 setSearchQuery('')
+                setSearchResults([])
+                fetchData()
             } else {
                 showMessage(data.detail || "Unable to send request", "error")
             }
@@ -345,39 +419,81 @@ export default function ViewAllPartnerships() {
                         <Text className="font-wix text-white text-[18px] mb-3 ml-1">
                         Find Partners
                     </Text>
-                        <TextInput
-                            className="w-full h-[56px] bg-white/90 rounded-2xl text-[16px] font-wix"
-                            placeholder="Search by username..."
-                            placeholderTextColor="#6B7280"
-                            style={{ paddingHorizontal: 20 }}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            editable={!sendingRequest}
-                        />
-                    </View>
-                    
-                    <TouchableOpacity 
-                        onPress={handleSendRequest}
-                        disabled={sendingRequest || !searchQuery.trim()}
-                        activeOpacity={0.8}
-                        className="h-[56px] w-full rounded-2xl items-center justify-center mb-8"
-                        style={{ 
-                            backgroundColor: sendingRequest || !searchQuery.trim() 
-                                ? 'rgba(255, 255, 255, 0.15)' 
-                                : 'white',
-                            opacity: (sendingRequest || !searchQuery.trim()) ? 0.6 : 1
-                        }}
-                    >
-                        {sendingRequest ? (
-                            <ActivityIndicator size="small" color="#291133" />
-                        ) : (
-                            <Text className="font-wix text-[16px] font-semibold" style={{ 
-                                color: searchQuery.trim() ? '#291133' : 'white' 
-                            }}>
-                                Send Request
-                            </Text>
+                        <View className="relative">
+                            <TextInput
+                                className="w-full h-[56px] bg-white/90 rounded-2xl text-[16px] font-wix"
+                                placeholder="Search by username or name..."
+                                placeholderTextColor="#6B7280"
+                                style={{ paddingHorizontal: 20 }}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                editable={!sendingRequest}
+                            />
+                            {searchLoading && (
+                                <View className="absolute right-4 top-0 bottom-0 justify-center">
+                                    <ActivityIndicator size="small" color="#6B7280" />
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Search Results */}
+                        {searchQuery.trim() && searchResults.length > 0 && (
+                            <View className="mt-3 bg-white/95 rounded-2xl max-h-[300px] overflow-hidden">
+                                <ScrollView 
+                                    className="max-h-[300px]"
+                                    showsVerticalScrollIndicator={false}
+                                >
+                                    {searchResults.map((user) => (
+                                        <TouchableOpacity
+                                            key={user.id}
+                                            onPress={() => handleSendRequest(user.username)}
+                                            activeOpacity={0.7}
+                                            className="p-4 border-b border-gray-200/30 flex-row items-center"
+                                            disabled={sendingRequest}
+                                        >
+                                            <View 
+                                                className="w-[40px] h-[40px] rounded-full items-center justify-center"
+                                                style={{ backgroundColor: 'rgba(168, 85, 247, 0.8)' }}
+                                            >
+                                                <Text className="text-white text-[16px] font-wix font-bold">
+                                                    {getInitial(user.display_name || user.username)}
+                                                </Text>
+                                            </View>
+                                            
+                                            <View className="flex-1 ml-3">
+                                                <Text className="font-wix text-gray-800 text-[15px] font-semibold">
+                                                    {user.display_name || user.username}
+                                                </Text>
+                                                <Text className="font-wix text-gray-500 text-[12px]">
+                                                    @{user.username}
+                                                </Text>
+                                            </View>
+
+                                            <TouchableOpacity
+                                                onPress={() => handleSendRequest(user.username)}
+                                                disabled={sendingRequest}
+                                                activeOpacity={0.8}
+                                                className="rounded-xl px-4 py-2"
+                                                style={{ backgroundColor: 'rgba(168, 85, 247, 0.8)' }}
+                                            >
+                                                <Text className="font-wix text-white text-[12px] font-bold">
+                                                    Send
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
+                            </View>
                         )}
-                    </TouchableOpacity>
+
+                        {searchQuery.trim() && !searchLoading && searchResults.length === 0 && (
+                            <View className="mt-3 bg-white/10 rounded-2xl p-4 border border-white/20">
+                                <Text className="font-wix text-white/60 text-[14px] text-center">
+                                    No users found
+                                </Text>
+                            </View>
+                        )}
+                    </View>
 
                     {/* Pending Requests Section */}
                     {pendingRequests.length > 0 && (

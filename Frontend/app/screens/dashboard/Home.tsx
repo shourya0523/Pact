@@ -302,10 +302,25 @@ export default function HomePage() {
             {dashboardData.todays_goals.length > 0 ? (
               <HabitSelect
                 habits={goals}
-                onPress={(habit) => {
-                  const goal = dashboardData.todays_goals.find(g => g.habit_id === habit.id);
-                  if (goal) {
-                    handleCheckIn(habit.id, habit.name, goal.checked_in_today);
+                onPress={async (habit) => {
+                  try {
+                    const userData = await AsyncStorage.getItem('user_data');
+                    if (!userData) {
+                      Alert.alert("Not Authenticated", "Please log in again.");
+                      router.replace("/screens/auth/LoginScreen");
+                      return;
+                    }
+                    const user = JSON.parse(userData);
+                    router.push({
+                      pathname: '/screens/dashboard/GoalPage',
+                      params: {
+                        habitId: habit.id,
+                        userId: user.id
+                      }
+                    });
+                  } catch (err) {
+                    logger.error('Navigation error:', err);
+                    Alert.alert("Error", "Unable to navigate to goal page.");
                   }
                 }}
               />

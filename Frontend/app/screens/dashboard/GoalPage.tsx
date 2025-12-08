@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -107,7 +107,7 @@ export default function GoalDetails() {
       });
     } else if (goal.goal_type === 'completion') {
       router.push({
-        pathname: "/screens/dashboard/Goals",
+        pathname: "/screens/dashboard/CompletionGoals",
         params: { 
           habitId: goal.habit_id,
           userId: goal.user_id,
@@ -117,7 +117,7 @@ export default function GoalDetails() {
     }
   };
 
-  const handleCheckIn = async (value?: number) => {
+  const handleCheckIn = useCallback((value?: number) => {
     if (!goal) return;
     
     // For completion goals with target_value, prompt for value if not provided
@@ -132,7 +132,7 @@ export default function GoalDetails() {
           },
           {
             text: "Submit",
-            onPress: async (inputValue) => {
+            onPress: (inputValue) => {
               if (!inputValue || inputValue.trim() === '') {
                 Alert.alert("Error", "Please enter a value.");
                 return;
@@ -142,7 +142,13 @@ export default function GoalDetails() {
                 Alert.alert("Error", "Please enter a valid positive number.");
                 return;
               }
-              await performCheckIn(numValue);
+              // Defer async call to next tick to avoid synthetic event issues
+              setTimeout(() => {
+                performCheckIn(numValue).catch((err) => {
+                  console.error('Check-in error:', err);
+                  Alert.alert("Error", "Unable to check in.");
+                });
+              }, 0);
             }
           }
         ],
@@ -153,8 +159,14 @@ export default function GoalDetails() {
       return;
     }
     
-    await performCheckIn(value);
-  };
+    // Defer async call to next tick to avoid synthetic event issues
+    setTimeout(() => {
+      performCheckIn(value).catch((err) => {
+        console.error('Check-in error:', err);
+        Alert.alert("Error", "Unable to check in.");
+      });
+    }, 0);
+  }, [goal]);
 
   const performCheckIn = async (value?: number) => {
     if (!goal) return;
@@ -239,7 +251,10 @@ export default function GoalDetails() {
             showShadow={true} 
           />
           <TouchableOpacity
-            onPress={handleCheckIn}
+            onPress={() => {
+              // Call handleCheckIn without event to prevent synthetic event pooling issues
+              handleCheckIn();
+            }}
             activeOpacity={0.7}
             className="bg-[#C9B0E8] px-12 py-6 rounded-full justify-center items-center"
             disabled={checkingIn}

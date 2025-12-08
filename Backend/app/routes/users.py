@@ -246,10 +246,12 @@ async def search_users(
         )
     
     # 2. Search for users matching the query
-    # Case-insensitive partial match on username
+    # Case-insensitive partial match on username or display_name
     search_results = await db.users.find({
-        # case sensitive regex search
-        "username": {"$regex": query, "$options": "i"},  
+        "$or": [
+            {"username": {"$regex": query, "$options": "i"}},
+            {"display_name": {"$regex": query, "$options": "i"}}
+        ],
         # excludes current user
         "_id": {"$ne": ObjectId(current_user_id)},  
         "is_active": True,  

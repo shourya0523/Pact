@@ -23,12 +23,16 @@ async def check_goal_milestones(
     habit_id: str,
     user_id: str,
     habit: dict,
-    partnership_id: str
+    partnership_id: str,
+    previous_goal_progress: float = None
 ):
     """
     Check if user reached a goal milestone and send notif
     
     Milestones: 25%, 50%, 75%, 100%
+    
+    Args:
+        previous_goal_progress: Previous goal_progress value before update (for completion goals with target_value)
     """
     # Check if user has a goal for this habit
     goals = habit.get("goals", {})
@@ -36,17 +40,34 @@ async def check_goal_milestones(
         return
     
     goal_data = goals[user_id]
+    goal_type = goal_data.get("goal_type")
     
-    # Calculate progress percentage
-    count_checkins = goal_data.get("count_checkins", 0)
-    total_required = goal_data.get("total_checkins_required")
-    
-    if not total_required or total_required == 0:
-        return
-    
-    # Calculate current and previous progress percentages
-    current_progress = (count_checkins / total_required) * 100
-    previous_progress = ((count_checkins - 1) / total_required) * 100 if count_checkins > 0 else 0
+    # Calculate progress percentage based on goal type
+    if goal_type == "completion" and goal_data.get("target_value") is not None:
+        # For completion goals with target_value, use goal_progress vs target_value
+        goal_progress = goal_data.get("goal_progress", 0) or 0
+        target_value = goal_data.get("target_value", 0) or 0
+        
+        if target_value == 0:
+            return
+        
+        # Use provided previous_goal_progress or calculate from current
+        if previous_goal_progress is None:
+            previous_goal_progress = 0
+        
+        current_progress = (goal_progress / target_value) * 100
+        previous_progress = (previous_goal_progress / target_value) * 100
+    else:
+        # For frequency goals or legacy completion goals, use check-in count
+        count_checkins = goal_data.get("count_checkins", 0)
+        total_required = goal_data.get("total_checkins_required")
+        
+        if not total_required or total_required == 0:
+            return
+        
+        # Calculate current and previous progress percentages
+        current_progress = (count_checkins / total_required) * 100
+        previous_progress = ((count_checkins - 1) / total_required) * 100 if count_checkins > 0 else 0
     
     # Check which milestone was just crossed
     milestones = [25, 50, 75, 100]
@@ -182,9 +203,14 @@ async def log_habit_completion(
             print(f"Warning: Failed to send partner notification: {e}")
 
     # Update goal progress for this user if they have a goal on this habit
+    previous_goal_progress = None
     if log_data.completed and habit.get("goals") and user_id in habit["goals"]:
         goal_data = habit["goals"][user_id]
         goal_type = goal_data.get("goal_type")
+        
+        # Store previous goal_progress for milestone calculation
+        previous_goal_progress = goal_data.get("goal_progress", 0) or 0
+        
         updates = {
             f"goals.{user_id}.checked_in": True,
             f"goals.{user_id}.updated_at": datetime.utcnow(),
@@ -224,13 +250,21 @@ async def log_habit_completion(
         total_required = None
         if goal_type == "frequency" and freq_count and dur_count:
             total_required = freq_count * dur_count
-        elif goal_type == "completion":
+        elif goal_type == "completion" and goal_data.get("target_value") is None:
+            # Legacy completion goals (without target_value) use check-in count
             total_required = 1
+        # For completion goals with target_value, total_required stays None
+        # because they use goal_progress vs target_value instead
 
         if total_required is not None:
             updates[f"goals.{user_id}.total_checkins_required"] = total_required
 
-        if total_required is not None and total_required > 0 and total_checkins_for_user >= total_required:
+        # Check completion status
+        if goal_type == "completion" and goal_data.get("target_value") is not None:
+            # For completion goals with target_value, completion is already checked above (line 227)
+            pass
+        elif total_required is not None and total_required > 0 and total_checkins_for_user >= total_required:
+            # For frequency goals or legacy completion goals
             updates[f"goals.{user_id}.goal_status"] = GoalStatus.COMPLETED.value
 
         await db.habits.update_one(
@@ -277,7 +311,8 @@ async def log_habit_completion(
             habit_id=habit_id,
             user_id=user_id,
             habit=habit,
-            partnership_id=str(partnership_id)
+            partnership_id=str(partnership_id),
+            previous_goal_progress=previous_goal_progress
         )
 
     # Return response

@@ -219,8 +219,8 @@ class StreakCalculationService:
         if not partnership:
             return {"current_streak": 0, "longest_streak": 0, "streak_started_at": None, "last_both_completed_date": None, "updated_at": datetime.utcnow()}
 
-        user1_id = partnership["user_id_1"]
-        user2_id = partnership["user_id_2"]
+        user1_id = str(partnership["user_id_1"])
+        user2_id = str(partnership["user_id_2"])
 
         # We need log_date for streak computation; include both legacy "date" and "log_date"
         logs = await db.habit_logs.find(
@@ -233,7 +233,13 @@ class StreakCalculationService:
             if not d:
                 # Skip malformed log without a date field
                 continue
-            by_date.setdefault(d, set()).add(log["user_id"])
+            # Convert datetime to date if needed (log_date is stored as datetime)
+            if isinstance(d, datetime):
+                d = d.date()
+            elif not isinstance(d, date):
+                # Skip if it's neither datetime nor date
+                continue
+            by_date.setdefault(d, set()).add(str(log["user_id"]))
 
         both_days = sorted([d for d, users in by_date.items() if user1_id in users and user2_id in users])
         if not both_days:

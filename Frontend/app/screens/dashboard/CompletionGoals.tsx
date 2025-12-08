@@ -11,6 +11,8 @@ export default function Goals() {
     const router = useRouter()
     const params = useLocalSearchParams()
     const habitId = params.habitId as string
+    const userId = params.userId as string
+    const editMode = params.editMode === 'true'
     
     const [goalName, setGoalName] = useState('')
     const [description, setDescription] = useState('')
@@ -18,6 +20,7 @@ export default function Goals() {
     const [loading, setLoading] = useState(false)
     const [habitName, setHabitName] = useState('')
     const [existingGoal, setExistingGoal] = useState<any>(null)
+    const [isEditMode, setIsEditMode] = useState(false)
 
     useEffect(() => {
         fetchHabitAndGoal()
@@ -31,6 +34,7 @@ export default function Goals() {
             if (!token || !userData) return
 
             const user = JSON.parse(userData)
+            const targetUserId = userId || user.id || user._id || user.user_id
 
             // FIRST: Check if habit exists
             const habitResponse = await fetch(
@@ -60,9 +64,8 @@ export default function Goals() {
             console.log('✅ Habit exists:', habitData.habit_name)
 
             // Check if user already has a goal for this habit
-            const userId = user.id || user._id || user.user_id
             const goalResponse = await fetch(
-                `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal`,
+                `${BASE_URL}/api/goals/habits/${habitId}/users/${targetUserId}/goal`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`,
@@ -73,9 +76,30 @@ export default function Goals() {
             if (goalResponse.ok) {
                 const goalData = await goalResponse.json()
                 setExistingGoal(goalData)
+                
+                // If in edit mode, populate the form fields
+                if (editMode) {
+                    setIsEditMode(true)
+                    setGoalName(goalData.goal_name || '')
+                    if (goalData.target_value !== undefined && goalData.target_value !== null) {
+                        setCompletionValue(goalData.target_value.toString())
+                    }
+                } else {
+                    // If not in edit mode and goal exists, show alert
+                    Alert.alert(
+                        "Goal Already Exists",
+                        "You already have a goal for this habit. Please edit or delete it first.",
+                        [{
+                            text: "Go Back",
+                            onPress: () => router.back()
+                        }]
+                    )
+                }
+            } else if (editMode) {
+                // If edit mode but goal doesn't exist, show error
                 Alert.alert(
-                    "Goal Already Exists",
-                    "You already have a goal for this habit. Please edit or delete it first.",
+                    "Goal Not Found",
+                    "The goal you're trying to edit doesn't exist.",
                     [{
                         text: "Go Back",
                         onPress: () => router.back()
@@ -111,74 +135,116 @@ export default function Goals() {
             }
 
             const user = JSON.parse(userData)
-            const userId = user.id || user._id || user.user_id
+            const targetUserId = userId || user.id || user._id || user.user_id
             
-            if (!userId) {
+            if (!targetUserId) {
                 Alert.alert("Error", "Unable to get user ID. Please log in again.")
                 router.replace("/screens/auth/LoginScreen")
                 return
             }
             
-            
             console.log('🐛 DEBUG INFO:')
             console.log('habitId:', habitId)
-            console.log('userId:', userId)
+            console.log('userId:', targetUserId)
             console.log('BASE_URL:', BASE_URL)
+            console.log('isEditMode:', isEditMode)
 
-            // Parse completion value (default to 1 if not provided for backward compatibility)
-            const targetValue = completionValue.trim() 
-                ? parseFloat(completionValue.trim()) 
-                : undefined
+            if (isEditMode) {
+                // Update existing goal
+                const updateData = {
+                    goal_name: goalName.trim()
+                }
 
-            if (targetValue !== undefined && (isNaN(targetValue) || targetValue <= 0)) {
-                Alert.alert("Invalid Value", "Please enter a valid positive number for the completion value.")
-                setLoading(false)
-                return
-            }
+                const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${targetUserId}/goal/completion`
+                console.log('📡 Update URL:', url)
+                console.log('📦 Update Data:', updateData)
 
-            const goalData = {
-                goal_type: "completion",
-                goal_name: goalName.trim(),
-                ...(targetValue !== undefined && { target_value: targetValue })
-            }
-
-            const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal/completion`
-            console.log('📡 Full URL:', url)
-            console.log('📦 Goal Data:', goalData)
-
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(goalData)
-            })
-
-            const data = await response.json()
-
-            if (response.ok) {
-                // TODO: Save description and completionValue locally if needed for future feature
-                Alert.alert(
-                    "Goal Created! 🎯",
-                    `"${goalName}" has been set successfully!`,
-                    [{
-                        text: "View Habits",
-                        onPress: () => router.replace("/screens/dashboard/habitViews")
-                    }]
-                )
-            } else {
-                const errorMessage = data.detail || data.message || "Unable to create goal."
-                console.error('❌ API Error Response:', {
-                    status: response.status,
-                    statusText: response.statusText,
-                    data: data
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
                 })
-                Alert.alert("Creation Failed", `${response.status}: ${errorMessage}`)
+
+                const data = await response.json()
+
+                if (response.ok) {
+                    Alert.alert(
+                        "Goal Updated! 🎯",
+                        `"${goalName}" has been updated successfully!`,
+                        [{
+                            text: "OK",
+                            onPress: () => router.back()
+                        }]
+                    )
+                } else {
+                    const errorMessage = data.detail || data.message || "Unable to update goal."
+                    console.error('❌ API Error Response:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data
+                    })
+                    Alert.alert("Update Failed", `${response.status}: ${errorMessage}`)
+                }
+            } else {
+                // Create new goal
+                // Parse completion value (default to 1 if not provided for backward compatibility)
+                const targetValue = completionValue.trim() 
+                    ? parseFloat(completionValue.trim()) 
+                    : undefined
+
+                if (targetValue !== undefined && (isNaN(targetValue) || targetValue <= 0)) {
+                    Alert.alert("Invalid Value", "Please enter a valid positive number for the completion value.")
+                    setLoading(false)
+                    return
+                }
+
+                const goalData = {
+                    goal_type: "completion",
+                    goal_name: goalName.trim(),
+                    ...(targetValue !== undefined && { target_value: targetValue })
+                }
+
+                const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${targetUserId}/goal/completion`
+                console.log('📡 Full URL:', url)
+                console.log('📦 Goal Data:', goalData)
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(goalData)
+                })
+
+                const data = await response.json()
+
+                if (response.ok) {
+                    // TODO: Save description and completionValue locally if needed for future feature
+                    Alert.alert(
+                        "Goal Created! 🎯",
+                        `"${goalName}" has been set successfully!`,
+                        [{
+                            text: "View Habits",
+                            onPress: () => router.replace("/screens/dashboard/habitViews")
+                        }]
+                    )
+                } else {
+                    const errorMessage = data.detail || data.message || "Unable to create goal."
+                    console.error('❌ API Error Response:', {
+                        status: response.status,
+                        statusText: response.statusText,
+                        data: data
+                    })
+                    Alert.alert("Creation Failed", `${response.status}: ${errorMessage}`)
+                }
             }
         } catch (err: any) {
-            console.error('Goal creation error:', err)
-            Alert.alert("Error", err.message || "Unable to create goal. Please check your connection.")
+            console.error('Goal creation/update error:', err)
+            Alert.alert("Error", err.message || `Unable to ${isEditMode ? 'update' : 'create'} goal. Please check your connection.`)
         } finally {
             setLoading(false)
         }
@@ -209,7 +275,7 @@ export default function Goals() {
                 <View className="flex-1 justify-start items-center pt-20 px-6">
                 {/* Title */}
                 <Text className="font-wix text-white text-[38px] text-center max-w-[80%]">
-                    Create Completion Goal
+                    {isEditMode ? 'Edit Completion Goal' : 'Create Completion Goal'}
                 </Text>
                 {/* Goal Name */}
                 <TextInput
@@ -239,6 +305,11 @@ export default function Goals() {
                 <Text className="font-wix text-white text-[24px] text-center mt-8 max-w-[80%]">
                     Specify Completion Value
                 </Text>
+                {isEditMode && (
+                    <Text className="font-wix text-white/70 text-sm text-center mt-2 max-w-[80%]">
+                        Note: Completion value cannot be changed after creation
+                    </Text>
+                )}
                 <TextInput
                     className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-4"
                     placeholder="e.g., 100 (for 'run 100 miles')"
@@ -247,7 +318,7 @@ export default function Goals() {
                     style={{ paddingHorizontal: 20 }}
                     value={completionValue}
                     onChangeText={setCompletionValue}
-                    editable={!loading}
+                    editable={!loading && !isEditMode}
                 />
 
                 {loading && (
@@ -260,16 +331,18 @@ export default function Goals() {
             <View className="absolute bottom-12 w-full px-6 flex-row justify-center" style={{ gap: 16 }}>
                 <GreyButton
                     onPress={handleCreate}
-                    text={loading ? "CREATING..." : "CREATE"}
+                    text={loading ? (isEditMode ? "UPDATING..." : "CREATING...") : (isEditMode ? "UPDATE" : "CREATE")}
                     style={{ width: 190, height: 65 }}
                     disabled={loading}
                 />
-                <GreyButton
-                    onPress={handleSave}
-                    text="SAVE"
-                    style={{ width: 190, height: 65 }}
-                    disabled={loading}
-                />
+                {!isEditMode && (
+                    <GreyButton
+                        onPress={handleSave}
+                        text="SAVE"
+                        style={{ width: 190, height: 65 }}
+                        disabled={loading}
+                    />
+                )}
             </View>
         </KeyboardAvoidingView>
     )
