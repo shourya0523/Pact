@@ -39,10 +39,13 @@ class NotificationAPIService {
     }
 
     // Retrieving actual existing notifs
-    async getNotifications(): Promise<NotificationData[]> {
+    async getNotifications(includeRead: boolean = false): Promise<NotificationData[]> {
         try {
             const headers = await this.getHeaders();
-            const response = await fetch(`${API_URL}/notifications/`, {
+            const url = includeRead 
+                ? `${API_URL}/notifications/?include_read=true`
+                : `${API_URL}/notifications/`;
+            const response = await fetch(url, {
                 method: 'GET',
                 headers,
             });
@@ -116,7 +119,7 @@ class NotificationAPIService {
     }
 
     // sending nudge to partners/friends
-    async sendNudge(partnerId: string, habitId: string): Promise<void> {
+    async sendNudge(partnerId: string, habitId: string): Promise<{ message: string; success: boolean }> {
         try {
             const headers = await this.getHeaders();
             const response = await fetch(`${API_URL}/notifications/nudge/${partnerId}?habit_id=${habitId}`, {
@@ -124,11 +127,53 @@ class NotificationAPIService {
                 headers,
             });
 
+            const data = await response.json();
+
+            if (!response.ok) {
+                // Extract error message from response
+                const errorMessage = data.detail || data.message || `HTTP error! status: ${response.status}`;
+                throw new Error(errorMessage);
+            }
+
+            return data;
+        } catch (error: any) {
+            console.error('Error sending nudge:', error);
+            throw error;
+        }
+    }
+
+    // Archive a notification (without marking as read)
+    async archiveNotification(notificationId: string): Promise<void> {
+        try {
+            const headers = await this.getHeaders();
+            const response = await fetch(`${API_URL}/notifications/${notificationId}/archive`, {
+                method: 'PUT',
+                headers,
+            });
+
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
         } catch (error) {
-            console.error('Error sending nudge:', error);
+            console.error('Error archiving notification:', error);
+            throw error;
+        }
+    }
+
+    // Archive all notifications
+    async archiveAllNotifications(): Promise<void> {
+        try {
+            const headers = await this.getHeaders();
+            const response = await fetch(`${API_URL}/notifications/archive-all`, {
+                method: 'PUT',
+                headers,
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Error archiving all notifications:', error);
             throw error;
         }
     }

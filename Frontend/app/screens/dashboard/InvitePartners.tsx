@@ -6,7 +6,7 @@ import { getBaseUrl } from '../../../config';
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground';
 import GreyButton from '@/components/ui/greyButton';
 import PartnerBox from '@/components/ui/partnerBox';
-import HomeUI from '@/components/ui/home-ui';
+import DashboardLayout from '../../components/navigation/DashboardLayout';
 
 export default function InvitePartners() {
     const router = useRouter();
@@ -101,9 +101,9 @@ export default function InvitePartners() {
     };
 
     return (
-        <View className="flex-1 relative">
-            <WhiteParticles />
-            <HomeUI />
+        <DashboardLayout>
+            <View className="flex-1 relative">
+                <WhiteParticles />
             
             <View className="flex-1 justify-center items-center">
                 <Text className="font-wix text-white text-[38px] text-center">Invite Partner</Text>
@@ -189,8 +189,7 @@ export default function InvitePartners() {
                     </View>
                 )}
             </View>
-            
-            <HomeUI />
-        </View>
+            </View>
+        </DashboardLayout>
     );
 }

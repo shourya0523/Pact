@@ -229,7 +229,7 @@ export default function Goals() {
                         `"${goalName}" has been set successfully!`,
                         [{
                             text: "View Habits",
-                            onPress: () => router.replace("/screens/dashboard/habitViews")
+                            onPress: () => router.replace("/screens/dashboard/HabitViews")
                         }]
                     )
                 } else {

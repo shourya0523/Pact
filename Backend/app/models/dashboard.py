@@ -40,6 +40,14 @@ class UserSummaryResponse(BaseModel):
     username: str
 
 
+class ActivitySummaryResponse(BaseModel):
+    """Activity summary statistics for homepage visualization"""
+    total_partners: int
+    total_habits: int
+    total_goals: int
+    total_checkins: int
+
+
 class DashboardHomeResponse(BaseModel):
     """Complete homepage data response"""
     user: UserSummaryResponse
@@ -47,3 +55,4 @@ class DashboardHomeResponse(BaseModel):
     todays_goals: List[TodayGoalItemResponse]
     partner_progress: List[PartnerActivityItemResponse]
     partnership: PartnershipSummaryResponse
+    activity_summary: ActivitySummaryResponse

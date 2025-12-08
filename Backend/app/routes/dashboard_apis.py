@@ -7,7 +7,8 @@ from app.models.dashboard import (
     TodayGoalItemResponse,
     PartnerActivityItemResponse,
     PartnershipSummaryResponse,
-    UserSummaryResponse
+    UserSummaryResponse,
+    ActivitySummaryResponse
 )
 from app.utils.security import decode_access_token
 from config.database import get_database
@@ -111,9 +112,11 @@ async def get_dashboard_home(
     # Create lookup for today's check-ins by habit and user
     checkins_map = {}
     for log in todays_logs:
-        if log["habit_id"] not in checkins_map:
-            checkins_map[log["habit_id"]] = {}
-        checkins_map[log["habit_id"]][log["user_id"]] = log["completed"]
+        habit_id_str = str(log["habit_id"])
+        user_id_obj = log["user_id"]  # This is already ObjectId from DB
+        if habit_id_str not in checkins_map:
+            checkins_map[habit_id_str] = {}
+        checkins_map[habit_id_str][user_id_obj] = log["completed"]
     
     # Build streaks list
     streaks = [
@@ -127,11 +130,13 @@ async def get_dashboard_home(
     ]
     
     # Build today's goals with check-in status
+    # Convert user_id to ObjectId for map lookup since map keys are ObjectIds
+    user_id_obj = ObjectId(user_id)
     todays_goals = [
         TodayGoalItemResponse(
             habit_id=str(habit["_id"]),
             habit_name=habit["habit_name"],
-            checked_in_today=checkins_map.get(str(habit["_id"]), {}).get(user_id, False),
+            checked_in_today=checkins_map.get(str(habit["_id"]), {}).get(user_id_obj, False),
             category=habit["category"]
         )
         for habit in habits
@@ -140,8 +145,9 @@ async def get_dashboard_home(
     # Query partner's recent activity (last 48 hours)
     hours_ago_48 = datetime.utcnow() - timedelta(hours=48)
     
+    # Convert partner_id to ObjectId for proper matching (habit_logs stores user_id as ObjectId)
     partner_logs = await db.habit_logs.find({
-        "user_id": partner_id,
+        "user_id": ObjectId(partner_id),
         "timestamp": {"$gte": hours_ago_48},
         "completed": True
     }).sort("timestamp", -1).limit(10).to_list(10)
@@ -183,10 +189,74 @@ async def get_dashboard_home(
         username=user["username"]
     )
     
+    # Calculate activity summary statistics
+    # Count total partners (active partnerships)
+    total_partners = await db.partnerships.count_documents({
+        "$or": [
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
+        ],
+        "status": "active"
+    })
+    
+    # Count total active habits for this user across all partnerships
+    all_user_partnerships = await db.partnerships.find({
+        "$or": [
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
+        ],
+        "status": "active"
+    }).to_list(100)
+    
+    partnership_ids = [str(p["_id"]) for p in all_user_partnerships]
+    
+    # Count total active habits for this user across all partnerships
+    if partnership_ids:
+        total_habits = await db.habits.count_documents({
+            "partnership_id": {"$in": partnership_ids},
+            "status": "active"
+        })
+    else:
+        total_habits = 0
+    
+    # Count total goals for this user
+    # Get all habits where user has goals
+    if partnership_ids:
+        habits_with_goals = await db.habits.find({
+            f"goals.{user_id}": {"$exists": True},
+            "partnership_id": {"$in": partnership_ids}
+        }).to_list(1000)
+    else:
+        habits_with_goals = []
+    
+    total_goals = 0
+    for habit in habits_with_goals:
+        user_goals = habit.get("goals", {}).get(user_id, {})
+        if user_goals:
+            # Count active goals only
+            goal_status = user_goals.get("goal_status", "active")
+            if goal_status == "active":
+                total_goals += 1
+    
+    # Count total check-ins for this user
+    # Convert user_id to ObjectId for proper matching (habit_logs stores user_id as ObjectId)
+    total_checkins = await db.habit_logs.count_documents({
+        "user_id": ObjectId(user_id),
+        "completed": True
+    })
+    
+    activity_summary = ActivitySummaryResponse(
+        total_partners=total_partners,
+        total_habits=total_habits,
+        total_goals=total_goals,
+        total_checkins=total_checkins
+    )
+    
     return DashboardHomeResponse(
         user=user_summary,
         streaks=streaks,
         todays_goals=todays_goals,
         partner_progress=partner_progress,
-        partnership=partnership_summary
+        partnership=partnership_summary,
+        activity_summary=activity_summary
     )

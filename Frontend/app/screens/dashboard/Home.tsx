@@ -3,13 +3,17 @@ import { View, Text, Image, ActivityIndicator, ScrollView, RefreshControl, Alert
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from "../../../config";
-import HomeUI from "@/components/ui/home-ui";
+import DashboardLayout from "../../components/navigation/DashboardLayout";
 import HabitSelect from "../../components/common/ui/habitSelect";
 import ProgressCheck from "../../components/common/ui/progressCheck";
 import StreakIndicator from "../../components/habit/StreakIndicator";
 import SearchPartnerPopup from '@/components/popups/search-partner';
 import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground';
 import { logger } from '../../utils/logger';
+import TutorialElement from '../../components/tutorial/TutorialElement';
+import ActivitySummary from '../../components/common/ui/ActivitySummary';
+import { notificationAPI } from '../../services/notificationAPI';
+import { Ionicons } from '@expo/vector-icons';
 
 interface DashboardData {
   user: {
@@ -39,6 +43,12 @@ interface DashboardData {
     partner_username: string;
     total_active_habits: number;
   } | null;
+  activity_summary: {
+    total_partners: number;
+    total_habits: number;
+    total_goals: number;
+    total_checkins: number;
+  };
 }
 
 export default function HomePage() {
@@ -47,6 +57,9 @@ export default function HomePage() {
   const [refreshing, setRefreshing] = useState(false);
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [searchPartnerVisible, setSearchPartnerVisible] = useState(false);
+  const [partnerId, setPartnerId] = useState<string>('');
+  const [partnerHabits, setPartnerHabits] = useState<Array<{id: string, habit_name: string}>>([]);
+  const [sendingNudge, setSendingNudge] = useState(false);
   const fetchInFlight = useRef<AbortController | null>(null);
   const isMounted = useRef(true);
 
@@ -99,7 +112,13 @@ export default function HomePage() {
           streaks: [],
           todays_goals: [],
           partner_progress: [],
-          partnership: null
+          partnership: null,
+          activity_summary: {
+            total_partners: 0,
+            total_habits: 0,
+            total_goals: 0,
+            total_checkins: 0
+          }
         });
         return;
       }
@@ -110,6 +129,34 @@ export default function HomePage() {
 
       const data = await response.json();
       setDashboardData(data);
+      
+      // Fetch partner info and habits if partnership exists
+      if (data.partnership) {
+        try {
+          const token = await AsyncStorage.getItem('access_token');
+          const partnershipResponse = await fetch(`${BASE_URL}/api/partnerships/current`, {
+            headers: {'Authorization': `Bearer ${token}`}
+          });
+          if (partnershipResponse.ok) {
+            const partnershipData = await partnershipResponse.json();
+            setPartnerId(partnershipData.partner?.id || partnershipData.partner?._id || '');
+            
+            // Fetch shared habits
+            const habitsResponse = await fetch(`${BASE_URL}/api/habits`, {
+              headers: {'Authorization': `Bearer ${token}`}
+            });
+            if (habitsResponse.ok) {
+              const habitsData = await habitsResponse.json();
+              const sharedHabits = habitsData
+                .filter((h: any) => h.partnership_id)
+                .map((h: any) => ({ id: h.id || h._id, habit_name: h.habit_name }));
+              setPartnerHabits(sharedHabits);
+            }
+          }
+        } catch (err) {
+          logger.error('Error fetching partner info:', err);
+        }
+      }
     } catch (err: any) {
       if (err?.name === 'AbortError') {
         return;
@@ -127,7 +174,13 @@ export default function HomePage() {
         streaks: [],
         todays_goals: [],
         partner_progress: [],
-        partnership: null
+        partnership: null,
+        activity_summary: {
+          total_partners: 0,
+          total_habits: 0,
+          total_goals: 0,
+          total_checkins: 0
+        }
       });
     } finally {
       if (controller && fetchInFlight.current === controller) {
@@ -144,6 +197,25 @@ export default function HomePage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  // Check if tutorial should be shown for first-time users
+  useEffect(() => {
+    const checkFirstTimeUser = async () => {
+      try {
+        const tutorialShown = await AsyncStorage.getItem('tutorial_shown');
+        if (!tutorialShown) {
+          // Show tutorial for first-time users after a brief delay
+          setTimeout(() => {
+            router.push('/screens/settings/TutorialScreen');
+            AsyncStorage.setItem('tutorial_shown', 'true');
+          }, 1000);
+        }
+      } catch (error) {
+        logger.error('Error checking tutorial status:', error);
+      }
+    };
+    checkFirstTimeUser();
+  }, [router]);
+
   // Ensure we cancel any inflight request on unmount
   useEffect(() => {
     isMounted.current = true;
@@ -159,6 +231,40 @@ export default function HomePage() {
     setRefreshing(true);
     fetchDashboardData();
   }, [fetchDashboardData]);
+
+  const handleNudge = async (habitId?: string) => {
+    if (!partnerId) {
+      Alert.alert('Error', 'Unable to send nudge. No partner found.');
+      return;
+    }
+
+    // If no specific habit, use the first shared habit
+    const targetHabitId = habitId || partnerHabits[0]?.id;
+    if (!targetHabitId) {
+      Alert.alert('Error', 'No shared habits found to nudge about.');
+      return;
+    }
+
+    try {
+      setSendingNudge(true);
+      const result = await notificationAPI.sendNudge(partnerId, targetHabitId);
+      const habitName = partnerHabits.find(h => h.id === targetHabitId)?.habit_name || 'their habit';
+      Alert.alert(
+        '✅ Nudge Sent!',
+        `You've nudged ${dashboardData?.partnership?.partner_name || 'your partner'} to work on ${habitName}!`,
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      logger.error('Error sending nudge:', error);
+      const errorMessage = error.message || 'Failed to send nudge. Please try again.';
+      Alert.alert(
+        errorMessage.includes('once per day') ? '⏰ Rate Limit' : 'Error',
+        errorMessage
+      );
+    } finally {
+      setSendingNudge(false);
+    }
+  };
 
   const handleCheckIn = useCallback(async (habitId: string, habitName: string, currentStatus: boolean) => {
     try {
@@ -246,31 +352,44 @@ export default function HomePage() {
   }
 
    return (
-    <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
-      <PurpleParticles />
-      <Image
-        source={require('app/images/space/galaxy.png')}
-        className="absolute bottom-0 right-0"
-        style={{height: 300}}
-        resizeMode="cover"
-      />
-      <ScrollView
-        className="flex-1"
-        removeClippedSubviews
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />
-        }
-      >
+    <DashboardLayout>
+      <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+        <PurpleParticles />
+        <Image
+          source={require('app/images/space/galaxy.png')}
+          className="absolute bottom-0 right-0"
+          style={{height: 300}}
+          resizeMode="cover"
+        />
+        <ScrollView
+          className="flex-1"
+          removeClippedSubviews
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />
+          }
+        >
         <View className="flex-1">
-          <View className="w-full pt-12 pb-6 px-6">
-            <Text className="text-white text-[36px] font-wix text-center">
-              Hello, {dashboardData.user.display_name || dashboardData.user.username}!
-            </Text>
-          </View>
+          <TutorialElement id="dashboard-greeting">
+            <View className="w-full pt-12 pb-6 px-6">
+              <Text className="text-white text-[36px] font-wix text-center">
+                Hello, {dashboardData.user.display_name || dashboardData.user.username}!
+              </Text>
+            </View>
+          </TutorialElement>
 
-          <View className="mt-6 px-6">
-            <Text className="text-white text-[28px] font-semibold mb-1">Streaks</Text>
+          <TutorialElement id="activity-summary">
+            <ActivitySummary
+              totalPartners={dashboardData.activity_summary?.total_partners || 0}
+              totalHabits={dashboardData.activity_summary?.total_habits || 0}
+              totalGoals={dashboardData.activity_summary?.total_goals || 0}
+              totalCheckins={dashboardData.activity_summary?.total_checkins || 0}
+            />
+          </TutorialElement>
+
+          <TutorialElement id="streaks-section">
+            <View className="mt-6 px-6">
+              <Text className="text-white text-[28px] font-semibold mb-1">Streaks</Text>
             <View className="h-[1px] mb-2 bg-white/20" />
             
             {dashboardData.streaks.length > 0 ? (
@@ -288,12 +407,14 @@ export default function HomePage() {
                 </Text>
               </View>
             )}
-          </View>
+            </View>
+          </TutorialElement>
 
-          <View className="mt-8 px-6">
-            <Text className="text-white text-[28px] font-semibold">Check In</Text>
-            <View className="flex-row justify-between items-center mb-3">
-              <Text className="text-white text-[22px]">Today's Goals</Text>
+          <TutorialElement id="todays-goals">
+            <View className="mt-8 px-6">
+              <Text className="text-white text-[28px] font-semibold">Check In</Text>
+              <View className="flex-row justify-between items-center mb-3">
+                <Text className="text-white text-[22px]">Today's Goals</Text>
               <TouchableOpacity onPress={() => router.push('/screens/dashboard/ViewAllGoals')}>
                 <Text className="text-white/70 text-xs">View All</Text>
               </TouchableOpacity>
@@ -330,7 +451,8 @@ export default function HomePage() {
                 <Text className="text-white/40 text-sm mt-2">Create a habit to get started!</Text>
               </View>
             )}
-          </View>
+            </View>
+          </TutorialElement>
 
           <View className="mt-8 px-6 mb-20">
             <View className="flex-row justify-between items-center mb-3">
@@ -350,9 +472,31 @@ export default function HomePage() {
             ) : dashboardData.partnership ? (
                 <View className="bg-white/10 rounded-2xl p-6 items-center">
                   <Text className="text-white/60">No recent partner activity</Text>
-                  <Text className="text-white/40 text-sm mt-1">
+                  <Text className="text-white/40 text-sm mt-1 mb-4">
                     Your partner hasn't checked in yet today
                   </Text>
+                  {partnerId && partnerHabits.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => handleNudge()}
+                      disabled={sendingNudge}
+                      className="bg-purple-600/80 rounded-full px-6 py-3 flex-row items-center gap-2 border border-purple-400/50"
+                      activeOpacity={0.8}
+                    >
+                      {sendingNudge ? (
+                        <>
+                          <ActivityIndicator size="small" color="#fff" />
+                          <Text className="text-white font-wix font-semibold">Sending...</Text>
+                        </>
+                      ) : (
+                        <>
+                          <Ionicons name="notifications-outline" size={18} color="#fff" />
+                          <Text className="text-white font-wix font-semibold">
+                            Nudge Partner
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
             ) : (
                 <View className="bg-white/10 rounded-2xl p-6 border border-white/20">
@@ -376,8 +520,7 @@ export default function HomePage() {
           </View>
         </View>
       </ScrollView>
-      
-      <HomeUI />
-    </View>
+      </View>
+    </DashboardLayout>
   );
 }

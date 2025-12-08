@@ -9,6 +9,7 @@ import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground
 import HabitBox from '../../components/common/ui/habitBox'
 import {Ionicons} from '@expo/vector-icons'
 import { logger } from '../../utils/logger'
+import { notificationAPI } from '../../services/notificationAPI'
 
 interface Goal {
     user_id: string;
@@ -46,6 +47,8 @@ export default function HabitDetails() {
     const [userAvatar, setUserAvatar] = useState<string>('')
     const [partnerName, setPartnerName] = useState<string>('')
     const [partnerAvatar, setPartnerAvatar] = useState<string>('')
+    const [partnerId, setPartnerId] = useState<string>('')
+    const [sendingNudge, setSendingNudge] = useState(false)
     const fadeAnim = useRef(new Animated.Value(0)).current
     const slideAnim = useRef(new Animated.Value(30)).current
 
@@ -116,6 +119,7 @@ export default function HabitDetails() {
                             const partnershipData = await partnershipResponse.json()
                             setPartnerName(partnershipData.partner?.username || partnershipData.partner?.display_name || 'Partner')
                             setPartnerAvatar(partnershipData.partner?.profile_picture || partnershipData.partner?.profile_photo_url || '')
+                            setPartnerId(partnershipData.partner?.id || partnershipData.partner?._id || '')
                         }
                     } catch (err) {
                         console.error('Error fetching partner info:', err)
@@ -232,6 +236,32 @@ export default function HabitDetails() {
         const months = ['January', 'February', 'March', 'April', 'May', 'June',
             'July', 'August', 'September', 'October', 'November', 'December']
         return `${months[new Date().getMonth()]} ${new Date().getFullYear()}`
+    }
+
+    const handleSendNudge = async () => {
+        if (!partnerId || !habitId) {
+            Alert.alert('Error', 'Unable to send nudge. Missing partner or habit information.');
+            return;
+        }
+
+        try {
+            setSendingNudge(true);
+            const result = await notificationAPI.sendNudge(partnerId, habitId);
+            Alert.alert(
+                '✅ Nudge Sent!',
+                `You've nudged ${partnerName} to work on ${habit?.habit_name || 'their habit'}!`,
+                [{ text: 'OK' }]
+            );
+        } catch (error: any) {
+            console.error('Error sending nudge:', error);
+            const errorMessage = error.message || 'Failed to send nudge. Please try again.';
+            Alert.alert(
+                errorMessage.includes('once per day') ? '⏰ Rate Limit' : 'Error',
+                errorMessage
+            );
+        } finally {
+            setSendingNudge(false);
+        }
     }
 
     const handleDeleteHabit = async () => {
@@ -431,6 +461,30 @@ export default function HabitDetails() {
                         </View>
                     )}
                 </View>
+
+                    {/* Nudge Partner Button */}
+                    {partnerId && habit?.partnership_id && (
+                        <TouchableOpacity
+                            className="bg-purple-600/80 rounded-2xl p-4 mb-6 border border-purple-400/50 flex-row items-center justify-center gap-3"
+                            activeOpacity={0.8}
+                            onPress={handleSendNudge}
+                            disabled={sendingNudge}
+                        >
+                            {sendingNudge ? (
+                                <>
+                                    <ActivityIndicator size="small" color="#fff" />
+                                    <Text className="font-wix text-white text-base">Sending...</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Ionicons name="notifications-outline" size={20} color="#fff" />
+                                    <Text className="font-wix text-white text-base font-semibold">
+                                        Nudge {partnerName}
+                                    </Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )}
 
                     <View className="bg-white/10 rounded-2xl p-4 mb-6 border border-white/20">
                         <Text className="text-white text-center text-xl mb-4 font-wix">

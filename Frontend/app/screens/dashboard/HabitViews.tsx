@@ -3,15 +3,18 @@ import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Dimensio
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { BASE_URL } from '../../../config'
-import HomeUI from "@/components/ui/home-ui";
+import DashboardLayout from "../../components/navigation/DashboardLayout";
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import HabitBox from '@/components/ui/habitBox'
 import { Ionicons } from '@expo/vector-icons'
 import { logger } from '../../utils/logger'
+import TutorialElement from '../../components/tutorial/TutorialElement'
+import { notificationAPI } from '../../services/notificationAPI'
 
 interface Habit {
     id: string;
     habit_name: string;
+    habit_type?: string;
     status: string;
     count_checkins: number;
     current_streak?: number;
@@ -31,6 +34,7 @@ interface HabitWithProgress extends Habit {
     userAvatar?: string;
     partnerName?: string;
     partnerAvatar?: string;
+    partnerId?: string;
 }
 
 export default function HabitViews() {
@@ -152,20 +156,26 @@ export default function HabitViews() {
                 return
             }
 
-            // Get partner info from partnership (fetch once for all habits)
-            let partnerName = 'Partner'
-            let partnerAvatar = ''
+            // Get all partnerships to match with habits
+            let partnershipsMap: Map<string, { partnerId: string; partnerName: string; partnerAvatar: string }> = new Map()
             try {
-                const partnershipResponse = await fetch(`${BASE_URL}/api/partnerships/current`, {
+                const partnershipsResponse = await fetch(`${BASE_URL}/api/partnerships/all`, {
                     headers: {'Authorization': `Bearer ${token}`}
                 })
-                if (partnershipResponse.ok) {
-                    const partnershipData = await partnershipResponse.json()
-                    partnerName = partnershipData.partner?.username || partnershipData.partner?.display_name || 'Partner'
-                    partnerAvatar = partnershipData.partner?.profile_picture || partnershipData.partner?.profile_photo_url || ''
+                if (partnershipsResponse.ok) {
+                    const partnershipsData = await partnershipsResponse.json()
+                    // Create a map of partnership_id -> partner info
+                    partnershipsData.forEach((partnership: any) => {
+                        partnershipsMap.set(partnership.partnership_id, {
+                            partnerId: partnership.partner_id,
+                            partnerName: partnership.display_name || partnership.username || 'Partner',
+                            partnerAvatar: partnership.profile_picture || ''
+                        })
+                    })
+                    logger.log('✅ Fetched partnerships:', partnershipsData.length)
                 }
             } catch (err) {
-                logger.error('Error fetching partner info:', err)
+                logger.error('Error fetching partnerships:', err)
             }
 
             // Match habits with goals and calculate progress
@@ -184,6 +194,12 @@ export default function HabitViews() {
                 const userProgress = userGoal?.progress_percentage || 0
                 const partnerProgress = partnerGoal?.progress_percentage || 0
 
+                // Get partner info for this specific habit's partnership
+                const partnershipInfo = habit.partnership_id ? partnershipsMap.get(habit.partnership_id) : null
+                const partnerName = partnershipInfo?.partnerName || 'Partner'
+                const partnerAvatar = partnershipInfo?.partnerAvatar || ''
+                const partnerId = partnershipInfo?.partnerId || undefined
+
                 return {
                     ...habit,
                     userProgress,
@@ -191,7 +207,8 @@ export default function HabitViews() {
                     userName: currentUserName,
                     userAvatar: currentUserAvatar,
                     partnerName,
-                    partnerAvatar
+                    partnerAvatar,
+                    partnerId
                 }
             })
 
@@ -215,6 +232,29 @@ export default function HabitViews() {
         }
     }
 
+    const handleNudge = async (habit: HabitWithProgress) => {
+        if (!habit.partnerId || !habit.id) {
+            Alert.alert('Error', 'Unable to send nudge. Missing partner or habit information.');
+            return;
+        }
+
+        try {
+            const result = await notificationAPI.sendNudge(habit.partnerId, habit.id);
+            Alert.alert(
+                '✅ Nudge Sent!',
+                `You've nudged ${habit.partnerName || 'your partner'} to work on ${habit.habit_name}!`,
+                [{ text: 'OK' }]
+            );
+        } catch (error: any) {
+            logger.error('Error sending nudge:', error);
+            const errorMessage = error.message || 'Failed to send nudge. Please try again.';
+            Alert.alert(
+                errorMessage.includes('once per day') ? '⏰ Rate Limit' : 'Error',
+                errorMessage
+            );
+        }
+    };
+
     const activeHabits = habits.filter(h => h.status === 'active')
     const inactiveHabits = habits.filter(h => h.status !== 'active')
 
@@ -233,21 +273,22 @@ export default function HabitViews() {
     }
 
     return (
-        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
-            <WhiteParticles />
-            <Image
-                source={require('app/images/space/galaxy.png')}
-                className="absolute bottom-0 right-0"
-                style={{ height: 250, width: 250, opacity: 0.3 }}
-                resizeMode="cover"
-            />
-            <Animated.View 
-                style={{ 
-                    flex: 1,
-                    opacity: fadeAnim,
-                    transform: [{ translateY: slideAnim }]
-                }}
-            >
+        <DashboardLayout>
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+                <WhiteParticles />
+                <Image
+                    source={require('app/images/space/galaxy.png')}
+                    className="absolute bottom-0 right-0"
+                    style={{ height: 250, width: 250, opacity: 0.3 }}
+                    resizeMode="cover"
+                />
+                <Animated.View 
+                    style={{ 
+                        flex: 1,
+                        opacity: fadeAnim,
+                        transform: [{ translateY: slideAnim }]
+                    }}
+                >
             <ScrollView 
                 className="flex-1"
                     contentContainerStyle={{ 
@@ -263,15 +304,17 @@ export default function HabitViews() {
                     <TouchableOpacity
                         onPress={() => router.push('/screens/dashboard/HabitDrafts')}
                             activeOpacity={0.8}
-                            className="bg-white/20 rounded-full px-4 py-2 ml-2 border border-white/30"
+                            className="bg-white/20 rounded-full px-4 py-2 ml-2 border border-white/30 flex-row items-center gap-1.5"
                     >
-                            <Text className="text-white text-xs font-wix">View Drafts</Text>
+                            <Ionicons name="document-text-outline" size={14} color="white" />
+                            <Text className="text-white text-xs font-wix">My Drafts</Text>
                     </TouchableOpacity>
                 </View>
 
-                    {activeHabits.length > 0 ? (
-                        <View className="gap-4 mb-6">
-                            {activeHabits.map((habit) => (
+                    <TutorialElement id="habits-list">
+                        {activeHabits.length > 0 ? (
+                            <View className="gap-4 mb-6">
+                                {activeHabits.map((habit) => (
                             <TouchableOpacity
                                 key={habit.id}
                                 onPress={() => {
@@ -285,53 +328,59 @@ export default function HabitViews() {
                             >
                                 <HabitBox
                                     title={habit.habit_name}
+                                    habitType={habit.habit_type}
                                     userProgress={habit.userProgress}
                                     partnerProgress={habit.partnerProgress}
                                     streak={habit.current_streak || 0}
-                                        leftAvatar={habit.userAvatar}
-                                        rightAvatar={habit.partnerAvatar}
-                                        userName={habit.userName}
-                                        partnerName={habit.partnerName}
+                                    leftAvatar={habit.userAvatar}
+                                    rightAvatar={habit.partnerAvatar}
+                                    userName={habit.userName}
+                                    partnerName={habit.partnerName}
+                                    showNudgeButton={!!habit.partnerId && !!habit.partnership_id}
+                                    onNudgePress={() => handleNudge(habit)}
                                 />
                             </TouchableOpacity>
-                            ))}
-                        </View>
-                    ) : (
-                        <View className="py-16 px-6 items-center bg-white/5 rounded-2xl border border-white/10 mb-6">
-                            <Text className="text-white/70 text-center text-lg font-wix mb-2">No active habits yet</Text>
-                            <Text className="text-white/50 text-center text-sm mb-8">Create your first habit below!</Text>
-                        </View>
-                    )}
+                                ))}
+                            </View>
+                        ) : (
+                            <View className="py-16 px-6 items-center bg-white/5 rounded-2xl border border-white/10 mb-6">
+                                <Text className="text-white/70 text-center text-lg font-wix mb-2">No active habits yet</Text>
+                                <Text className="text-white/50 text-center text-sm mb-8">Create your first habit below!</Text>
+                            </View>
+                        )}
+                    </TutorialElement>
 
                     {/* Always show add habit button */}
-                    <TouchableOpacity
-                        className="h-[56px] w-full bg-white rounded-2xl items-center justify-center mb-6"
-                        activeOpacity={0.8}
-                        onPress={() => router.push('/screens/dashboard/createHabit')}
-                    >
-                        <View className="flex-row items-center gap-2">
-                            <Ionicons name="add" size={24} color="#291133" />
-                            <Text className="font-wix text-[#291133] text-[16px] font-semibold">
-                                Create Habit
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
+                    <TutorialElement id="create-habit-button">
+                        <TouchableOpacity
+                            className="h-[56px] w-full bg-white rounded-2xl items-center justify-center mb-6 shadow-lg"
+                            activeOpacity={0.8}
+                            onPress={() => router.push('/screens/dashboard/createHabit')}
+                        >
+                            <View className="flex-row items-center gap-2">
+                                <Ionicons name="add-circle" size={24} color="#291133" />
+                                <Text className="font-wix text-[#291133] text-[16px] font-semibold">
+                                    Add New Habit
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    </TutorialElement>
 
                     {inactiveHabits.length > 0 && (
                         <TouchableOpacity
-                            className="h-[56px] w-full bg-white/10 rounded-2xl items-center justify-center border border-white/20 mb-6"
+                            className="h-[56px] w-full bg-white/10 rounded-2xl items-center justify-center border border-white/20 mb-6 flex-row gap-2"
                             activeOpacity={0.8}
                             onPress={() => console.log('Show inactive habits')}
                         >
+                            <Ionicons name="archive-outline" size={18} color="rgba(255, 255, 255, 0.7)" />
                             <Text className="font-wix text-white/70 text-[16px]">
-                                INACTIVE HABITS ({inactiveHabits.length})
+                                View Inactive ({inactiveHabits.length})
                             </Text>
                         </TouchableOpacity>
                     )}
             </ScrollView>
             </Animated.View>
-            
-            <HomeUI />
-        </View>
+            </View>
+        </DashboardLayout>
     )
 }

@@ -3,7 +3,7 @@
     "validator": {
       "$jsonSchema": {
         "bsonType": "object",
-        "required": ["user_id", "notification_type"],
+        "required": ["user_id", "type"],
         "properties": {
           "_id": {
             "bsonType": "objectId"
@@ -14,14 +14,37 @@
           "partnership_id": {
             "bsonType": "objectId"
           },
+          "type": {
+            "enum": ["partner_nudge", "partnership_request", "partner_checkin", "habit_reminder", "progress_milestone", "missed_habit"]
+          },
           "notification_type": {
-            "enum": ["reminder", "partner_completed", "nudge", "streak_broken", "milestone", "partner_request"]
+            "bsonType": "string"
           },
           "title": {
             "bsonType": "string"
           },
+          "message": {
+            "bsonType": "string"
+          },
           "description": {
             "bsonType": "string"
+          },
+          "related_id": {
+            "bsonType": "string"
+          },
+          "related_user_id": {
+            "bsonType": "string"
+          },
+          "action_taken": {
+            "bsonType": "bool",
+            "default": false
+          },
+          "archived": {
+            "bsonType": "bool",
+            "default": false
+          },
+          "read_at": {
+            "bsonType": "date"
           },
           "is_read": {
             "bsonType": "bool",

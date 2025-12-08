@@ -5,8 +5,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import { BASE_URL } from '../../../config'
 import BackwardButton from '@/components/ui/backwardButton'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
-import HomeUI from '@/components/ui/home-ui'
+import DashboardLayout from '../../components/navigation/DashboardLayout'
 import { logger } from '../../utils/logger'
+import TutorialElement from '../../components/tutorial/TutorialElement'
+import { notificationAPI } from '../../services/notificationAPI'
+import { Ionicons } from '@expo/vector-icons'
 
 interface PendingRequest {
     request_id: string
@@ -46,6 +49,7 @@ export default function ViewAllPartnerships() {
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [sendingRequest, setSendingRequest] = useState(false)
+    const [acceptingRequestId, setAcceptingRequestId] = useState<string | null>(null)
     const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
     const fadeAnim = useRef(new Animated.Value(0)).current
     const slideAnim = useRef(new Animated.Value(30)).current
@@ -235,33 +239,64 @@ export default function ViewAllPartnerships() {
     }
 
     const handleAcceptRequest = async (requestId: string, username: string) => {
+        // Prevent double-clicks
+        if (acceptingRequestId === requestId) {
+            return
+        }
+
+        setAcceptingRequestId(requestId)
+        
         try {
             const token = await AsyncStorage.getItem('access_token')
             
             if (!token) {
                 showMessage("Please log in again", "error")
+                setAcceptingRequestId(null)
                 return
             }
+            
+            logger.log(`Attempting to accept request: ${requestId} for user: ${username}`)
             
             const response = await fetch(`${BASE_URL}/api/partnerships/requests/${requestId}/accept`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
                 }
             })
 
-            const data = await response.json()
+            logger.log(`Response status: ${response.status}`)
+
+            let data
+            try {
+                data = await response.json()
+            } catch (parseError) {
+                logger.error('Failed to parse response:', parseError)
+                showMessage("Server error: Invalid response format", "error")
+                setAcceptingRequestId(null)
+                return
+            }
+            
+            logger.log('Response data:', data)
 
             if (response.ok) {
                 showMessage(`${username} is now your partner!`, "success")
-                fetchData()
+                // Refresh data after a short delay to ensure backend has processed
+                setTimeout(() => {
+                    fetchData()
+                }, 500)
             } else {
-                showMessage(data.detail || "Unable to accept request", "error")
+                const errorMsg = data.detail || data.message || `Unable to accept request (${response.status})`
+                logger.error('Accept request failed:', errorMsg, data)
+                showMessage(errorMsg, "error")
             }
 
         } catch (err: any) {
             logger.error('Error accepting request:', err)
-            showMessage("Unable to accept request", "error")
+            const errorMsg = err.message || "Unable to accept request. Please check your connection and try again."
+            showMessage(errorMsg, "error")
+        } finally {
+            setAcceptingRequestId(null)
         }
     }
 
@@ -339,6 +374,82 @@ export default function ViewAllPartnerships() {
         )
     }
 
+    const handleNudge = async (partnerId: string, partnerName: string, partnershipId?: string) => {
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            
+            if (!token) {
+                showMessage("Please log in again", "error")
+                return
+            }
+
+            // Fetch shared habits for this specific partnership
+            const habitsResponse = await fetch(`${BASE_URL}/api/habits`, {
+                headers: {'Authorization': `Bearer ${token}`}
+            })
+            
+            if (!habitsResponse.ok) {
+                showMessage("Unable to fetch habits", "error")
+                return
+            }
+
+            const habitsData = await habitsResponse.json()
+            // Filter habits by the specific partnership_id for this partner
+            const sharedHabits = partnershipId 
+                ? habitsData.filter((h: any) => h.partnership_id === partnershipId)
+                : habitsData.filter((h: any) => h.partnership_id)
+            
+            if (sharedHabits.length === 0) {
+                Alert.alert('No Shared Habits', 'You need to have shared habits with this partner to send a nudge.')
+                return
+            }
+
+            // If only one habit, nudge directly. Otherwise, show selection
+            if (sharedHabits.length === 1) {
+                const habitId = sharedHabits[0].id || sharedHabits[0]._id
+                try {
+                    const result = await notificationAPI.sendNudge(partnerId, habitId)
+                    showMessage(`✅ Nudge sent to ${partnerName}!`, "success")
+                } catch (err: any) {
+                    logger.error('Error sending nudge:', err)
+                    const errorMessage = err.message || "Failed to send nudge"
+                    if (errorMessage.includes('once per day')) {
+                        Alert.alert('⏰ Rate Limit', errorMessage)
+                    } else {
+                        showMessage(errorMessage, "error")
+                    }
+                }
+            } else {
+                // Show habit selection
+                Alert.alert(
+                    'Select Habit',
+                    `Which habit would you like to nudge ${partnerName} about?`,
+                    sharedHabits.map((habit: any) => ({
+                        text: habit.habit_name,
+                        onPress: async () => {
+                            try {
+                                const habitId = habit.id || habit._id
+                                const result = await notificationAPI.sendNudge(partnerId, habitId)
+                                showMessage(`✅ Nudge sent to ${partnerName}!`, "success")
+                            } catch (err: any) {
+                                logger.error('Error sending nudge:', err)
+                                const errorMessage = err.message || "Failed to send nudge"
+                                if (errorMessage.includes('once per day')) {
+                                    Alert.alert('⏰ Rate Limit', errorMessage)
+                                } else {
+                                    showMessage(errorMessage, "error")
+                                }
+                            }
+                        }
+                    })).concat([{ text: 'Cancel', style: 'cancel' }])
+                )
+            }
+        } catch (err: any) {
+            logger.error('Error sending nudge:', err)
+            showMessage("Failed to send nudge", "error")
+        }
+    }
+
     const getInitial = (name: string) => {
         return name ? name.charAt(0).toUpperCase() : '?'
     }
@@ -356,13 +467,14 @@ export default function ViewAllPartnerships() {
     }
 
     return (
-        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
-            <WhiteParticles />
-            <View className="absolute bottom-0 right-0">
-                <View style={{height: 250, width: 250, opacity: 0.3}}>
-                    <View className="absolute inset-0" style={{backgroundColor: '#291133'}} />
+        <DashboardLayout>
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+                <WhiteParticles />
+                <View className="absolute bottom-0 right-0">
+                    <View style={{height: 250, width: 250, opacity: 0.3}}>
+                        <View className="absolute inset-0" style={{backgroundColor: '#291133'}} />
+                    </View>
                 </View>
-            </View>
             
             {/* Back button */}
             <View className="absolute mt-6 left-8 z-50">
@@ -410,9 +522,11 @@ export default function ViewAllPartnerships() {
                     showsVerticalScrollIndicator={false}
             >
                     {/* Title */}
-                    <Text className="font-wix text-white text-[36px] text-center mb-8">
-                        Partnerships
-                    </Text>
+                    <TutorialElement id="partnerships-screen">
+                        <Text className="font-wix text-white text-[36px] text-center mb-8">
+                            Partnerships
+                        </Text>
+                    </TutorialElement>
 
                     {/* Search Section */}
                     <View className="mb-6">
@@ -539,12 +653,22 @@ export default function ViewAllPartnerships() {
                                         <TouchableOpacity
                                             onPress={() => handleAcceptRequest(request.request_id, request.display_name || request.username)}
                                             activeOpacity={0.8}
+                                            disabled={acceptingRequestId === request.request_id}
                                             className="rounded-xl px-4 py-2"
-                                            style={{ backgroundColor: 'rgba(16, 185, 129, 0.8)' }}
+                                            style={{ 
+                                                backgroundColor: acceptingRequestId === request.request_id 
+                                                    ? 'rgba(16, 185, 129, 0.5)' 
+                                                    : 'rgba(16, 185, 129, 0.8)',
+                                                opacity: acceptingRequestId === request.request_id ? 0.6 : 1
+                                            }}
                                         >
-                                            <Text className="font-wix text-[13px] font-bold text-white">
-                                                Accept
-                                            </Text>
+                                            {acceptingRequestId === request.request_id ? (
+                                                <ActivityIndicator size="small" color="#fff" />
+                                            ) : (
+                                                <Text className="font-wix text-[13px] font-bold text-white">
+                                                    Accept
+                                                </Text>
+                                            )}
                                         </TouchableOpacity>
 
                                         <TouchableOpacity
@@ -602,24 +726,38 @@ export default function ViewAllPartnerships() {
                                         </Text>
                                     </View>
 
-                                    <TouchableOpacity
-                                        onPress={() => handleRemovePartner(partner.partnership_id, partner.display_name || partner.username)}
-                                        activeOpacity={0.8}
-                                        className="rounded-xl px-4 py-2"
-                                        style={{ backgroundColor: 'rgba(248, 113, 113, 0.8)' }}
-                                    >
-                                        <Text className="font-wix text-white text-[13px] font-bold">
-                                            Remove
-                                        </Text>
-                                    </TouchableOpacity>
+                                    <View className="flex-row gap-2 items-center">
+                                        {partner.shared_habits > 0 && (
+                                            <TouchableOpacity
+                                                onPress={() => handleNudge(partner.partner_id, partner.display_name || partner.username, partner.partnership_id)}
+                                                activeOpacity={0.8}
+                                                className="rounded-xl px-3 py-2 flex-row items-center gap-1.5"
+                                                style={{ backgroundColor: 'rgba(168, 85, 247, 0.8)' }}
+                                            >
+                                                <Ionicons name="notifications-outline" size={14} color="#fff" />
+                                                <Text className="font-wix text-white text-[13px] font-bold">
+                                                    Nudge
+                                                </Text>
+                                            </TouchableOpacity>
+                                        )}
+                                        <TouchableOpacity
+                                            onPress={() => handleRemovePartner(partner.partnership_id, partner.display_name || partner.username)}
+                                            activeOpacity={0.8}
+                                            className="rounded-xl px-4 py-2"
+                                            style={{ backgroundColor: 'rgba(248, 113, 113, 0.8)' }}
+                                        >
+                                            <Text className="font-wix text-white text-[13px] font-bold">
+                                                Remove
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
                             ))
                         )}
                 </View>
             </ScrollView>
             </Animated.View>
-            
-            <HomeUI />
-        </View>
+            </View>
+        </DashboardLayout>
     )
 }

@@ -16,7 +16,6 @@ from app.models.partnership_model import (
 )
 
 from app.utils.security import decode_access_token
-from app.utils.notification_helpers import create_partnership_request_notification
 from config.database import get_database
 from bson import ObjectId
 from datetime import datetime
@@ -135,7 +134,7 @@ async def send_partnership_invite(
 
     Flow:
     - Current user (sender) looks up partner by username
-    - Validates that neither user already has an active partnership
+    - Validates that a partnership doesn't already exist between these two users
     - Ensures there is no existing pending request between the two users
     - Creates a `partner_requests` document with status `pending`
     """
@@ -159,26 +158,27 @@ async def send_partnership_invite(
             detail="Cannot partner with yourself",
         )
 
-    # Check if either user already has an ACTIVE partnership
-    for user in (sender_id, receiver_id):
-        active_count = await db.partnerships.count_documents(
+    # Check if a partnership already exists between these two specific users
+    existing_partnership = await db.partnerships.find_one({
+        "$or": [
             {
-                "$or": [
-                    {"user_id_1": ObjectId(user)},
-                    {"user_id_2": ObjectId(user)},
-                ],
-                "status": PartnershipStatus.ACTIVE.value,
+                "user_id_1": ObjectId(sender_id),
+                "user_id_2": ObjectId(receiver_id),
+                "status": PartnershipStatus.ACTIVE.value
+            },
+            {
+                "user_id_1": ObjectId(receiver_id),
+                "user_id_2": ObjectId(sender_id),
+                "status": PartnershipStatus.ACTIVE.value
             }
+        ]
+    })
+    
+    if existing_partnership:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have an active partnership with this user",
         )
-        if active_count > 0:
-            if user == sender_id:
-                msg = "You already have an active partnership"
-            else:
-                msg = "Partner already has an active partnership"
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=msg,
-            )
 
     # Check if there is already a pending request between these two users
     existing_request = await db.partner_requests.find_one(
@@ -208,14 +208,13 @@ async def send_partnership_invite(
     # Fetch sender info once for response
     sender = await db.users.find_one({"_id": ObjectId(sender_id)})
 
-    # Create notification for receiver
+    # Create notification for receiver using service
     try:
-        await create_partnership_request_notification(
-            db=db,
-            recipient_user_id=receiver_id,
-            sender_user_id=sender_id,
-            request_id=str(result.inserted_id),
+        await notification_service.send_partner_request_notification(
+            receiver_id=receiver_id,
+            sender_id=sender_id,
             sender_username=sender["username"],
+            request_id=str(result.inserted_id),
             message=partnership.message
         )
     except Exception as e:
@@ -354,22 +353,27 @@ async def accept_partnership_invite(
     sender_id = str(invite["sender_id"])
     receiver_id = str(invite["receiver_id"])
 
-    # Ensure neither user has an active partnership at the moment of acceptance
-    for uid in (sender_id, receiver_id):
-        active_count = await db.partnerships.count_documents(
+    # Check if a partnership already exists between these two specific users
+    existing_partnership = await db.partnerships.find_one({
+        "$or": [
             {
-                "$or": [
-                    {"user_id_1": ObjectId(uid)},
-                    {"user_id_2": ObjectId(uid)},
-                ],
-                "status": PartnershipStatus.ACTIVE.value,
+                "user_id_1": ObjectId(sender_id),
+                "user_id_2": ObjectId(receiver_id),
+                "status": PartnershipStatus.ACTIVE.value
+            },
+            {
+                "user_id_1": ObjectId(receiver_id),
+                "user_id_2": ObjectId(sender_id),
+                "status": PartnershipStatus.ACTIVE.value
             }
+        ]
+    })
+    
+    if existing_partnership:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You already have an active partnership with this user",
         )
-        if active_count > 0:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Either you or your partner already has an active partnership",
-            )
 
     # Create partnership (sender is user_id_1, receiver is user_id_2)
     partnership_doc = {
@@ -959,6 +963,21 @@ async def send_partnership_request(
     
     result = await db.partnership_requests.insert_one(request_data)
     
+    # Get sender info for notification
+    sender = await db.users.find_one({"_id": ObjectId(user_id)})
+    
+    # Send notification to recipient
+    try:
+        await notification_service.send_partner_request_notification(
+            receiver_id=recipient_id,
+            sender_id=user_id,
+            sender_username=sender["username"] if sender else "Someone",
+            request_id=str(result.inserted_id),
+            message=None
+        )
+    except Exception as e:
+        print(f"Warning: Failed to send partner request notification: {e}")
+    
     return {
         "success": True,
         "message": f"Partnership request sent to {partner_username}",
@@ -973,10 +992,13 @@ async def accept_partnership_request(
     """
     POST: Accept a partnership request
     """
+    print(f"\n🤝 ACCEPT PARTNERSHIP REQUEST: {request_id}")
     db = get_database()
     user_id = await get_current_user_id(credentials)
+    print(f"   Current user ID: {user_id}")
     
     if not ObjectId.is_valid(request_id):
+        print(f"   ❌ Invalid request ID format")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid request ID"
@@ -990,41 +1012,42 @@ async def accept_partnership_request(
     })
     
     if not request:
+        print(f"   ❌ Request not found or not pending")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Partnership request not found"
         )
     
+    print(f"   ✅ Request found")
     sender_id = request["sender_id"]
+    print(f"   Sender ID: {sender_id}")
     
-    # Check if either user already has active partnership
-    user_has_partnership = await db.partnerships.count_documents({
+    # Check if a partnership already exists between these two users
+    existing_partnership = await db.partnerships.find_one({
         "$or": [
-            {"user_id_1": ObjectId(user_id)},
-            {"user_id_2": ObjectId(user_id)}
-        ],
-        "status": "active"
+            {
+                "user_id_1": ObjectId(user_id),
+                "user_id_2": ObjectId(sender_id),
+                "status": "active"
+            },
+            {
+                "user_id_1": ObjectId(sender_id),
+                "user_id_2": ObjectId(user_id),
+                "status": "active"
+            }
+        ]
     })
     
-    sender_has_partnership = await db.partnerships.count_documents({
-        "$or": [
-            {"user_id_1": sender_id},
-            {"user_id_2": sender_id}
-        ],
-        "status": "active"
-    })
-    
-    if user_has_partnership > 0:
+    if existing_partnership:
+        print(f"   ⚠️  Partnership already exists between these users!")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="You already have an active partnership"
+            detail="You already have an active partnership with this user"
         )
     
-    if sender_has_partnership > 0:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Sender already has an active partnership"
-        )
+    print(f"   ✅ No existing partnership found, creating new one...")
+    
+    print(f"   ✅ All checks passed, creating partnership...")
     
     # Create partnership
     partnership_data = {
@@ -1035,12 +1058,14 @@ async def accept_partnership_request(
     }
     
     partnership_result = await db.partnerships.insert_one(partnership_data)
+    print(f"   ✅ Partnership created: {partnership_result.inserted_id}")
     
     # Update request status
     await db.partnership_requests.update_one(
         {"_id": ObjectId(request_id)},
         {"$set": {"status": "accepted", "responded_at": datetime.utcnow()}}
     )
+    print(f"   ✅ Request status updated to accepted")
     
     # Get sender info
     sender = await db.users.find_one({"_id": sender_id})
@@ -1049,7 +1074,7 @@ async def accept_partnership_request(
         "success": True,
         "message": "Partnership request accepted",
         "partnership_id": str(partnership_result.inserted_id),
-        "partner_username": sender["username"]
+        "partner_username": sender["username"] if sender else "Unknown"
     }
 
 

@@ -277,6 +277,24 @@ export default function StudyHabitCreation() {
                 logger.log('✅ Habit created successfully:', data)
                 setCreatedHabitId(data.id)
                 
+                // Schedule notification based on habit frequency
+                try {
+                    const { notificationService } = await import('../../services/notificationService');
+                    const hasPermission = await notificationService.requestPermissions();
+                    if (hasPermission) {
+                        await notificationService.scheduleHabitReminder(
+                            habitData.habit_name,
+                            frequency,
+                            9, // Default to 9 AM
+                            0  // 0 minutes
+                        );
+                        logger.log('✅ Notification scheduled for habit:', habitData.habit_name);
+                    }
+                } catch (notifErr) {
+                    // Don't fail habit creation if notification scheduling fails
+                    logger.error('Failed to schedule notification:', notifErr);
+                }
+                
                 // If this was created from a draft, delete the draft and reset state
                 if (isEditingDraft && draftId) {
                     try {

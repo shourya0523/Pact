@@ -1,5 +1,6 @@
 import React from 'react'
-import { View, Text, Pressable } from 'react-native'
+import { View, Text, Pressable, TouchableOpacity } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 
 interface NotificationProps {
     id: string;
@@ -12,6 +13,7 @@ interface NotificationProps {
     onAcceptPress?: (notificationId: string, requestId: string) => void;
     onDeclinePress?: (notificationId: string, requestId: string) => void;
     onNotificationPress?: (notificationId: string) => void;
+    onArchivePress?: (notificationId: string) => void;
 }
 
 const Notification: React.FC<NotificationProps> = ({
@@ -23,7 +25,8 @@ const Notification: React.FC<NotificationProps> = ({
     actionTaken = false,
     onAcceptPress,
     onDeclinePress,
-    onNotificationPress
+    onNotificationPress,
+    onArchivePress
 }) => {
     const renderButtons = () => {
         // Show confirmation message if action already taken
@@ -88,8 +91,20 @@ const Notification: React.FC<NotificationProps> = ({
                 </Text>
                 <Text className="text-white/60 text-xs">{time}</Text>
             </View>
-            <View className="flex-row items-center">
+            <View className="flex-row items-center gap-2">
                 {renderButtons()}
+                {onArchivePress && (
+                    <TouchableOpacity
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            onArchivePress(id);
+                        }}
+                        className="p-2"
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <Ionicons name="archive-outline" size={20} color="#A855F7" />
+                    </TouchableOpacity>
+                )}
             </View>
         </Pressable>
     );

@@ -92,6 +92,68 @@ class NotificationService {
     });
   }
 
+  async scheduleWeeklyReminder(
+    habitName: string,
+    weekday: number = 1, // 1 = Monday, 7 = Sunday
+    hour: number = 9,
+    minute: number = 0
+  ): Promise<string> {
+    return await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ Habit Reminder',
+        body: `Time to complete "${habitName}"!`,
+        sound: true,
+      },
+      trigger: {
+        weekday,
+        hour,
+        minute,
+        repeats: true,
+      },
+    });
+  }
+
+  async scheduleMonthlyReminder(
+    habitName: string,
+    day: number = 1, // Day of month (1-31)
+    hour: number = 9,
+    minute: number = 0
+  ): Promise<string> {
+    return await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '⏰ Habit Reminder',
+        body: `Time to complete "${habitName}"!`,
+        sound: true,
+      },
+      trigger: {
+        day,
+        hour,
+        minute,
+        repeats: true,
+      },
+    });
+  }
+
+  async scheduleHabitReminder(
+    habitName: string,
+    frequency: 'daily' | 'weekly' | 'monthly',
+    hour: number = 9,
+    minute: number = 0
+  ): Promise<string> {
+    switch (frequency) {
+      case 'daily':
+        return await this.scheduleDailyReminder(habitName, hour, minute);
+      case 'weekly':
+        // Default to Monday for weekly
+        return await this.scheduleWeeklyReminder(habitName, 1, hour, minute);
+      case 'monthly':
+        // Default to 1st of month for monthly
+        return await this.scheduleMonthlyReminder(habitName, 1, hour, minute);
+      default:
+        return await this.scheduleDailyReminder(habitName, hour, minute);
+    }
+  }
+
   async cancelNotification(id: string): Promise<void> {
     await Notifications.cancelScheduledNotificationAsync(id);
   }

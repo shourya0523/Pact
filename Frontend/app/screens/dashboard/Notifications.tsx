@@ -1,12 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { View, ScrollView, Text, Alert, RefreshControl, ActivityIndicator, Animated } from 'react-native'
+import { View, ScrollView, Text, Alert, RefreshControl, ActivityIndicator, Animated, TouchableOpacity } from 'react-native'
 import BackwardButton from '@/components/ui/backwardButton'
 import PurpleParticles from 'app/components/space/purpleStarsParticlesBackground'
 import Notification from 'app/components/common/ui/notification'
-import HomeUI from '@/components/ui/home-ui'
+import DashboardLayout from '../../components/navigation/DashboardLayout'
 import { useRouter } from 'expo-router'
 import { notificationAPI, NotificationData } from '../../services/notificationAPI'
 import { partnershipAPI } from '../../services/partnershipAPI'
+import { websocketService } from '../../services/websocketService'
+import { Switch } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
+import TutorialElement from '../../components/tutorial/TutorialElement'
 
 export default function Notifications() {
     const router = useRouter();
@@ -14,6 +18,7 @@ export default function Notifications() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [processingAction, setProcessingAction] = useState<string | null>(null);
+    const [showArchived, setShowArchived] = useState(false);
     const fadeAnim = useRef(new Animated.Value(0)).current
     const slideAnim = useRef(new Animated.Value(30)).current
 
@@ -34,12 +39,30 @@ export default function Notifications() {
                 useNativeDriver: true,
             }),
         ]).start()
-    }, []);
+
+        // Listen for real-time notifications via WebSocket
+        const handleNewNotification = (notification: NotificationData) => {
+            if (!showArchived) {
+                setNotifications(prev => [notification, ...prev]);
+            }
+        };
+
+        websocketService.onNotification(handleNewNotification);
+
+        // Cleanup
+        return () => {
+            websocketService.onNotification(() => {});
+        };
+    }, [showArchived]);
+
+    useEffect(() => {
+        loadNotifications();
+    }, [showArchived]);
 
     const loadNotifications = async () => {
         try {
             setLoading(true);
-            const data = await notificationAPI.getNotifications();
+            const data = await notificationAPI.getNotifications(showArchived);
             setNotifications(data);
         } catch (error) {
             console.error('Error loading notifications:', error);
@@ -156,16 +179,91 @@ export default function Notifications() {
 
     const handleNotificationPress = async (notificationId: string) => {
         try {
-            // Mark as read (which deletes it) when tapped
+            // Mark as read (which archives it) when tapped
             await notificationAPI.markAsRead(notificationId);
             
-            // Remove from local state
-            setNotifications(prev => 
-                prev.filter(notif => notif.id !== notificationId)
-            );
+            // Remove from local state if not showing archived
+            if (!showArchived) {
+                setNotifications(prev => 
+                    prev.filter(notif => notif.id !== notificationId)
+                );
+            } else {
+                // Update the notification to reflect it's archived
+                setNotifications(prev => 
+                    prev.map(notif => 
+                        notif.id === notificationId 
+                            ? { ...notif, is_read: true }
+                            : notif
+                    )
+                );
+            }
         } catch (error) {
-            console.error('Error deleting notification:', error);
+            console.error('Error marking notification as read:', error);
         }
+    };
+
+    const handleArchiveNotification = async (notificationId: string) => {
+        try {
+            setProcessingAction(notificationId);
+            
+            // Archive the notification
+            await notificationAPI.archiveNotification(notificationId);
+            
+            // Remove from local state if not showing archived
+            if (!showArchived) {
+                setNotifications(prev => 
+                    prev.filter(notif => notif.id !== notificationId)
+                );
+            } else {
+                // Keep it in the list but mark as archived
+                setNotifications(prev => 
+                    prev.map(notif => 
+                        notif.id === notificationId 
+                            ? { ...notif, archived: true }
+                            : notif
+                    )
+                );
+            }
+        } catch (error: any) {
+            console.error('Error archiving notification:', error);
+            Alert.alert(
+                'Error',
+                error.message || 'Failed to archive notification. Please try again.'
+            );
+        } finally {
+            setProcessingAction(null);
+        }
+    };
+
+    const handleClearAll = async () => {
+        if (notifications.length === 0) return;
+        
+        Alert.alert(
+            'Clear All Notifications',
+            `Are you sure you want to archive all ${notifications.length} notification${notifications.length !== 1 ? 's' : ''}?`,
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Clear All',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setProcessingAction('clear-all');
+                            await notificationAPI.archiveAllNotifications();
+                            setNotifications([]);
+                        } catch (error: any) {
+                            console.error('Error clearing all notifications:', error);
+                            Alert.alert(
+                                'Error',
+                                error.message || 'Failed to clear all notifications. Please try again.'
+                            );
+                        } finally {
+                            setProcessingAction(null);
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     if (loading) {
@@ -181,23 +279,24 @@ export default function Notifications() {
     }
 
     return (
-        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
-            <PurpleParticles />
-            <View className="absolute bottom-0 right-0">
-                <View style={{height: 250, width: 250, opacity: 0.3}}>
-                    <View className="absolute inset-0" style={{backgroundColor: '#291133'}} />
+        <DashboardLayout>
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+                <PurpleParticles />
+                <View className="absolute bottom-0 right-0">
+                    <View style={{height: 250, width: 250, opacity: 0.3}}>
+                        <View className="absolute inset-0" style={{backgroundColor: '#291133'}} />
+                    </View>
                 </View>
-            </View>
-            <View className="absolute mt-6 left-8 z-50">
-                <BackwardButton />
-            </View>
-            <Animated.View 
-                style={{ 
-                    flex: 1,
-                    opacity: fadeAnim,
-                    transform: [{ translateY: slideAnim }]
-                }}
-            >
+                <View className="absolute mt-6 left-8 z-50">
+                    <BackwardButton />
+                </View>
+                <Animated.View 
+                    style={{ 
+                        flex: 1,
+                        opacity: fadeAnim,
+                        transform: [{ translateY: slideAnim }]
+                    }}
+                >
             <ScrollView 
                 className="flex-1"
                     contentContainerStyle={{ 
@@ -214,17 +313,45 @@ export default function Notifications() {
                 }
                     showsVerticalScrollIndicator={false}
                 >
-                    <Text className="font-wix text-white text-[36px] text-center mb-8">
-                            Notifications
-                        </Text>
+                    <View className="mb-6">
+                        <View className="flex-row justify-between items-center mb-4">
+                            <Text className="font-wix text-white text-[36px]">
+                                Notifications
+                            </Text>
+                            <View className="flex-row items-center gap-2">
+                                <Text className="text-white/70 text-sm font-wix">Show Archived</Text>
+                                <Switch
+                                    value={showArchived}
+                                    onValueChange={setShowArchived}
+                                    trackColor={{ false: '#767577', true: '#A855F7' }}
+                                    thumbColor={showArchived ? '#fff' : '#f4f3f4'}
+                                />
+                            </View>
+                        </View>
+                        {!showArchived && notifications.length > 0 && (
+                            <TouchableOpacity
+                                onPress={handleClearAll}
+                                disabled={processingAction !== null}
+                                className="bg-purple-600/30 border border-purple-400/50 rounded-xl px-4 py-2 self-start flex-row items-center gap-2"
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="archive-outline" size={16} color="#A855F7" />
+                                <Text className="text-purple-300 text-sm font-wix">
+                                    {processingAction === 'clear-all' ? 'Clearing...' : 'Clear All'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
 
                 {notifications.length === 0 ? (
                         <View className="bg-white/5 rounded-2xl p-8 items-center border border-white/10">
                         <Text className="text-white/70 text-center text-lg font-wix mb-2">
-                            🔔 No Notifications
+                            🔔 {showArchived ? 'No Archived Notifications' : 'No Notifications'}
                         </Text>
                         <Text className="text-white/50 text-center text-sm">
-                            You're all caught up! Check back later for updates from your partner.
+                            {showArchived 
+                                ? 'You haven\'t archived any notifications yet.'
+                                : 'You\'re all caught up! Check back later for updates from your partner.'}
                         </Text>
                     </View>
                 ) : (
@@ -238,8 +365,9 @@ export default function Notifications() {
                             </Text>
                         </View>
 
+                        <TutorialElement id="notifications-list">
                             <View className="gap-2 mb-6">
-                            {notifications.map((notif) => (
+                                {notifications.map((notif) => (
                                     <View key={notif.id} className="relative">
                                     <Notification
                                         id={notif.id}
@@ -251,6 +379,7 @@ export default function Notifications() {
                                         onAcceptPress={handleAcceptPartnership}
                                         onDeclinePress={handleDeclinePartnership}
                                         onNotificationPress={handleNotificationPress}
+                                        onArchivePress={handleArchiveNotification}
                                     />
                                     {processingAction === notif.id && (
                                             <View className="absolute right-4 top-1/2" style={{ transform: [{ translateY: -10 }] }}>
@@ -258,8 +387,9 @@ export default function Notifications() {
                                         </View>
                                     )}
                                 </View>
-                            ))}
-                        </View>
+                                ))}
+                            </View>
+                        </TutorialElement>
                     </>
                 )}
 
@@ -270,7 +400,7 @@ export default function Notifications() {
                 </View>
             </ScrollView>
             </Animated.View>
-            <HomeUI />
-        </View>
+            </View>
+        </DashboardLayout>
     );
 }

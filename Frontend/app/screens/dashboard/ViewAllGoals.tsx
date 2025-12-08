@@ -3,7 +3,7 @@ import {View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, ScrollVie
 import {useRouter} from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import {BASE_URL} from '../../../config'
-import HomeUI from "@/components/ui/home-ui"
+import DashboardLayout from "../../components/navigation/DashboardLayout"
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GoalBox from '@/components/ui/goalBox'
 import {Ionicons} from '@expo/vector-icons'
@@ -142,8 +142,9 @@ export default function ViewAllGoals() {
     }
 
     return (
-        <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
-            <WhiteParticles/>
+        <DashboardLayout>
+            <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
+                <WhiteParticles/>
             <Image
                 source={require('app/images/space/galaxy.png')}
                 className="absolute bottom-0 right-0"
@@ -233,8 +234,7 @@ export default function ViewAllGoals() {
                 )}
                 </ScrollView>
             </Animated.View>
-
-            <HomeUI/>
-        </View>
+            </View>
+        </DashboardLayout>
     )
 }

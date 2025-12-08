@@ -7,6 +7,7 @@ import { getBaseUrl } from '../../../config'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import { api } from '../../services/api'
+import TutorialElement from '../../components/tutorial/TutorialElement'
 
 export default function Profile() {
     const router = useRouter()
@@ -278,11 +279,13 @@ export default function Profile() {
                 showsVerticalScrollIndicator={false}
             >
                 {/* Top text container */}
-                <View className="pt-20 w-full">
-                    <Text className="text-white font-wix text-[36px] ml-12">
-                        Edit Profile
-                    </Text>
-                </View>
+                <TutorialElement id="profile-screen">
+                    <View className="pt-20 w-full">
+                        <Text className="text-white font-wix text-[36px] ml-12">
+                            Edit Profile
+                        </Text>
+                    </View>
+                </TutorialElement>
 
                 {/* Main content */}
                 <View className="flex-1 justify-start items-center mt-6 px-6">

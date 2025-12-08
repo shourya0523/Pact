@@ -98,7 +98,7 @@ void main() {
   float alpha = mask;
   if(uAlphaParticles > 0.5) alpha *= 0.8;
 
-  gl_FragColor = vec4(vColor + 0.2 * sin(uv.yxx + uTime + vRandom.y * 6.28), alpha);
+  gl_FragColor = vec4(vColor + 0.5 * sin(uv.yxx + uTime * 2.0 + vRandom.y * 6.28), alpha);
 }
 `;
 
@@ -287,10 +287,10 @@ const whiteParticles: React.FC<ParticlesProps> = ({
     if (Platform.OS === 'web' || mobileParticles.length === 0) return;
     
     const animations = mobileParticles.map((particle) => {
-      const minOpacity = 0.2 + Math.random() * 0.2; // 0.2-0.4
-      const maxOpacity = 0.6 + Math.random() * 0.4; // 0.6-1.0
-      const duration = 2000 + Math.random() * 3000; // 2-5s per twinkle
-      const delay = Math.random() * 2000; // Random start delay
+      const minOpacity = 0.1 + Math.random() * 0.2; // 0.1-0.3 (lower minimum for more contrast)
+      const maxOpacity = 0.8 + Math.random() * 0.2; // 0.8-1.0 (higher maximum for more contrast)
+      const duration = 1000 + Math.random() * 2000; // 1-3s per twinkle (faster)
+      const delay = Math.random() * 1000; // Random start delay (shorter)
       
       // Set initial random opacity
       particle.opacity.setValue(minOpacity + Math.random() * (maxOpacity - minOpacity));
@@ -422,8 +422,8 @@ const whiteParticles: React.FC<ParticlesProps> = ({
               ],
               shadowColor: particle.color,
               shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: 0.8,
-              shadowRadius: particle.size,
+              shadowOpacity: 1.0,
+              shadowRadius: particle.size * 1.5,
             }}
           />
         ))}

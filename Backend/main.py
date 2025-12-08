@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from config.database import connect_to_mongo, close_mongo_connection
 from app.routes import auth, habits, users, streak_history, habit_logs, notifications
 from app.routes import goals
+import asyncio
 
 from app.routes.auth import router as auth_router
 from app.routes.partnership_apis import router as partnership_router
@@ -23,9 +24,35 @@ load_dotenv()
 async def lifespan(app: FastAPI):
     # Startup
     await connect_to_mongo()
-    yield
-    # Shutdown
-    await close_mongo_connection()
+    try:
+        yield
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        # Suppress cancellation errors during shutdown - this is normal
+        # These are expected when uvicorn/starlette shuts down the server
+        pass
+    finally:
+        # Shutdown - handle any cancellation errors gracefully
+        try:
+            # Close all WebSocket connections
+            for user_id in list(manager.active_connections.keys()):
+                try:
+                    await manager.disconnect(user_id)
+                except (asyncio.CancelledError, KeyboardInterrupt):
+                    pass  # Ignore cancellation during cleanup
+                except Exception:
+                    pass  # Ignore other errors during cleanup
+            
+            # Close MongoDB connection
+            try:
+                await close_mongo_connection()
+            except (asyncio.CancelledError, KeyboardInterrupt):
+                pass  # Ignore cancellation during cleanup
+        except (asyncio.CancelledError, KeyboardInterrupt):
+            # Suppress cancellation errors during shutdown - this is normal
+            pass
+        except Exception as e:
+            # Log other errors but don't fail shutdown
+            print(f"⚠️  Error during shutdown: {e}")
 
 app = FastAPI(
     title="Pact API",

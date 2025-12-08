@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView, Ima
 import { useRouter, useFocusEffect } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
-import HomeUI from "@/components/ui/home-ui"
+import DashboardLayout from "../../components/navigation/DashboardLayout"
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import BackwardButton from '@/components/ui/backwardButton'
 import { Ionicons } from '@expo/vector-icons'
@@ -142,8 +142,9 @@ export default function HabitDrafts() {
     }
 
     return (
-        <View className="flex-1 relative">
-            <WhiteParticles />
+        <DashboardLayout>
+            <View className="flex-1 relative">
+                <WhiteParticles />
             <Image
                 source={require('app/images/space/galaxy.png')}
                 className="absolute bottom-0 right-0"
@@ -234,9 +235,8 @@ export default function HabitDrafts() {
                     )}
                 </View>
             </ScrollView>
-            
-            <HomeUI />
-        </View>
+            </View>
+        </DashboardLayout>
     )
 }
 

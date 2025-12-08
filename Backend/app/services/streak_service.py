@@ -8,7 +8,7 @@ Handles streak calculation logic with the following design:
 - Tracks current_streak and longest_streak per user per habit
 """
 
-from datetime import datetime, timedelta, timezone, date
+from datetime import datetime, timedelta, timezone, date, time
 import asyncio
 from bson import ObjectId
 from typing import Optional, Dict, Tuple
@@ -286,6 +286,16 @@ class StreakCalculationService:
 
     @staticmethod
     async def upsert_streaks(db, habit_id: str, partnership_id: str, data: Dict) -> None:
+        # Convert date objects to datetime objects for MongoDB compatibility
+        # Note: datetime is a subclass of date, so we need to explicitly exclude datetime objects
+        streak_started_at = data.get("streak_started_at")
+        if isinstance(streak_started_at, date) and not isinstance(streak_started_at, datetime):
+            streak_started_at = datetime.combine(streak_started_at, time.min)
+        
+        last_both_completed_date = data.get("last_both_completed_date")
+        if isinstance(last_both_completed_date, date) and not isinstance(last_both_completed_date, datetime):
+            last_both_completed_date = datetime.combine(last_both_completed_date, time.min)
+        
         await db.streaks.update_one(
             {"habit_id": ObjectId(habit_id)},
             {"$set": {
@@ -293,8 +303,8 @@ class StreakCalculationService:
                 "partnership_id": ObjectId(partnership_id),
                 "current_streak": data.get("current_streak", 0),
                 "longest_streak": data.get("longest_streak", 0),
-                "streak_started_at": data.get("streak_started_at"),
-                "last_both_completed_date": data.get("last_both_completed_date"),
+                "streak_started_at": streak_started_at,
+                "last_both_completed_date": last_both_completed_date,
                 "updated_at": data.get("updated_at", datetime.utcnow()),
             }},
             upsert=True,

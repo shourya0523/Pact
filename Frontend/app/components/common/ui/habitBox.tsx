@@ -1,11 +1,12 @@
 import React from 'react'
-import { View, Text, Image, ImageSourcePropType } from 'react-native'
+import { View, Text, Image, ImageSourcePropType, TouchableOpacity } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import ProgressCircle from 'app/components/habit/ProgressCircle';
 import StreakIndicator from 'app/components/habit/StreakIndicator';
 
 interface HabitBoxProps {
     title: string;
+    habitType?: string;  // "build" or "break"
     userProgress: number;  // User's progress percentage (0-100)
     partnerProgress: number;  // Partner's progress percentage (0-100)
     streak?: number;
@@ -13,10 +14,13 @@ interface HabitBoxProps {
     rightAvatar?: string | ImageSourcePropType;
     userName?: string;
     partnerName?: string;
+    onNudgePress?: () => void;  // Callback when nudge button is pressed
+    showNudgeButton?: boolean;  // Whether to show nudge button
 }
 
 const HabitBox: React.FC<HabitBoxProps> = ({
   title,
+  habitType,
   userProgress = 0,
   partnerProgress = 0,
   streak = 0,
@@ -24,9 +28,37 @@ const HabitBox: React.FC<HabitBoxProps> = ({
   rightAvatar,
   userName,
   partnerName,
+  onNudgePress,
+  showNudgeButton = false,
 }) => {
   // Calculate average progress and ceiling it
   const averageProgress = Math.ceil((userProgress + partnerProgress) / 2);
+
+  // Habit type badge configuration
+  const getHabitTypeConfig = () => {
+    if (habitType === 'build') {
+      return {
+        label: 'Build',
+        bgColor: 'bg-green-500/20',
+        borderColor: 'border-green-400/40',
+        textColor: 'text-green-300',
+        iconColor: '#86efac', // green-300
+        icon: 'trending-up' as const,
+      };
+    } else if (habitType === 'break') {
+      return {
+        label: 'Break',
+        bgColor: 'bg-orange-500/20',
+        borderColor: 'border-orange-400/40',
+        textColor: 'text-orange-300',
+        iconColor: '#fdba74', // orange-300
+        icon: 'remove-circle' as const,
+      };
+    }
+    return null;
+  };
+
+  const typeConfig = getHabitTypeConfig();
 
   // Default avatar component
   const DefaultAvatar = ({ size = 40 }: { size?: number }) => (
@@ -60,7 +92,17 @@ const HabitBox: React.FC<HabitBoxProps> = ({
       </View>
 
       <View className="flex-1 items-center px-2">
-        <Text className="text-white text-[20px] mb-2 font-wix text-center">{title}</Text>
+        <View className="w-full items-center mb-1.5">
+          <Text className="text-white text-[20px] font-wix text-center mb-1.5" numberOfLines={1}>{title}</Text>
+          {typeConfig && (
+            <View className={`${typeConfig.bgColor} ${typeConfig.borderColor} border rounded-full px-2.5 py-0.5 flex-row items-center gap-1`}>
+              <Ionicons name={typeConfig.icon} size={12} color={typeConfig.iconColor} />
+              <Text className={`${typeConfig.textColor} text-[10px] font-wix font-semibold`}>
+                {typeConfig.label}
+              </Text>
+            </View>
+          )}
+        </View>
         <View className="flex-row items-center gap-3">
           {/* Show average progress - NOT multiplied by 100! */}
           <ProgressCircle progress={averageProgress} size={50} strokeWidth={8} />
@@ -92,6 +134,18 @@ const HabitBox: React.FC<HabitBoxProps> = ({
         <Text className="text-white/80 text-[14px] mt-1 font-wix" numberOfLines={1}>
           {partnerName || 'Partner'}
         </Text>
+        {showNudgeButton && onNudgePress && (
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              onNudgePress();
+            }}
+            className="mt-1.5 bg-purple-600/60 rounded-full p-1.5 border border-purple-400/50"
+            hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+          >
+            <Ionicons name="notifications-outline" size={14} color="#fff" />
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   )

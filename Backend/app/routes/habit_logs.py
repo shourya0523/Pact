@@ -10,7 +10,6 @@ from app.models.habit_log import (
 from app.utils.security import decode_access_token
 from app.services.streak_service import StreakCalculationService
 from app.models.goals import GoalStatus
-from app.utils.notification_helpers import notify_partner_on_checkin
 from config.database import get_database
 from bson import ObjectId
 from datetime import datetime, date, timedelta
@@ -78,6 +77,7 @@ async def check_goal_milestones(
                 user_id=user_id,
                 goal_name=goal_data.get("goal_name", "Your goal"),
                 milestone_percentage=milestone,
+                habit_id=habit_id,
                 habit_name=habit.get("habit_name", "habit"),
                 partnership_id=partnership_id
             )
@@ -194,13 +194,7 @@ async def log_habit_completion(
     # Invalidate in-memory cache for this habit so next read is fresh
     StreakCalculationService.invalidate_mem_cache(habit_id)
 
-    # Notify partner about check-in (only if completed is True)
-    if log_data.completed:
-        try:
-            await notify_partner_on_checkin(db, habit_id, user_id)
-        except Exception as e:
-            # Don't fail the check-in if notification fails
-            print(f"Warning: Failed to send partner notification: {e}")
+    # Partner notification will be sent below after we have all the info
 
     # Update goal progress for this user if they have a goal on this habit
     previous_goal_progress = None
@@ -283,27 +277,33 @@ async def log_habit_completion(
 
     # Send notif to partner when user checks in
     if log_data.completed and partnership_id:
-        # get partner's info
-        partnership = await db.partnerships.find_one({"_id": partnership_id})
-        if partnership:
-            # find who the partner is
-            partner_id = None
-            if str(partnership["user_id_1"]) == user_id:
-                partner_id = str(partnership["user_id_2"])
-            else:
-                partner_id = str(partnership["user_id_1"])
-            
-            # Get current user's info for notification
-            current_user = await db.users.find_one({"_id": ObjectId(user_id)})
-            current_username = current_user.get("username", "Your partner") if current_user else "Your partner"
-            
-            # send notif to partner
-            await notification_service.send_partner_checkin_notification(
-                user_id=partner_id,
-                partner_username=current_username,
-                habit_name=habit["habit_name"],
-                partnership_id=str(partnership_id)
-            )
+        try:
+            # get partner's info
+            partnership = await db.partnerships.find_one({"_id": partnership_id})
+            if partnership:
+                # find who the partner is
+                partner_id = None
+                if str(partnership["user_id_1"]) == user_id:
+                    partner_id = str(partnership["user_id_2"])
+                else:
+                    partner_id = str(partnership["user_id_1"])
+                
+                # Get current user's info for notification
+                current_user = await db.users.find_one({"_id": ObjectId(user_id)})
+                current_username = current_user.get("username", "Your partner") if current_user else "Your partner"
+                
+                # send notif to partner using service
+                await notification_service.send_partner_checkin_notification(
+                    user_id=partner_id,
+                    partner_user_id=user_id,
+                    partner_username=current_username,
+                    habit_id=habit_id,
+                    habit_name=habit.get("habit_name", "your habit"),
+                    partnership_id=str(partnership_id)
+                )
+        except Exception as e:
+            # Don't fail the check-in if notification fails
+            print(f"Warning: Failed to send partner notification: {e}")
     # Check for goal milestones and send notif if reached
     if log_data.completed and partnership_id:
         await check_goal_milestones(
@@ -420,18 +420,33 @@ async def get_habit_logs(
                 detail="Access denied"
             )
 
-    # Build query
+    # Build query - habit_id is stored as string in habit_logs collection
     query = {"habit_id": habit_id}
 
     if start_date:
         query["log_date"] = query.get("log_date", {})
-        query["log_date"]["$gte"] = datetime.fromisoformat(start_date)
+        # Handle ISO format with or without timezone
+        try:
+            if start_date.endswith('Z'):
+                start_date = start_date.replace('Z', '+00:00')
+            query["log_date"]["$gte"] = datetime.fromisoformat(start_date)
+        except ValueError:
+            # Fallback to parsing without timezone
+            query["log_date"]["$gte"] = datetime.fromisoformat(start_date.split('.')[0])
 
     if end_date:
         query["log_date"] = query.get("log_date", {})
-        query["log_date"]["$lte"] = datetime.fromisoformat(end_date)
+        # Handle ISO format with or without timezone
+        try:
+            if end_date.endswith('Z'):
+                end_date = end_date.replace('Z', '+00:00')
+            query["log_date"]["$lte"] = datetime.fromisoformat(end_date)
+        except ValueError:
+            # Fallback to parsing without timezone
+            query["log_date"]["$lte"] = datetime.fromisoformat(end_date.split('.')[0])
 
     if user_id_filter:
+        # user_id is stored as string in habit_logs collection
         query["user_id"] = user_id_filter
 
     # Get logs
