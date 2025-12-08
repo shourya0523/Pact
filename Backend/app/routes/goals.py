@@ -338,6 +338,45 @@ async def update_frequency_goal(
 
 
 # ============================================================================
+# CREATE COMPLETION GOAL (must be before generic /goal route)
+# ============================================================================
+
+@router.post(
+    "/habits/{habit_id}/users/{target_user_id}/goal/completion",
+    response_model=UserGoalResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create a completion goal",
+    description="Create a new completion goal for a specfic user within a specific habit."
+)
+async def create_user_goal_completion(
+        habit_id: str,
+        target_user_id: str,
+        goal_data: SetGoalRequest,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    current_user_id = await get_current_user_id(credentials)
+
+    request = SetGoalRequest(
+        goal_type=GoalType.COMPLETION,
+        goal_name=goal_data.goal_name,
+        frequency_count=None,
+        frequency_unit=None,
+        duration_count=None,
+        duration_unit=None,
+        target_value=goal_data.target_value
+    )
+
+    return await create_user_goal(
+        habit_id=habit_id,
+        target_user_id=target_user_id,
+        goal_data=request,
+        credentials=credentials,
+        db=db
+    )
+
+
+# ============================================================================
 # CREATE GENERIC GOAL (FOR COMPLETION GOALS - YOUR TEAMMATE'S ENDPOINT)
 # ============================================================================
 
@@ -434,41 +473,6 @@ async def create_user_goal(
         user_id=target_user_id,
         habit=updated_habit,
         user_goal=user_goal
-    )
-
-
-@router.post(
-    "/habits/{habit_id}/users/{target_user_id}/goal/completion",
-    response_model=UserGoalResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create a completion goal",
-    description="Create a new completion goal for a specfic user within a specific habit."
-)
-async def create_user_goal_completion(
-        habit_id: str,
-        target_user_id: str,
-        goal_data: SetGoalRequest,
-        credentials: HTTPAuthorizationCredentials = Depends(security),
-        db: AsyncIOMotorDatabase = Depends(get_database)
-):
-    current_user_id = await get_current_user_id(credentials)
-
-    request = SetGoalRequest(
-        goal_type=GoalType.COMPLETION,
-        goal_name=goal_data.goal_name,
-        frequency_count=None,
-        frequency_unit=None,
-        duration_count=None,
-        duration_unit=None,
-        target_value=goal_data.target_value
-    )
-
-    return await create_user_goal(
-        habit_id=habit_id,
-        target_user_id=target_user_id,
-        goal_data=request,
-        credentials=credentials,
-        db=db
     )
 
 
@@ -647,6 +651,49 @@ async def get_my_goals(
 
 
 # ============================================================================
+# UPDATE COMPLETION GOAL (must be before generic /goal route)
+# ============================================================================
+
+@router.put(
+    "/habits/{habit_id}/users/{target_user_id}/goal/completion",
+    response_model=UserGoalResponse,
+    summary="Update a user's goal",
+    description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."
+)
+async def update_user_goal_completion(
+        habit_id: str,
+        target_user_id: str,
+        update_data: UpdateGoalRequest,
+        credentials: HTTPAuthorizationCredentials = Depends(security),
+        db: AsyncIOMotorDatabase = Depends(get_database)
+):
+    current_user_id = await get_current_user_id(credentials)
+
+    habit = await verify_habit_access(db, habit_id, current_user_id)
+
+    goals = habit.get("goals", {})
+    if target_user_id not in goals:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Goal not found for this user in this habit"
+        )
+
+    if goals[target_user_id].get("goal_type") != "completion":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint can only update completion goals"
+        )
+
+    return await update_user_goal(
+        habit_id=habit_id,
+        target_user_id=target_user_id,
+        update_data=update_data,
+        credentials=credentials,
+        db=db
+    )
+
+
+# ============================================================================
 # UPDATE GENERIC GOAL
 # ============================================================================
 
@@ -716,45 +763,6 @@ async def update_user_goal(
         user_id=target_user_id,
         habit=updated_habit,
         user_goal=user_goal
-    )
-
-
-@router.put(
-    "/habits/{habit_id}/users/{target_user_id}/goal/completion",
-    response_model=UserGoalResponse,
-    summary="Update a user's goal",
-    description="Update specific fields of a user's completion goal within a habit. Progress and completion fields are read-only."
-)
-async def update_user_goal_completion(
-        habit_id: str,
-        target_user_id: str,
-        update_data: UpdateGoalRequest,
-        credentials: HTTPAuthorizationCredentials = Depends(security),
-        db: AsyncIOMotorDatabase = Depends(get_database)
-):
-    current_user_id = await get_current_user_id(credentials)
-
-    habit = await verify_habit_access(db, habit_id, current_user_id)
-
-    goals = habit.get("goals", {})
-    if target_user_id not in goals:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Goal not found for this user in this habit"
-        )
-
-    if goals[target_user_id].get("goal_type") != "completion":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This endpoint can only update completion goals"
-        )
-
-    return await update_user_goal(
-        habit_id=habit_id,
-        target_user_id=target_user_id,
-        update_data=update_data,
-        credentials=credentials,
-        db=db
     )
 
 

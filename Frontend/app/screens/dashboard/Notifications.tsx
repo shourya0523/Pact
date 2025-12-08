@@ -7,7 +7,6 @@ import HomeUI from '@/components/ui/home-ui'
 import { useRouter } from 'expo-router'
 import { notificationAPI, NotificationData } from '../../services/notificationAPI'
 import { partnershipAPI } from '../../services/partnershipAPI'
-import { habitAPI } from '../../services/habitAPI'
 
 export default function Notifications() {
     const router = useRouter();
@@ -54,48 +53,6 @@ export default function Notifications() {
         setRefreshing(true);
         await loadNotifications();
         setRefreshing(false);
-    };
-
-    const handleCheckIn = async (notificationId: string, habitId?: string) => {
-        console.log('🔘 CHECK IN BUTTON CLICKED!', { notificationId, habitId });
-        
-        if (!habitId) {
-            Alert.alert('Error', 'No habit associated with this notification');
-            return;
-        }
-
-        try {
-            setProcessingAction(notificationId);
-            
-            // Check in to the habit
-            await habitAPI.checkInHabit(habitId);
-            
-            // Mark notification as action taken
-            await notificationAPI.markActionTaken(notificationId);
-            
-            // Update local state
-            setNotifications(prev => 
-                prev.map(notif => 
-                    notif.id === notificationId 
-                        ? { ...notif, action_taken: true }
-                        : notif
-                )
-            );
-            
-            Alert.alert(
-                '✅ Checked In!', 
-                'Great job! Your habit has been logged.',
-                [{ text: 'OK' }]
-            );
-        } catch (error: any) {
-            console.error('Error checking in:', error);
-            Alert.alert(
-                'Error', 
-                error.message || 'Failed to check in. Please try again.'
-            );
-        } finally {
-            setProcessingAction(null);
-        }
     };
 
     const handleAcceptPartnership = async (notificationId: string, requestId: string) => {
@@ -199,19 +156,15 @@ export default function Notifications() {
 
     const handleNotificationPress = async (notificationId: string) => {
         try {
-            // Mark as read when tapped
+            // Mark as read (which deletes it) when tapped
             await notificationAPI.markAsRead(notificationId);
             
-            // Update local state
+            // Remove from local state
             setNotifications(prev => 
-                prev.map(notif => 
-                    notif.id === notificationId 
-                        ? { ...notif, is_read: true }
-                        : notif
-                )
+                prev.filter(notif => notif.id !== notificationId)
             );
         } catch (error) {
-            console.error('Error marking notification as read:', error);
+            console.error('Error deleting notification:', error);
         }
     };
 
@@ -295,7 +248,6 @@ export default function Notifications() {
                                         type={notif.type}
                                         relatedId={notif.related_id}
                                         actionTaken={notif.action_taken}
-                                        onCheckInPress={handleCheckIn}
                                         onAcceptPress={handleAcceptPartnership}
                                         onDeclinePress={handleDeclinePartnership}
                                         onNotificationPress={handleNotificationPress}

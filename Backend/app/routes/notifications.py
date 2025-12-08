@@ -120,7 +120,7 @@ async def get_notifications(
                 partner = await db.users.find_one({"_id": ObjectId(notif_doc["related_user_id"])})
                 if partner:
                     notif_data["partner_username"] = partner.get("username")
-                    notif_data["partner_avatar"] = partner.get("profile_picture")
+                    notif_data["partner_avatar"] = partner.get("profile_photo_url") or partner.get("profile_picture")
             
             # If there's a related habit, get habit name
             if notif_doc.get("related_id") and notif_doc["type"] in [
@@ -175,28 +175,27 @@ async def mark_notification_read(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db=Depends(get_database)
 ):
-    """Mark a notification as read"""
+    """Mark a notification as read and delete it"""
     try:
         user_id = await get_current_user_id(credentials)
         
-        result = await db.notifications.update_one(
+        result = await db.notifications.delete_one(
             {
                 "_id": ObjectId(notification_id),
                 "user_id": user_id
-            },
-            {"$set": {"is_read": True}}
+            }
         )
         
-        if result.modified_count == 0:
+        if result.deleted_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Notification not found"
             )
         
-        return {"message": "Notification marked as read"}
+        return {"message": "Notification deleted"}
         
     except Exception as e:
-        print(f"Error marking notification as read: {str(e)}")
+        print(f"Error deleting notification: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)

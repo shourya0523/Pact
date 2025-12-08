@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { BASE_URL } from '../../config';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || `${BASE_URL}/api`;
 
 class PartnershipAPIService {
     private async getAuthToken(): Promise<string | null> {

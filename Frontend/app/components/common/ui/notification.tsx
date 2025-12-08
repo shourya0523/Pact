@@ -9,7 +9,6 @@ interface NotificationProps {
     relatedId?: string;
     actionTaken?: boolean;
     
-    onCheckInPress?: (notificationId: string, habitId?: string) => void;
     onAcceptPress?: (notificationId: string, requestId: string) => void;
     onDeclinePress?: (notificationId: string, requestId: string) => void;
     onNotificationPress?: (notificationId: string) => void;
@@ -22,7 +21,6 @@ const Notification: React.FC<NotificationProps> = ({
     type,
     relatedId,
     actionTaken = false,
-    onCheckInPress,
     onAcceptPress,
     onDeclinePress,
     onNotificationPress
@@ -38,33 +36,11 @@ const Notification: React.FC<NotificationProps> = ({
                         </Text>
                     </View>
                 );
-            } else if (['partner_nudge', 'habit_reminder', 'partner_checkin'].includes(type)) {
-                return (
-                    <View className="rounded-[10px] bg-green-500/30 px-4 py-2">
-                        <Text className="text-[14px] font-wix text-green-300 text-center">
-                            ✓ Checked In!
-                        </Text>
-                    </View>
-                );
             }
             return null;
         }
 
         switch (type) {
-            case 'partner_nudge':
-            case 'habit_reminder':
-            case 'partner_checkin':
-                return (
-                    <Pressable
-                        onPress={() => onCheckInPress?.(id, relatedId)}
-                        className="rounded-[10px] bg-white/20 flex-row items-center justify-center px-4 py-2"
-                    >
-                        <Text className="text-[14px] font-wix text-white text-center">
-                            CHECK IN
-                        </Text>
-                    </Pressable>
-                );
-                
             case 'partnership_request':
                 return (
                     <View className="flex-row gap-2">
@@ -87,6 +63,9 @@ const Notification: React.FC<NotificationProps> = ({
                     </View>
                 );
                 
+            case 'partner_nudge':
+            case 'habit_reminder':
+            case 'partner_checkin':
             case 'progress_milestone':
             case 'missed_habit':
             default:

@@ -6,6 +6,7 @@ Import and use these in your route handlers
 from datetime import datetime
 from bson import ObjectId
 from typing import Optional
+import random
 
 
 async def create_partner_nudge_notification(
@@ -66,12 +67,29 @@ async def create_partner_checkin_notification(
     partner_username: str,
     habit_name: str
 ):
-    """Create notification when partner checks in"""
+    """Create notification when partner checks in with gamified taunting messages"""
+    # Gamified taunting messages to motivate users
+    taunting_messages = [
+        f"{partner_username} just checked in for {habit_name}! Don't let them get ahead! 🏃",
+        f"Your partner {partner_username} is crushing it on {habit_name}! Your turn! 💪",
+        f"{partner_username} checked in! Time to catch up on {habit_name}! ⚡",
+        f"{partner_username} is winning on {habit_name}! Can you keep up? 🎯",
+        f"Your partner {partner_username} just checked in for {habit_name}! Don't break the streak! 🔥",
+        f"{partner_username} is ahead on {habit_name}! Time to step up! 🚀",
+        f"Your partner {partner_username} checked in for {habit_name}! Are you going to let them win? 💥",
+        f"{partner_username} just logged {habit_name}! Don't fall behind! 📈",
+        f"Your partner {partner_username} is on fire with {habit_name}! Match their energy! ⭐",
+        f"{partner_username} checked in! Time to show them what you've got on {habit_name}! 🎪",
+    ]
+    
+    # Randomly select a taunting message
+    selected_message = random.choice(taunting_messages)
+    
     notification = {
         "user_id": recipient_user_id,
         "type": "partner_checkin",
         "title": f"{partner_username} checked in today!",
-        "message": f"Don't break the streak on {habit_name}",
+        "message": selected_message,
         "related_id": habit_id,
         "related_user_id": partner_user_id,
         "is_read": False,

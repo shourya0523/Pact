@@ -85,7 +85,7 @@ async def get_current_partnership(
     # Get associated habits
     habits = await db.habits.find({
         "partnership_id": str(partnership["_id"]),
-        "is_active": True
+        "status": "active"
     }).to_list(100)
 
     # Calculate partnership age
@@ -105,7 +105,7 @@ async def get_current_partnership(
         partner=PartnerInfo(
             username=partner["username"],
             email=partner["email"],
-            profile_picture=partner.get("profile_picture")
+            profile_picture=partner.get("profile_photo_url") or partner.get("profile_picture")
         ),
         status=partnership["status"],
         partnership_age_days=partnership_age_days,
@@ -538,7 +538,7 @@ async def update_partnership_status(
         # When ending partnership, save streak to history
         habits = await db.habits.find({
             "partnership_id": str(partnership["_id"]),
-            "is_active": True
+            "status": "active"
         }).to_list(100)
 
         for habit in habits:
@@ -557,7 +557,7 @@ async def update_partnership_status(
             # Mark habit as inactive
             await db.habits.update_one(
                 {"_id": habit["_id"]},
-                {"$set": {"is_active": False}}
+                {"$set": {"is_active": False, "status": "draft"}}
             )
 
         update_data["ended_at"] = datetime.utcnow()
@@ -803,7 +803,7 @@ async def end_partnership(
     # Get habits to save streak history
     habits = await db.habits.find({
         "partnership_id": str(partnership["_id"]),
-        "is_active": True
+        "status": "active"
     }).to_list(100)
 
     saved_streaks = []
@@ -828,7 +828,7 @@ async def end_partnership(
         # Mark habit as inactive
         await db.habits.update_one(
             {"_id": habit["_id"]},
-            {"$set": {"is_active": False}}
+            {"$set": {"is_active": False, "status": "draft"}}
         )
 
     # Update partnership status to broken
@@ -883,8 +883,8 @@ async def get_pending_requests(
                 "request_id": str(req["_id"]),
                 "sender_id": str(sender["_id"]),
                 "username": sender["username"],
-                "display_name": sender.get("display_name", sender["username"]),
-                "profile_picture": sender.get("profile_picture"),
+                "display_name": sender.get("display_name") or sender.get("username", ""),
+                "profile_picture": sender.get("profile_photo_url") or sender.get("profile_picture"),
                 "created_at": req["created_at"]
             })
     
@@ -1125,7 +1125,7 @@ async def get_all_partnerships(
         # Count shared habits
         habits_count = await db.habits.count_documents({
             "partnership_id": str(partnership["_id"]),
-            "is_active": True
+            "status": "active"
         })
         
         if partner:
@@ -1133,8 +1133,8 @@ async def get_all_partnerships(
                 "partnership_id": str(partnership["_id"]),
                 "partner_id": str(partner["_id"]),
                 "username": partner["username"],
-                "display_name": partner.get("display_name", partner["username"]),
-                "profile_picture": partner.get("profile_picture"),
+                "display_name": partner.get("display_name") or partner.get("username", ""),
+                "profile_picture": partner.get("profile_photo_url") or partner.get("profile_picture"),
                 "shared_habits": habits_count,
                 "created_at": partnership["created_at"]
             })

@@ -163,7 +163,7 @@ async def get_dashboard_home(
         
         partner_progress = [
             PartnerActivityItemResponse(
-                partner_name=partner.get("display_name", partner["username"]),
+                partner_name=partner.get("display_name") or partner.get("username", ""),
                 habit_name=habits_lookup.get(log["habit_id"], "Unknown Habit"),
                 checked_in_at=log["timestamp"],
                 hours_ago=calculate_hours_ago(log["timestamp"])
@@ -173,13 +173,13 @@ async def get_dashboard_home(
     
     # Build response objects
     partnership_summary = PartnershipSummaryResponse(
-        partner_name=partner.get("display_name", partner["username"]),
+        partner_name=partner.get("display_name") or partner.get("username", ""),
         partner_username=partner["username"],
         total_active_habits=len(habits)
     )
     
     user_summary = UserSummaryResponse(
-        display_name=user.get("display_name", user["username"]),
+        display_name=user.get("display_name") or user.get("username", ""),
         username=user["username"]
     )
     

@@ -164,133 +164,7 @@ async def get_habits(
     return [format_habit_response(habit) for habit in habits]
 
 
-@router.get("/{habit_id}", response_model=HabitResponse)
-async def get_habit(
-        habit_id: str,
-        credentials: HTTPAuthorizationCredentials = Depends(security)
-):
-    """Get specific habit details"""
-    db = get_database()
-    user_id = await get_current_user_id(credentials)
-
-    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-
-    if not habit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Habit not found"
-        )
-
-    # Verify user is part of partnership
-    partnership = await db.partnerships.find_one({
-        "_id": ObjectId(habit["partnership_id"]),
-        "$or": [
-            {"user_id_1": ObjectId(user_id)},
-            {"user_id_2": ObjectId(user_id)}
-        ]
-    })
-
-    if not partnership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    return format_habit_response(habit)
-
-
-@router.put("/{habit_id}", response_model=HabitResponse)
-async def update_habit(
-        habit_id: str,
-        habit_update: HabitUpdate,
-        credentials: HTTPAuthorizationCredentials = Depends(security)
-):
-    """
-    Update a habit directly (no approval needed)
-    Works for both DRAFT and ACTIVE habits
-    """
-    db = get_database()
-    user_id = await get_current_user_id(credentials)
-
-    if not ObjectId.is_valid(habit_id):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid habit ID format"
-        )
-
-    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-
-    if not habit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Habit not found"
-        )
-
-    # For DRAFT habits, verify user is the creator
-    if habit["status"] == HabitStatus.DRAFT.value:
-        if habit["created_by"] != user_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Can only edit your own drafts"
-            )
-    else:
-        # For ACTIVE/PENDING habits, verify user is part of partnership
-        partnership = await db.partnerships.find_one({
-            "_id": ObjectId(habit["partnership_id"]),
-            "$or": [
-                {"user_id_1": ObjectId(user_id)},
-                {"user_id_2": ObjectId(user_id)}
-            ]
-        })
-
-        if not partnership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Access denied - not part of this partnership"
-            )
-
-    # Apply updates directly
-    update_dict = habit_update.model_dump(exclude_none=True)
-    update_dict["updated_at"] = datetime.utcnow()
-
-    await db.habits.update_one(
-        {"_id": ObjectId(habit_id)},
-        {"$set": update_dict}
-    )
-
-    updated_habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-    return format_habit_response(updated_habit)
-
-
-@router.post("/{habit_id}/approve")
-async def approve_habit(
-        habit_id: str,
-        credentials: HTTPAuthorizationCredentials = Depends(security)
-):
-    """
-    Deprecated: approval flow removed. Habits are active immediately.
-    """
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Approval flow removed. Habits are active immediately."
-    )
-
-
-@router.post("/{habit_id}/reject")
-async def reject_habit(
-        habit_id: str,
-        credentials: HTTPAuthorizationCredentials = Depends(security)
-):
-    """
-    Deprecated: approval flow removed. Habits are active immediately.
-    """
-    raise HTTPException(
-        status_code=status.HTTP_410_GONE,
-        detail="Approval flow removed. Habits are active immediately."
-    )
-
-
-# Draft routes
+# Draft routes - must be defined before /{habit_id} to avoid route matching conflicts
 @router.post("/drafts", response_model=HabitResponse, status_code=status.HTTP_201_CREATED)
 async def create_habit_draft(
         habit_data: HabitCreate,
@@ -418,6 +292,209 @@ async def delete_habit_draft(
 
     return None
 
+
+@router.get("/{habit_id}", response_model=HabitResponse)
+async def get_habit(
+        habit_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Get specific habit details"""
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+
+    # Validate that habit_id is a valid ObjectId format
+    # This prevents errors when routes like "/drafts" are accidentally matched
+    if not ObjectId.is_valid(habit_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid habit ID format: '{habit_id}'. Expected a valid ObjectId."
+        )
+
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+
+    # Verify user is part of partnership
+    partnership = await db.partnerships.find_one({
+        "_id": ObjectId(habit["partnership_id"]),
+        "$or": [
+            {"user_id_1": ObjectId(user_id)},
+            {"user_id_2": ObjectId(user_id)}
+        ]
+    })
+
+    if not partnership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied"
+        )
+
+    return format_habit_response(habit)
+
+
+@router.put("/{habit_id}", response_model=HabitResponse)
+async def update_habit(
+        habit_id: str,
+        habit_update: HabitUpdate,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Update a habit directly (no approval needed)
+    Works for both DRAFT and ACTIVE habits
+    """
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+
+    if not ObjectId.is_valid(habit_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid habit ID format: '{habit_id}'. Expected a valid ObjectId."
+        )
+
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+
+    # For DRAFT habits, verify user is the creator
+    if habit["status"] == HabitStatus.DRAFT.value:
+        if habit["created_by"] != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Can only edit your own drafts"
+            )
+    else:
+        # For ACTIVE/PENDING habits, verify user is part of partnership
+        partnership = await db.partnerships.find_one({
+            "_id": ObjectId(habit["partnership_id"]),
+            "$or": [
+                {"user_id_1": ObjectId(user_id)},
+                {"user_id_2": ObjectId(user_id)}
+            ]
+        })
+
+        if not partnership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied - not part of this partnership"
+            )
+
+    # Apply updates directly
+    update_dict = habit_update.model_dump(exclude_none=True)
+    update_dict["updated_at"] = datetime.utcnow()
+
+    await db.habits.update_one(
+        {"_id": ObjectId(habit_id)},
+        {"$set": update_dict}
+    )
+
+    updated_habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+    return format_habit_response(updated_habit)
+
+
+@router.delete("/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_habit(
+        habit_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Delete a habit"""
+    db = get_database()
+    user_id = await get_current_user_id(credentials)
+
+    # Validate that habit_id is a valid ObjectId format
+    if not ObjectId.is_valid(habit_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid habit ID format: '{habit_id}'. Expected a valid ObjectId."
+        )
+
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+
+    # For DRAFT habits, verify user is the creator
+    if habit.get("status") == HabitStatus.DRAFT.value:
+        if habit.get("created_by") != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Can only delete your own draft habits"
+            )
+    else:
+        # For ACTIVE/PENDING habits, verify user is part of partnership
+        partnership_id = habit.get("partnership_id")
+        if not partnership_id:
+            # If no partnership, only creator can delete
+            if habit.get("created_by") != user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Can only delete habits you created"
+                )
+        else:
+            partnership = await db.partnerships.find_one({
+                "_id": ObjectId(partnership_id),
+                "$or": [
+                    {"user_id_1": ObjectId(user_id)},
+                    {"user_id_2": ObjectId(user_id)}
+                ]
+            })
+
+            if not partnership:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Access denied - not part of this partnership"
+                )
+
+    # Delete the habit
+    result = await db.habits.delete_one({"_id": ObjectId(habit_id)})
+
+    if result.deleted_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found or already deleted"
+        )
+
+    return None
+
+
+@router.post("/{habit_id}/approve")
+async def approve_habit(
+        habit_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Deprecated: approval flow removed. Habits are active immediately.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Approval flow removed. Habits are active immediately."
+    )
+
+
+@router.post("/{habit_id}/reject")
+async def reject_habit(
+        habit_id: str,
+        credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """
+    Deprecated: approval flow removed. Habits are active immediately.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Approval flow removed. Habits are active immediately."
+    )
+
+
 @router.post("/{habit_id}/add-partner")
 async def add_partner_to_habit(
         habit_id: str,
@@ -434,7 +511,7 @@ async def add_partner_to_habit(
     if not ObjectId.is_valid(habit_id):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid habit ID format"
+            detail=f"Invalid habit ID format: '{habit_id}'. Expected a valid ObjectId."
         )
     
     # Get the habit
