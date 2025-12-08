@@ -181,6 +181,13 @@ class NotificationAPIService {
     // Counter for how many unread notifs a given user has
     async getUnreadCount(): Promise<number> {
         try {
+            // Check if we have a token before making the request
+            const token = await this.getAuthToken();
+            if (!token) {
+                // No token means user is not authenticated, return 0
+                return 0;
+            }
+
             const headers = await this.getHeaders();
             const response = await fetch(`${API_URL}/notifications/unread/count`, {
                 method: 'GET',
@@ -188,13 +195,21 @@ class NotificationAPIService {
             });
 
             if (!response.ok) {
+                // Handle authentication errors gracefully
+                if (response.status === 401 || response.status === 403) {
+                    // Token expired or invalid, return 0 silently
+                    return 0;
+                }
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
 
             const data = await response.json();
-            return data.unread_count;
+            return data.unread_count || 0;
         } catch (error) {
-            console.error('Error getting unread count:', error);
+            // Only log non-auth errors to avoid spam
+            if (error instanceof Error && !error.message.includes('401') && !error.message.includes('403')) {
+                console.error('Error getting unread count:', error);
+            }
             return 0;
         }
     }
