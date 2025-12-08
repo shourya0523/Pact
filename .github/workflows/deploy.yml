@@ -32,6 +32,15 @@ jobs:
           aws secretsmanager get-secret-value --secret-id pact/ec2/ssh-key --query SecretString --output text > ssh_key.pem
           chmod 600 ssh_key.pem
 
+      - name: Debug SSH key
+        run: |
+          echo "First line of key:"
+          head -1 ssh_key.pem
+          echo "Last line of key:"
+          tail -1 ssh_key.pem
+          echo "Key file permissions:"
+          ls -la ssh_key.pem
+
       - name: Deploy to EC2
         env:
           EC2_HOST: ${{ steps.get-config.outputs.EC2_HOST }}
