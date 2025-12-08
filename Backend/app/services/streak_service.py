@@ -222,10 +222,17 @@ class StreakCalculationService:
         user1_id = partnership["user_id_1"]
         user2_id = partnership["user_id_2"]
 
-        logs = await db.habit_logs.find({"habit_id": habit_id, "completed": True}, {"user_id": 1, "date": 1}).to_list(length=None)
+        # We need log_date for streak computation; include both legacy "date" and "log_date"
+        logs = await db.habit_logs.find(
+            {"habit_id": habit_id, "completed": True},
+            {"user_id": 1, "log_date": 1, "date": 1}
+        ).to_list(length=None)
         by_date: Dict[date, set] = {}
         for log in logs:
-            d = log["log_date"]
+            d = log.get("log_date") or log.get("date")
+            if not d:
+                # Skip malformed log without a date field
+                continue
             by_date.setdefault(d, set()).add(log["user_id"])
 
         both_days = sorted([d for d, users in by_date.items() if user1_id in users and user2_id in users])

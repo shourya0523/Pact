@@ -9,6 +9,7 @@ from app.models.habit_log import (
 )
 from app.utils.security import decode_access_token
 from app.services.streak_service import StreakCalculationService
+from app.models.goals import GoalStatus
 from app.utils.notification_helpers import notify_partner_on_checkin
 from config.database import get_database
 from bson import ObjectId
@@ -173,6 +174,46 @@ async def log_habit_completion(
         except Exception as e:
             # Don't fail the check-in if notification fails
             print(f"Warning: Failed to send partner notification: {e}")
+
+    # Update goal progress for this user if they have a goal on this habit
+    if log_data.completed and habit.get("goals") and user_id in habit["goals"]:
+        # Recompute count of completed check-ins for this user to avoid double counting
+        total_checkins_for_user = await db.habit_logs.count_documents({
+            "habit_id": habit_id,
+            "user_id": user_id,
+            "completed": True
+        })
+
+        goal_data = habit["goals"][user_id]
+        updates = {
+            f"goals.{user_id}.count_checkins": total_checkins_for_user,
+            f"goals.{user_id}.goal_progress": total_checkins_for_user,
+            f"goals.{user_id}.checked_in": True,
+            f"goals.{user_id}.updated_at": datetime.utcnow(),
+        }
+
+        # Compute total required for frequency/completion goals and persist it
+        goal_type = goal_data.get("goal_type")
+        freq_count = goal_data.get("frequency_count")
+        dur_count = goal_data.get("duration_count")
+        total_required = None
+        if goal_type == "frequency" and freq_count and dur_count:
+            total_required = freq_count * dur_count
+        elif goal_type == "completion":
+            total_required = 1
+
+        if total_required is not None:
+            updates[f"goals.{user_id}.total_checkins_required"] = total_required
+
+        if total_required is not None and total_required > 0 and total_checkins_for_user >= total_required:
+            updates[f"goals.{user_id}.goal_status"] = GoalStatus.COMPLETED.value
+
+        await db.habits.update_one(
+            {"_id": ObjectId(habit_id)},
+            {"$set": updates}
+        )
+        # Refresh habit snapshot for downstream milestone checks
+        habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
 
     # Get the log
     log = await db.habit_logs.find_one({"_id": log_id})
