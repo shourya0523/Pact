@@ -20,6 +20,10 @@ from config.database import get_database
 from bson import ObjectId
 from datetime import datetime
 from typing import List, Optional
+import os
+
+# Demo mode - disable verbose logging for faster performance
+DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 
 router = APIRouter(prefix="/partnerships", tags=["Partnerships"])
 security = HTTPBearer()
@@ -218,7 +222,8 @@ async def send_partnership_invite(
             message=partnership.message
         )
     except Exception as e:
-        print(f"Warning: Failed to create notification: {e}")
+        if not DEMO_MODE:
+            print(f"Warning: Failed to create notification: {e}")
 
     return PartnerRequestResponse(
         id=str(result.inserted_id),
@@ -276,27 +281,33 @@ async def accept_partnership_invite_v2(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     """DEBUGGING VERSION - Accept a partnership invite"""
-    print(f"\n🆕 ACCEPT V2 CALLED - Request ID: {request_id}")
+    if not DEMO_MODE:
+        print(f"\n🆕 ACCEPT V2 CALLED - Request ID: {request_id}")
     db = get_database()
     user_id = await get_current_user_id(credentials)
-    print(f"   User ID: {user_id}")
+    if not DEMO_MODE:
+        print(f"   User ID: {user_id}")
     
     invite = await db.partner_requests.find_one({"_id": ObjectId(request_id)})
     if not invite:
-        print(f"   ❌ Invite not found")
+        if not DEMO_MODE:
+            print(f"   ❌ Invite not found")
         return {"error": "Invite not found"}
     
-    print(f"   ✅ Invite found!")
-    print(f"   Sender: {str(invite['sender_id'])}")
-    print(f"   Receiver: {str(invite['receiver_id'])}")
-    print(f"   Status: {invite.get('status')}")
+    if not DEMO_MODE:
+        print(f"   ✅ Invite found!")
+        print(f"   Sender: {str(invite['sender_id'])}")
+        print(f"   Receiver: {str(invite['receiver_id'])}")
+        print(f"   Status: {invite.get('status')}")
     
     if invite["receiver_id"] != ObjectId(user_id):
-        print(f"   ❌ User {user_id} is NOT the receiver!")
-        print(f"   Expected receiver: {str(invite['receiver_id'])}")
+        if not DEMO_MODE:
+            print(f"   ❌ User {user_id} is NOT the receiver!")
+            print(f"   Expected receiver: {str(invite['receiver_id'])}")
         return {"error": "You are not the receiver of this invite"}
     
-    print(f"   ✅ User IS the receiver!")
+    if not DEMO_MODE:
+        print(f"   ✅ User IS the receiver!")
     return {"success": True, "message": "Debug: Everything checks out!"}
 
 
@@ -313,13 +324,16 @@ async def accept_partnership_invite(
     - Creates an ACTIVE partnership between the two users
     - Validates that neither user already has an active partnership
     """
-    print(f"\n🤝 ACCEPT PARTNERSHIP REQUEST: {request_id}")
+    if not DEMO_MODE:
+        print(f"\n🤝 ACCEPT PARTNERSHIP REQUEST: {request_id}")
     db = get_database()
     user_id = await get_current_user_id(credentials)
-    print(f"   User ID: {user_id}")
+    if not DEMO_MODE:
+        print(f"   User ID: {user_id}")
 
     if not ObjectId.is_valid(request_id):
-        print(f"   ❌ Invalid ObjectId format")
+        if not DEMO_MODE:
+            print(f"   ❌ Invalid ObjectId format")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid invite ID format",
@@ -327,16 +341,18 @@ async def accept_partnership_invite(
 
     invite = await db.partner_requests.find_one({"_id": ObjectId(request_id)})
     if not invite:
-        print(f"   ❌ Invite not found in database")
+        if not DEMO_MODE:
+            print(f"   ❌ Invite not found in database")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Invite not found",
         )
     
-    print(f"   ✅ Invite found")
-    print(f"   Receiver ID: {str(invite['receiver_id'])}")
-    print(f"   Current user: {user_id}")
-    print(f"   Match: {invite['receiver_id'] == ObjectId(user_id)}")
+    if not DEMO_MODE:
+        print(f"   ✅ Invite found")
+        print(f"   Receiver ID: {str(invite['receiver_id'])}")
+        print(f"   Current user: {user_id}")
+        print(f"   Match: {invite['receiver_id'] == ObjectId(user_id)}")
 
     if invite["receiver_id"] != ObjectId(user_id):
         raise HTTPException(
@@ -976,7 +992,8 @@ async def send_partnership_request(
             message=None
         )
     except Exception as e:
-        print(f"Warning: Failed to send partner request notification: {e}")
+        if not DEMO_MODE:
+            print(f"Warning: Failed to send partner request notification: {e}")
     
     return {
         "success": True,
@@ -992,13 +1009,16 @@ async def accept_partnership_request(
     """
     POST: Accept a partnership request
     """
-    print(f"\n🤝 ACCEPT PARTNERSHIP REQUEST: {request_id}")
+    if not DEMO_MODE:
+        print(f"\n🤝 ACCEPT PARTNERSHIP REQUEST: {request_id}")
     db = get_database()
     user_id = await get_current_user_id(credentials)
-    print(f"   Current user ID: {user_id}")
+    if not DEMO_MODE:
+        print(f"   Current user ID: {user_id}")
     
     if not ObjectId.is_valid(request_id):
-        print(f"   ❌ Invalid request ID format")
+        if not DEMO_MODE:
+            print(f"   ❌ Invalid request ID format")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid request ID"
@@ -1012,15 +1032,18 @@ async def accept_partnership_request(
     })
     
     if not request:
-        print(f"   ❌ Request not found or not pending")
+        if not DEMO_MODE:
+            print(f"   ❌ Request not found or not pending")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Partnership request not found"
         )
     
-    print(f"   ✅ Request found")
+    if not DEMO_MODE:
+        print(f"   ✅ Request found")
     sender_id = request["sender_id"]
-    print(f"   Sender ID: {sender_id}")
+    if not DEMO_MODE:
+        print(f"   Sender ID: {sender_id}")
     
     # Check if a partnership already exists between these two users
     existing_partnership = await db.partnerships.find_one({
@@ -1039,15 +1062,16 @@ async def accept_partnership_request(
     })
     
     if existing_partnership:
-        print(f"   ⚠️  Partnership already exists between these users!")
+        if not DEMO_MODE:
+            print(f"   ⚠️  Partnership already exists between these users!")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You already have an active partnership with this user"
         )
     
-    print(f"   ✅ No existing partnership found, creating new one...")
-    
-    print(f"   ✅ All checks passed, creating partnership...")
+    if not DEMO_MODE:
+        print(f"   ✅ No existing partnership found, creating new one...")
+        print(f"   ✅ All checks passed, creating partnership...")
     
     # Create partnership
     partnership_data = {
@@ -1058,14 +1082,16 @@ async def accept_partnership_request(
     }
     
     partnership_result = await db.partnerships.insert_one(partnership_data)
-    print(f"   ✅ Partnership created: {partnership_result.inserted_id}")
+    if not DEMO_MODE:
+        print(f"   ✅ Partnership created: {partnership_result.inserted_id}")
     
     # Update request status
     await db.partnership_requests.update_one(
         {"_id": ObjectId(request_id)},
         {"$set": {"status": "accepted", "responded_at": datetime.utcnow()}}
     )
-    print(f"   ✅ Request status updated to accepted")
+    if not DEMO_MODE:
+        print(f"   ✅ Request status updated to accepted")
     
     # Get sender info
     sender = await db.users.find_one({"_id": sender_id})

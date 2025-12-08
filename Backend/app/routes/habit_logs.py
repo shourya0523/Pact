@@ -16,6 +16,10 @@ from datetime import datetime, date, timedelta
 from typing import List, Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.services.notification_service import notification_service
+import os
+
+# Demo mode - disable verbose logging for faster performance
+DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 
 async def check_goal_milestones(
     db,
@@ -81,7 +85,8 @@ async def check_goal_milestones(
                 habit_name=habit.get("habit_name", "habit"),
                 partnership_id=partnership_id
             )
-            print(f"🎯 Goal milestone notification sent: {milestone}% for user {user_id}")
+            if not DEMO_MODE:
+                print(f"🎯 Goal milestone notification sent: {milestone}% for user {user_id}")
             break  # Only send one notif for each check-in
 
 router = APIRouter(tags=["Habit Logging"])
@@ -303,7 +308,8 @@ async def log_habit_completion(
                 )
         except Exception as e:
             # Don't fail the check-in if notification fails
-            print(f"Warning: Failed to send partner notification: {e}")
+            if not DEMO_MODE:
+                print(f"Warning: Failed to send partner notification: {e}")
     # Check for goal milestones and send notif if reached
     if log_data.completed and partnership_id:
         await check_goal_milestones(

@@ -52,7 +52,8 @@ async def lifespan(app: FastAPI):
             pass
         except Exception as e:
             # Log other errors but don't fail shutdown
-            print(f"⚠️  Error during shutdown: {e}")
+            # Disabled in demo mode for performance
+            pass
 
 app = FastAPI(
     title="Pact API",
@@ -119,7 +120,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                 await websocket.send_text("pong")
     except WebSocketDisconnect:
         await manager.disconnect(user_id)
-        print(f"Client {user_id} disconnected")
+        # Disabled in demo mode for performance
+        # print(f"Client {user_id} disconnected")
 
 if __name__ == "__main__":
     import uvicorn
@@ -127,5 +129,6 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True
+        reload=True,
+        log_level="critical"  # Disable logging for demo mode
     )

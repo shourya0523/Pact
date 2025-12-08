@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 
 // Your computer's local IP address - update this if your IP changes
 // Find it with: ifconfig | grep "inet " | grep -v 127.0.0.1
-const LOCAL_IP = '10.0.0.64';
+const LOCAL_IP = '10.110.48.92';
 
 
 const getBaseUrlSync = (): string => {
@@ -27,5 +27,8 @@ export const BASE_URL = getBaseUrlSync();
 export const getBaseUrl = async (): Promise<string> => {
   return BASE_URL;
 };
+
+// Demo mode - disables all logging for faster performance
+export const DEMO_MODE = true;
 
 // Logging removed for performance - use logger utility in app code

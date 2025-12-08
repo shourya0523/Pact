@@ -12,6 +12,10 @@ from app.models.notification import (
     NotificationType
 )
 from app.services.notification_service import notification_service
+import os
+
+# Demo mode - disable verbose logging for faster performance
+DEMO_MODE = os.getenv("DEMO_MODE", "true").lower() == "true"
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 security = HTTPBearer()
@@ -60,29 +64,34 @@ async def test_fetch_notifications(
     db=Depends(get_database)
 ):
     """TEST endpoint - fetch notifications with detailed logging"""
-    print("\n" + "="*60)
-    print("TEST NOTIFICATIONS ENDPOINT CALLED")
-    print("="*60)
+    if not DEMO_MODE:
+        print("\n" + "="*60)
+        print("TEST NOTIFICATIONS ENDPOINT CALLED")
+        print("="*60)
     
     token = credentials.credentials
-    print(f"Token received: {token[:30]}...")
+    if not DEMO_MODE:
+        print(f"Token received: {token[:30]}...")
     
     payload = decode_access_token(token)
-    print(f"Token payload: {payload}")
+    if not DEMO_MODE:
+        print(f"Token payload: {payload}")
     
     if not payload:
-        print("ERROR: Token decode failed!")
+        if not DEMO_MODE:
+            print("ERROR: Token decode failed!")
         return {"error": "Invalid token"}
     
     user_id = payload.get("sub")
-    print(f"User ID: {user_id}")
+    if not DEMO_MODE:
+        print(f"User ID: {user_id}")
     
     # Find notifications
     notifs = await db.notifications.find({"user_id": user_id}).to_list(100)
-    print(f"Found {len(notifs)} notifications")
-    
-    for n in notifs:
-        print(f"  - {n.get('title')}")
+    if not DEMO_MODE:
+        print(f"Found {len(notifs)} notifications")
+        for n in notifs:
+            print(f"  - {n.get('title')}")
     
     return {"count": len(notifs), "notifications": [str(n) for n in notifs]}
 
@@ -111,7 +120,8 @@ async def test_push_notification(
         }
         
     except Exception as e:
-        print(f"Error sending test notification: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error sending test notification: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send test notification: {str(e)}"
@@ -127,7 +137,8 @@ async def get_notifications(
     """Get all notifications for the current user"""
     try:
         user_id = await get_current_user_id(credentials)
-        print(f"📬 FETCHING NOTIFICATIONS for user ID: {user_id}")
+        if not DEMO_MODE:
+            print(f"📬 FETCHING NOTIFICATIONS for user ID: {user_id}")
         
         # Build query
         query = {
@@ -149,7 +160,8 @@ async def get_notifications(
         async for notif_doc in notifications_cursor:
             try:
                 title = notif_doc.get('title', 'Notification')
-                print(f"  ✉️  Found notification: {title[:50] if title else 'Untitled'}...")
+                if not DEMO_MODE:
+                    print(f"  ✉️  Found notification: {title[:50] if title else 'Untitled'}...")
                 
                 # Ensure created_at exists and is a datetime
                 created_at = notif_doc.get("created_at")
@@ -191,7 +203,8 @@ async def get_notifications(
                             notif_data["partner_username"] = partner.get("username")
                             notif_data["partner_avatar"] = partner.get("profile_photo_url") or partner.get("profile_picture")
                     except Exception as e:
-                        print(f"⚠️ Error fetching partner for notification: {e}")
+                        if not DEMO_MODE:
+                            print(f"⚠️ Error fetching partner for notification: {e}")
                         # Continue without partner info if ObjectId conversion fails
                 
                 # If there's a related habit, get habit name
@@ -205,19 +218,22 @@ async def get_notifications(
                         if habit:
                             notif_data["habit_name"] = habit.get("habit_name")
                     except Exception as e:
-                        print(f"⚠️ Error fetching habit for notification: {e}")
+                        if not DEMO_MODE:
+                            print(f"⚠️ Error fetching habit for notification: {e}")
                         # Continue without habit name if ObjectId conversion fails
                 
                 notifications.append(NotificationResponse(**notif_data))
             except Exception as e:
-                print(f"⚠️ Error processing notification {notif_doc.get('_id')}: {e}")
+                if not DEMO_MODE:
+                    print(f"⚠️ Error processing notification {notif_doc.get('_id')}: {e}")
                 # Skip this notification and continue with the next one
                 continue
         
         return notifications
         
     except Exception as e:
-        print(f"Error fetching notifications: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error fetching notifications: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch notifications: {str(e)}"
@@ -242,7 +258,8 @@ async def create_notification(
         return {"id": str(result.inserted_id), "message": "Notification created"}
         
     except Exception as e:
-        print(f"Error creating notification: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error creating notification: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create notification: {str(e)}"
@@ -284,7 +301,8 @@ async def mark_notification_read(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error marking notification as read: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error marking notification as read: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -320,7 +338,8 @@ async def mark_notification_action_taken(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error marking notification action: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error marking notification action: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -354,7 +373,8 @@ async def archive_all_notifications(
         }
         
     except Exception as e:
-        print(f"Error archiving all notifications: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error archiving all notifications: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -394,7 +414,8 @@ async def archive_notification(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error archiving notification: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error archiving notification: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -427,7 +448,8 @@ async def delete_notification(
         return {"message": "Notification deleted"}
         
     except Exception as e:
-        print(f"Error deleting notification: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error deleting notification: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -519,7 +541,8 @@ async def send_partner_nudge(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error sending nudge: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error sending nudge: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send nudge: {str(e)}"
@@ -544,7 +567,8 @@ async def get_unread_count(
         return {"unread_count": count}
         
     except Exception as e:
-        print(f"Error getting unread count: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error getting unread count: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -625,7 +649,8 @@ async def send_checkin_reminders(
                         )
                         reminders_sent += 1
                     except Exception as e:
-                        print(f"Warning: Failed to send reminder to user {user_id} for habit {habit_id}: {e}")
+                        if not DEMO_MODE:
+                            print(f"Warning: Failed to send reminder to user {user_id} for habit {habit_id}: {e}")
         
         return {
             "success": True,
@@ -634,7 +659,8 @@ async def send_checkin_reminders(
         }
         
     except Exception as e:
-        print(f"Error sending checkin reminders: {str(e)}")
+        if not DEMO_MODE:
+            print(f"Error sending checkin reminders: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to send checkin reminders: {str(e)}"
