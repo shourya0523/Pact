@@ -29,8 +29,7 @@ jobs:
 
       - name: Get SSH key from Secrets Manager
         run: |
-          SECRET=$(aws secretsmanager get-secret-value --secret-id pact/ec2/ssh-key --query SecretString --output text)
-          echo "$SECRET" | jq -r '.ec2_private_key' > ssh_key.pem
+          aws secretsmanager get-secret-value --secret-id pact/ec2/ssh-key --query SecretString --output text > ssh_key.pem
           chmod 600 ssh_key.pem
 
       - name: Deploy to EC2
