@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock, ANY
-import jwt
+from jose import jwt
 from datetime import datetime, timedelta
 import os
 

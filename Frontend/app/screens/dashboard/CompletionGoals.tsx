@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { getBaseUrl } from '../../../config'
+import { BASE_URL } from '../../../config'
 import BackwardButton from '@/components/ui/backwardButton'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GreyButton from '@/components/ui/greyButton'
@@ -31,7 +31,6 @@ export default function Goals() {
             if (!token || !userData) return
 
             const user = JSON.parse(userData)
-            const BASE_URL = await getBaseUrl()
 
             // FIRST: Check if habit exists
             const habitResponse = await fetch(
@@ -120,16 +119,27 @@ export default function Goals() {
                 return
             }
             
-            const BASE_URL = await getBaseUrl()
             
             console.log('🐛 DEBUG INFO:')
             console.log('habitId:', habitId)
             console.log('userId:', userId)
             console.log('BASE_URL:', BASE_URL)
 
+            // Parse completion value (default to 1 if not provided for backward compatibility)
+            const targetValue = completionValue.trim() 
+                ? parseFloat(completionValue.trim()) 
+                : undefined
+
+            if (targetValue !== undefined && (isNaN(targetValue) || targetValue <= 0)) {
+                Alert.alert("Invalid Value", "Please enter a valid positive number for the completion value.")
+                setLoading(false)
+                return
+            }
+
             const goalData = {
                 goal_type: "completion",
-                goal_name: goalName.trim()
+                goal_name: goalName.trim(),
+                ...(targetValue !== undefined && { target_value: targetValue })
             }
 
             const url = `${BASE_URL}/api/goals/habits/${habitId}/users/${userId}/goal/completion`
@@ -231,8 +241,9 @@ export default function Goals() {
                 </Text>
                 <TextInput
                     className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-4"
-                    placeholder="Enter value"
+                    placeholder="e.g., 100 (for 'run 100 miles')"
                     placeholderTextColor="#3F414E"
+                    keyboardType="numeric"
                     style={{ paddingHorizontal: 20 }}
                     value={completionValue}
                     onChangeText={setCompletionValue}

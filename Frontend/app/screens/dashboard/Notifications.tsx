@@ -220,8 +220,8 @@ export default function Notifications() {
             <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
                 <PurpleParticles />
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#A855F7" />
-                    <Text className="text-white/70 mt-4 font-wix">Loading notifications...</Text>
+                <ActivityIndicator size="large" color="#A855F7" />
+                <Text className="text-white/70 mt-4 font-wix">Loading notifications...</Text>
                 </View>
             </View>
         );
@@ -245,78 +245,78 @@ export default function Notifications() {
                     transform: [{ translateY: slideAnim }]
                 }}
             >
-                <ScrollView 
-                    className="flex-1"
+            <ScrollView 
+                className="flex-1"
                     contentContainerStyle={{ 
                         paddingTop: 80,
                         paddingBottom: 120,
                         paddingHorizontal: 20
                     }}
-                    refreshControl={
-                        <RefreshControl
-                            refreshing={refreshing}
-                            onRefresh={onRefresh}
-                            tintColor="#A855F7"
-                        />
-                    }
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        tintColor="#A855F7"
+                    />
+                }
                     showsVerticalScrollIndicator={false}
                 >
                     <Text className="font-wix text-white text-[36px] text-center mb-8">
-                        Notifications
-                    </Text>
+                            Notifications
+                        </Text>
 
-                    {notifications.length === 0 ? (
+                {notifications.length === 0 ? (
                         <View className="bg-white/5 rounded-2xl p-8 items-center border border-white/10">
-                            <Text className="text-white/70 text-center text-lg font-wix mb-2">
-                                🔔 No Notifications
-                            </Text>
-                            <Text className="text-white/50 text-center text-sm">
-                                You're all caught up! Check back later for updates from your partner.
-                            </Text>
-                        </View>
-                    ) : (
-                        <>
+                        <Text className="text-white/70 text-center text-lg font-wix mb-2">
+                            🔔 No Notifications
+                        </Text>
+                        <Text className="text-white/50 text-center text-sm">
+                            You're all caught up! Check back later for updates from your partner.
+                        </Text>
+                    </View>
+                ) : (
+                    <>
                             <View className="mb-4 flex-row justify-between items-center">
                                 <Text className="text-white/70 text-sm font-wix">
-                                    {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
-                                </Text>
-                                <Text className="text-white/50 text-xs">
-                                    Pull to refresh
-                                </Text>
-                            </View>
+                                {notifications.length} notification{notifications.length !== 1 ? 's' : ''}
+                            </Text>
+                            <Text className="text-white/50 text-xs">
+                                Pull to refresh
+                            </Text>
+                        </View>
 
                             <View className="gap-2 mb-6">
-                                {notifications.map((notif) => (
+                            {notifications.map((notif) => (
                                     <View key={notif.id} className="relative">
-                                        <Notification
-                                            id={notif.id}
-                                            title={notif.title}
-                                            time={notif.time_ago}
-                                            type={notif.type}
-                                            relatedId={notif.related_id}
-                                            actionTaken={notif.action_taken}
-                                            onCheckInPress={handleCheckIn}
-                                            onAcceptPress={handleAcceptPartnership}
-                                            onDeclinePress={handleDeclinePartnership}
-                                            onNotificationPress={handleNotificationPress}
-                                        />
-                                        {processingAction === notif.id && (
+                                    <Notification
+                                        id={notif.id}
+                                        title={notif.title}
+                                        time={notif.time_ago}
+                                        type={notif.type}
+                                        relatedId={notif.related_id}
+                                        actionTaken={notif.action_taken}
+                                        onCheckInPress={handleCheckIn}
+                                        onAcceptPress={handleAcceptPartnership}
+                                        onDeclinePress={handleDeclinePartnership}
+                                        onNotificationPress={handleNotificationPress}
+                                    />
+                                    {processingAction === notif.id && (
                                             <View className="absolute right-4 top-1/2" style={{ transform: [{ translateY: -10 }] }}>
-                                                <ActivityIndicator size="small" color="#A855F7" />
-                                            </View>
-                                        )}
-                                    </View>
-                                ))}
-                            </View>
-                        </>
-                    )}
+                                            <ActivityIndicator size="small" color="#A855F7" />
+                                        </View>
+                                    )}
+                                </View>
+                            ))}
+                        </View>
+                    </>
+                )}
 
                     <View className="bg-white/10 rounded-2xl p-4 border border-white/20">
                         <Text className="text-white/70 text-sm text-center font-wix">
-                            💡 Tip: Notifications help you stay accountable and connected with your partner. Make sure to enable push notifications in your device settings!
-                        </Text>
-                    </View>
-                </ScrollView>
+                        💡 Tip: Notifications help you stay accountable and connected with your partner. Make sure to enable push notifications in your device settings!
+                    </Text>
+                </View>
+            </ScrollView>
             </Animated.View>
             <HomeUI />
         </View>

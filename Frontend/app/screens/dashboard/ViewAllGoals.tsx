@@ -96,7 +96,7 @@ export default function ViewAllGoals() {
                 router.replace("/screens/auth/LoginScreen")
                 return
             }
-
+            
             const response = await fetch(`${BASE_URL}/api/habits/${habitId}/log`, {
                 method: 'POST',
                 headers: {
@@ -168,69 +168,69 @@ export default function ViewAllGoals() {
                 >
                     <Text className="font-wix text-white text-[36px] text-center mb-8">All Goals</Text>
 
-                    {activeGoals.length > 0 ? (
+                {activeGoals.length > 0 ? (
                         <View className="gap-4">
                             {activeGoals.map((goal) => (
-                                <TouchableOpacity
-                                    key={goal.habit_id}
-                                    onPress={() => {
-                                        router.push({
-                                            pathname: '/screens/dashboard/GoalPage',
-                                            params: {habitId: goal.habit_id}
-                                        })
-                                    }}
-                                    activeOpacity={0.8}
-                                >
-                                    <GoalBox
-                                        title={goal.habit_name}
-                                        currentValue={goal.current_value || 0}
-                                        targetValue={goal.target_value || 0}
-                                        progress_percentage={goal.progress_percentage || 0}
-                                        onCheckIn={() => handleCheckIn(goal.habit_id)}
-                                        onViewGoal={() => {
-                                            router.push({
-                                                pathname: '/screens/dashboard/HabitDetails',
-                                                params: {habitId: goal.habit_id}
-                                            })
-                                        }}
-                                    />
-                                </TouchableOpacity>
+                        <TouchableOpacity
+                            key={goal.habit_id}
+                            onPress={() => {
+                                router.push({
+                                    pathname: '/screens/dashboard/GoalPage',
+                                    params: {habitId: goal.habit_id}
+                                })
+                            }}
+                            activeOpacity={0.8}
+                        >
+                            <GoalBox
+                                title={goal.habit_name}
+                                currentValue={goal.current_value || 0}
+                                targetValue={goal.target_value || 0}
+                                progress_percentage={goal.progress_percentage || 0}
+                                onCheckIn={() => handleCheckIn(goal.habit_id)}
+                                onViewGoal={() => {
+                                    router.push({
+                                        pathname: '/screens/dashboard/HabitDetails',
+                                        params: {habitId: goal.habit_id}
+                                    })
+                                }}
+                            />
+                        </TouchableOpacity>
                             ))}
                         </View>
-                    ) : (
+                ) : (
                         <View className="py-16 px-6 items-center">
                             <Text className="text-white/70 text-center text-lg mb-2 font-wix">No goals yet</Text>
                             <Text className="text-white/50 text-center text-sm mb-8">
-                                Create a habit first to set goals!
-                            </Text>
-                            <TouchableOpacity
+                            Create a habit first to set goals!
+                        </Text>
+                        <TouchableOpacity
                                 className="h-[56px] w-full bg-white/20 rounded-2xl items-center justify-center border border-white/30"
                                 activeOpacity={0.8}
-                                onPress={() => router.push('/screens/dashboard/createHabit')}
-                            >
+                            onPress={() => router.push('/screens/dashboard/createHabit')}
+                        >
                                 <View className="flex-row items-center gap-2">
                                     <Ionicons name="add" size={24} color="white"/>
                                     <Text className="font-wix text-white text-[16px] font-semibold">
-                                        Create Habit
-                                    </Text>
+                            Create Habit
+                        </Text>
                                 </View>
                             </TouchableOpacity>
-                        </View>
-                    )}
+                    </View>
+                )}
 
-                    {completedGoals.length > 0 && (
+                {completedGoals.length > 0 && (
                         <TouchableOpacity
                             className="h-[56px] w-full bg-white/10 rounded-2xl items-center justify-center border border-white/20 mt-6"
                             activeOpacity={0.8}
-                            onPress={() => {
-                                Alert.alert("Coming Soon", "Completed goals view will be available soon!")
-                            }}
+                        onPress={() => {
+                            Alert.alert("Coming Soon", "Completed goals view will be available soon!")
+                        }}
                         >
                             <Text className="font-wix text-white/70 text-[16px]">
                                 COMPLETED GOALS ({completedGoals.length})
                             </Text>
                         </TouchableOpacity>
-                    )}
+                )}
                 </ScrollView>
             </Animated.View>
 

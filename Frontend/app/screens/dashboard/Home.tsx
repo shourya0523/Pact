@@ -134,8 +134,8 @@ export default function HomePage() {
         fetchInFlight.current = null;
       }
       if (isMounted.current) {
-        setLoading(false);
-        setRefreshing(false);
+      setLoading(false);
+      setRefreshing(false);
       }
     }
   }, [router]);
@@ -224,7 +224,7 @@ export default function HomePage() {
       <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
         <PurpleParticles />
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#ffffff" />
+        <ActivityIndicator size="large" color="#ffffff" />
           <Text className="text-white mt-4 font-wix">Loading Dashboard...</Text>
         </View>
       </View>
@@ -237,9 +237,9 @@ export default function HomePage() {
         <PurpleParticles />
         <View className="flex-1 items-center justify-center px-6">
           <Text className="text-white text-xl mb-4 font-wix">⚠️ Failed to load dashboard</Text>
-          <TouchableOpacity onPress={() => fetchDashboardData()}>
+        <TouchableOpacity onPress={() => fetchDashboardData()}>
             <Text className="text-white/70 text-lg underline font-wix">Tap to Retry</Text>
-          </TouchableOpacity>
+        </TouchableOpacity>
         </View>
       </View>
     );

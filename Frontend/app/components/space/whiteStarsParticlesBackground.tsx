@@ -298,16 +298,16 @@ const whiteParticles: React.FC<ParticlesProps> = ({
       return Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
-          Animated.timing(particle.opacity, {
+              Animated.timing(particle.opacity, {
             toValue: maxOpacity,
-            duration: duration / 2,
-            useNativeDriver: true,
-          }),
-          Animated.timing(particle.opacity, {
+                duration: duration / 2,
+                useNativeDriver: true,
+              }),
+              Animated.timing(particle.opacity, {
             toValue: minOpacity,
-            duration: duration / 2,
-            useNativeDriver: true,
-          }),
+                duration: duration / 2,
+                useNativeDriver: true,
+              }),
         ]),
         { iterations: -1 }
       );

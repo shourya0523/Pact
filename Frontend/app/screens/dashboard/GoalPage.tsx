@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getBaseUrl } from '../../../config';
+import { BASE_URL } from '../../../config';
 import PurpleParticles from "app/components/space/purpleStarsParticlesBackground";
 import GreyButton from "@/components/ui/greyButton";
 import ProgressCircle from "app/components/habit/ProgressCircle";
@@ -17,6 +17,8 @@ interface GoalData {
   count_checkins: number;
   total_checkins_required: number;
   is_completed: boolean;
+  target_value?: number;
+  goal_progress?: number;
 }
 
 export default function GoalDetails() {
@@ -49,7 +51,6 @@ export default function GoalDetails() {
       }
 
       const user = JSON.parse(userData);
-      const BASE_URL = await getBaseUrl();
       const targetUserId = userId || user.id;
 
       const response = await fetch(
@@ -116,7 +117,46 @@ export default function GoalDetails() {
     }
   };
 
-  const handleCheckIn = async () => {
+  const handleCheckIn = async (value?: number) => {
+    if (!goal) return;
+    
+    // For completion goals with target_value, prompt for value if not provided
+    if (goal.goal_type === 'completion' && goal.target_value !== undefined && goal.target_value !== null && value === undefined) {
+      Alert.prompt(
+        "Enter Value",
+        `How much did you complete? (Target: ${goal.target_value})`,
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Submit",
+            onPress: async (inputValue) => {
+              if (!inputValue || inputValue.trim() === '') {
+                Alert.alert("Error", "Please enter a value.");
+                return;
+              }
+              const numValue = parseFloat(inputValue);
+              if (isNaN(numValue) || numValue < 0) {
+                Alert.alert("Error", "Please enter a valid positive number.");
+                return;
+              }
+              await performCheckIn(numValue);
+            }
+          }
+        ],
+        "plain-text",
+        "",
+        "numeric"
+      );
+      return;
+    }
+    
+    await performCheckIn(value);
+  };
+
+  const performCheckIn = async (value?: number) => {
     if (!goal) return;
     setCheckingIn(true);
 
@@ -124,7 +164,10 @@ export default function GoalDetails() {
       const token = await AsyncStorage.getItem('access_token');
       if (!token) return;
 
-      const BASE_URL = await getBaseUrl();
+      const body: any = { completed: true };
+      if (value !== undefined) {
+        body.value = value;
+      }
       
       const response = await fetch(`${BASE_URL}/api/habits/${goal.habit_id}/log`, {
         method: 'POST',
@@ -132,7 +175,7 @@ export default function GoalDetails() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ completed: true })
+        body: JSON.stringify(body)
       });
 
       if (response.ok) {

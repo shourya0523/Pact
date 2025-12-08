@@ -200,7 +200,7 @@ export default function StudyHabitCreation() {
                 setLoading(false)
                 return
             }
-
+            
             // First, find the partnership_id between current user and selected partner
             let partnershipsResponse
             try {
@@ -335,7 +335,7 @@ export default function StudyHabitCreation() {
                 router.replace("/screens/auth/LoginScreen")
                 return
             }
-
+            
             const draftData = {
                 habit_name: habitName.trim(),
                 habit_type: habitType,
@@ -431,85 +431,85 @@ export default function StudyHabitCreation() {
                     transform: [{ translateY: slideAnim }]
                 }}
             >
-                <ScrollView 
-                    className="flex-1"
+            <ScrollView 
+                className="flex-1"
                     contentContainerStyle={{ 
                         paddingBottom: Platform.OS === 'ios' ? 180 : 140, 
                         paddingTop: Platform.OS === 'ios' ? 60 : 40,
                         paddingHorizontal: 20
                     }}
-                    keyboardShouldPersistTaps="handled"
-                    showsVerticalScrollIndicator={false}
-                >
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
                     <View className="items-center">
                         <Text className="font-wix text-white text-[36px] mb-8 text-center">
-                            {isEditingDraft ? 'Edit Draft' : 'Create Habit'}
-                        </Text>
+                    {isEditingDraft ? 'Edit Draft' : 'Create Habit'}
+                </Text>
                         
                         {/* Habit Name Input */}
                         <View className="w-full mb-6">
                             <Text className="font-wix text-white text-[16px] mb-3 ml-1">
-                                Habit Name <Text className="text-red-400">*</Text>
-                            </Text>
-                            <TextInput
+                        Habit Name <Text className="text-red-400">*</Text>
+                    </Text>
+                    <TextInput
                                 className="h-[56px] bg-white/90 rounded-2xl text-[16px] font-wix"
                                 placeholder="e.g., Study everyday"
                                 placeholderTextColor="#6B7280"
-                                style={{ paddingHorizontal: 20 }}
-                                value={habitName}
-                                onChangeText={setHabitName}
-                                editable={!loading && !saving}
-                            />
-                        </View>
+                        style={{ paddingHorizontal: 20 }}
+                        value={habitName}
+                        onChangeText={setHabitName}
+                        editable={!loading && !saving}
+                    />
+                </View>
                         {/* Habit Type */}
                         <View className="w-full mb-6">
                             <Text className="font-wix text-white text-[18px] mb-3 ml-1">Habit Type</Text>
                             <View className="flex-row justify-between gap-3">
                                 <TouchableOpacity
-                                    onPress={() => setHabitType('build')}
+                        onPress={() => setHabitType('build')}
                                     activeOpacity={0.7}
                                     className="flex-1 h-[52px] rounded-2xl items-center justify-center"
-                                    style={{ 
+                        style={{ 
                                         backgroundColor: habitType === 'build' ? 'white' : 'rgba(255, 255, 255, 0.15)',
                                         borderWidth: habitType === 'build' ? 0 : 1,
                                         borderColor: 'rgba(255, 255, 255, 0.3)'
-                                    }}
+                        }}
                                 >
                                     <Text className="font-wix text-[16px]" style={{ color: habitType === 'build' ? '#291133' : 'white' }}>
                                         Build
                                     </Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    onPress={() => setHabitType('break')}
+                        onPress={() => setHabitType('break')}
                                     activeOpacity={0.7}
                                     className="flex-1 h-[52px] rounded-2xl items-center justify-center"
-                                    style={{ 
+                        style={{ 
                                         backgroundColor: habitType === 'break' ? 'white' : 'rgba(255, 255, 255, 0.15)',
                                         borderWidth: habitType === 'break' ? 0 : 1,
                                         borderColor: 'rgba(255, 255, 255, 0.3)'
-                                    }}
+                        }}
                                 >
                                     <Text className="font-wix text-[16px]" style={{ color: habitType === 'break' ? '#291133' : 'white' }}>
                                         Break
                                     </Text>
                                 </TouchableOpacity>
                             </View>
-                        </View>
+                </View>
                         
                         {/* Description */}
                         <View className="w-full mb-6">
                             <Text className="font-wix text-white text-[18px] mb-3 ml-1">Description</Text>
-                            <TextInput
+                <TextInput
                                 className="w-full min-h-[120px] bg-white/90 rounded-2xl text-[16px] font-wix"
                                 placeholder="Add a description (optional)"
                                 placeholderTextColor="#6B7280"
-                                multiline
-                                textAlignVertical="top"
-                                style={{ padding: 20 }}
-                                value={description}
-                                onChangeText={setDescription}
-                                editable={!loading}
-                            />
+                    multiline
+                    textAlignVertical="top"
+                    style={{ padding: 20 }}
+                    value={description}
+                    onChangeText={setDescription}
+                    editable={!loading}
+                />
                         </View>
                         {/* Partner & Goal Section */}
                         <View className="w-full mb-6">
@@ -518,36 +518,36 @@ export default function StudyHabitCreation() {
                                     <Text className="font-wix text-white text-[16px] mb-3 ml-1">
                                         Partner <Text className="text-red-400">*</Text>
                                     </Text>
-                                    {selectedPartnerName ? (
+                        {selectedPartnerName ? (
                                         <View className="h-[52px] bg-green-500/20 rounded-2xl items-center justify-center border border-green-500/30">
                                             <Text className="font-wix text-green-400 text-[14px]">
                                                 ✓ {selectedPartnerName}
-                                            </Text>
-                                        </View>
-                                    ) : (
+                                </Text>
+                            </View>
+                        ) : (
                                         <TouchableOpacity
-                                            onPress={() => setInvitePopupVisible(true)}
+                                    onPress={() => setInvitePopupVisible(true)}
                                             activeOpacity={0.7}
                                             className="h-[52px] bg-white/15 rounded-2xl items-center justify-center border border-white/30"
                                         >
                                             <Text className="font-wix text-white text-[16px]">Add Partner</Text>
                                         </TouchableOpacity>
-                                    )}
-                                </View>
+                        )}
+                    </View>
                                 <View className="flex-1">
                                     <Text className="font-wix text-white text-[16px] mb-3 ml-1">Goal</Text>
                                     <TouchableOpacity
-                                        onPress={() => setGoalPopupVisible(true)}
+                            onPress={() => setGoalPopupVisible(true)}
                                         activeOpacity={0.7}
                                         className="h-[52px] bg-white/15 rounded-2xl items-center justify-center border border-white/30"
                                     >
                                         <Text className="font-wix text-white text-[16px]">
                                             {goalType ? goalType.charAt(0).toUpperCase() + goalType.slice(1) : 'Set Goal'}
-                                        </Text>
+                            </Text>
                                     </TouchableOpacity>
                                 </View>
-                            </View>
-                        </View>
+                    </View>
+                </View>
                         
                         {/* Frequency */}
                         <View className="w-full mb-8">
@@ -559,11 +559,11 @@ export default function StudyHabitCreation() {
                                         onPress={() => setFrequency(freq)}
                                         activeOpacity={0.7}
                                         className="flex-1 h-[52px] rounded-2xl items-center justify-center"
-                                        style={{ 
+                        style={{
                                             backgroundColor: frequency === freq ? 'white' : 'rgba(255, 255, 255, 0.15)',
                                             borderWidth: frequency === freq ? 0 : 1,
                                             borderColor: 'rgba(255, 255, 255, 0.3)'
-                                        }}
+                        }}
                                     >
                                         <Text className="font-wix text-[14px]" style={{ color: frequency === freq ? '#291133' : 'white' }}>
                                             {freq.charAt(0).toUpperCase() + freq.slice(1)}
@@ -571,12 +571,12 @@ export default function StudyHabitCreation() {
                                     </TouchableOpacity>
                                 ))}
                             </View>
-                        </View>
+                </View>
                         {/* Action Buttons */}
                         <View className="w-full flex-row gap-3 mb-6">
                             <TouchableOpacity
                                 onPress={handleCreate}
-                                disabled={loading || saving}
+                        disabled={loading || saving}
                                 activeOpacity={0.8}
                                 className="flex-1 h-[56px] bg-white rounded-2xl items-center justify-center"
                                 style={{ opacity: (loading || saving) ? 0.6 : 1 }}
@@ -591,7 +591,7 @@ export default function StudyHabitCreation() {
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={handleSave}
-                                disabled={loading || saving}
+                        disabled={loading || saving}
                                 activeOpacity={0.8}
                                 className="flex-1 h-[56px] bg-white/20 rounded-2xl items-center justify-center border border-white/30"
                                 style={{ opacity: (loading || saving) ? 0.6 : 1 }}
@@ -604,9 +604,9 @@ export default function StudyHabitCreation() {
                                     </Text>
                                 )}
                             </TouchableOpacity>
-                        </View>
-                    </View>
-                </ScrollView>
+                </View>
+                </View>
+            </ScrollView>
             </Animated.View>
             <GoalType
                 visible={goalPopupVisible}

@@ -1,9 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 class HabitLogCreate(BaseModel):
     completed: bool
+    value: Optional[float] = Field(None, ge=0, description="Value for completion goals (e.g., miles run, pages read)")
 
 class HabitLogResponse(BaseModel):
     id: str  

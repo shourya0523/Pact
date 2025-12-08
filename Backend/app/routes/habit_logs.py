@@ -131,14 +131,17 @@ async def log_habit_completion(
 
     if existing_log:
         # Update existing log
+        update_data = {
+            "completed": log_data.completed,
+            "timestamp": datetime.utcnow()
+        }
+        # Include value if provided (for completion goals)
+        if log_data.value is not None:
+            update_data["value"] = log_data.value
+        
         await db.habit_logs.update_one(
             {"_id": existing_log["_id"]},
-            {
-                "$set": {
-                    "completed": log_data.completed,
-                    "timestamp": datetime.utcnow()
-                }
-            }
+            {"$set": update_data}
         )
         log_id = existing_log["_id"]
     else:
@@ -150,6 +153,9 @@ async def log_habit_completion(
             "log_date": today,
             "timestamp": datetime.utcnow()
         }
+        # Include value if provided (for completion goals)
+        if log_data.value is not None:
+            log_entry["value"] = log_data.value
 
         result = await db.habit_logs.insert_one(log_entry)
         log_id = result.inserted_id
@@ -177,23 +183,42 @@ async def log_habit_completion(
 
     # Update goal progress for this user if they have a goal on this habit
     if log_data.completed and habit.get("goals") and user_id in habit["goals"]:
-        # Recompute count of completed check-ins for this user to avoid double counting
-        total_checkins_for_user = await db.habit_logs.count_documents({
-            "habit_id": habit_id,
-            "user_id": user_id,
-            "completed": True
-        })
-
         goal_data = habit["goals"][user_id]
+        goal_type = goal_data.get("goal_type")
         updates = {
-            f"goals.{user_id}.count_checkins": total_checkins_for_user,
-            f"goals.{user_id}.goal_progress": total_checkins_for_user,
             f"goals.{user_id}.checked_in": True,
             f"goals.{user_id}.updated_at": datetime.utcnow(),
         }
 
+        if goal_type == "completion" and goal_data.get("target_value") is not None:
+            # For completion goals with target_value, accumulate values from logs
+            # Sum all values from completed logs for this user
+            logs = await db.habit_logs.find(
+                {"habit_id": habit_id, "user_id": user_id, "completed": True},
+                {"value": 1}
+            ).to_list(length=None)
+            
+            accumulated_value = sum(log.get("value", 0) or 0 for log in logs)
+            total_checkins_for_user = len(logs)
+            
+            updates[f"goals.{user_id}.count_checkins"] = total_checkins_for_user
+            updates[f"goals.{user_id}.goal_progress"] = accumulated_value
+            
+            # Check if goal is completed (accumulated value >= target)
+            if accumulated_value >= goal_data.get("target_value", 0):
+                updates[f"goals.{user_id}.goal_status"] = GoalStatus.COMPLETED.value
+        else:
+            # For frequency goals or legacy completion goals, count check-ins
+            total_checkins_for_user = await db.habit_logs.count_documents({
+                "habit_id": habit_id,
+                "user_id": user_id,
+                "completed": True
+            })
+            
+            updates[f"goals.{user_id}.count_checkins"] = total_checkins_for_user
+            updates[f"goals.{user_id}.goal_progress"] = total_checkins_for_user
+
         # Compute total required for frequency/completion goals and persist it
-        goal_type = goal_data.get("goal_type")
         freq_count = goal_data.get("frequency_count")
         dur_count = goal_data.get("duration_count")
         total_required = None

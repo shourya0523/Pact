@@ -55,6 +55,7 @@ def format_goal_response(habit_id: str, user_id: str, habit: dict, user_goal: Us
         frequency_unit=user_goal.frequency_unit.value if user_goal.frequency_unit else None,
         duration_count=user_goal.duration_count,
         duration_unit=user_goal.duration_unit.value if user_goal.duration_unit else None,
+        target_value=user_goal.target_value,
         goal_progress=user_goal.goal_progress,
         count_checkins=user_goal.count_checkins,
         total_checkins_required=user_goal.total_checkins_required,
@@ -407,6 +408,7 @@ async def create_user_goal(
         frequency_unit=goal_data.frequency_unit,
         duration_count=goal_data.duration_count,
         duration_unit=goal_data.duration_unit,
+        target_value=goal_data.target_value,
         goal_start_date=datetime.utcnow(),
         goal_status=GoalStatus.ACTIVE,
         created_at=datetime.utcnow(),
@@ -457,7 +459,8 @@ async def create_user_goal_completion(
         frequency_count=None,
         frequency_unit=None,
         duration_count=None,
-        duration_unit=None
+        duration_unit=None,
+        target_value=goal_data.target_value
     )
 
     return await create_user_goal(

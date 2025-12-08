@@ -135,7 +135,7 @@ export default function ViewAllPartnerships() {
                 showMessage("Please log in again", "error")
                 return
             }
-
+            
             const response = await fetch(`${BASE_URL}/api/partnerships/requests/send?partner_username=${searchQuery.trim()}`, {
                 method: 'POST',
                 headers: {
@@ -168,7 +168,7 @@ export default function ViewAllPartnerships() {
                 showMessage("Please log in again", "error")
                 return
             }
-
+            
             const response = await fetch(`${BASE_URL}/api/partnerships/requests/${requestId}/accept`, {
                 method: 'POST',
                 headers: {
@@ -199,7 +199,7 @@ export default function ViewAllPartnerships() {
                 showMessage("Please log in again", "error")
                 return
             }
-
+            
             const response = await fetch(`${BASE_URL}/api/partnerships/requests/${requestId}/decline`, {
                 method: 'POST',
                 headers: {
@@ -240,7 +240,7 @@ export default function ViewAllPartnerships() {
                                 showMessage("Please log in again", "error")
                                 return
                             }
-
+                            
                             const response = await fetch(`${BASE_URL}/api/partnerships/${partnershipId}`, {
                                 method: 'DELETE',
                                 headers: {
@@ -274,8 +274,8 @@ export default function ViewAllPartnerships() {
             <View className="flex-1 relative" style={{backgroundColor: '#291133'}}>
                 <WhiteParticles />
                 <View className="flex-1 items-center justify-center">
-                    <ActivityIndicator size="large" color="#ffffff" />
-                    <Text className="text-white mt-4 font-wix">Loading partnerships...</Text>
+                <ActivityIndicator size="large" color="#ffffff" />
+                <Text className="text-white mt-4 font-wix">Loading partnerships...</Text>
                 </View>
             </View>
         )
@@ -323,18 +323,18 @@ export default function ViewAllPartnerships() {
                     transform: [{ translateY: slideAnim }]
                 }}
             >
-                <ScrollView 
-                    className="flex-1" 
+            <ScrollView 
+                className="flex-1" 
                     contentContainerStyle={{ 
                         paddingTop: 80,
                         paddingBottom: 120,
                         paddingHorizontal: 20
                     }}
-                    refreshControl={
+                refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />
-                    }
+                }
                     showsVerticalScrollIndicator={false}
-                >
+            >
                     {/* Title */}
                     <Text className="font-wix text-white text-[36px] text-center mb-8">
                         Partnerships
@@ -343,8 +343,8 @@ export default function ViewAllPartnerships() {
                     {/* Search Section */}
                     <View className="mb-6">
                         <Text className="font-wix text-white text-[18px] mb-3 ml-1">
-                            Find Partners
-                        </Text>
+                        Find Partners
+                    </Text>
                         <TextInput
                             className="w-full h-[56px] bg-white/90 rounded-2xl text-[16px] font-wix"
                             placeholder="Search by username..."
@@ -499,8 +499,8 @@ export default function ViewAllPartnerships() {
                                 </View>
                             ))
                         )}
-                    </View>
-                </ScrollView>
+                </View>
+            </ScrollView>
             </Animated.View>
             
             <HomeUI />

@@ -248,52 +248,52 @@ export default function HabitViews() {
                     transform: [{ translateY: slideAnim }]
                 }}
             >
-                <ScrollView 
-                    className="flex-1"
+            <ScrollView 
+                className="flex-1"
                     contentContainerStyle={{ 
                         paddingTop: 60,
                         paddingBottom: 120,
                         paddingHorizontal: 20
                     }}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                >
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
                     <View className="flex-row items-center justify-center mb-8">
                         <Text className="font-wix text-white text-[36px] text-center flex-1">All Habits</Text>
-                        <TouchableOpacity
-                            onPress={() => router.push('/screens/dashboard/HabitDrafts')}
+                    <TouchableOpacity
+                        onPress={() => router.push('/screens/dashboard/HabitDrafts')}
                             activeOpacity={0.8}
                             className="bg-white/20 rounded-full px-4 py-2 ml-2 border border-white/30"
-                        >
+                    >
                             <Text className="text-white text-xs font-wix">View Drafts</Text>
-                        </TouchableOpacity>
-                    </View>
+                    </TouchableOpacity>
+                </View>
 
                     {activeHabits.length > 0 ? (
                         <View className="gap-4 mb-6">
                             {activeHabits.map((habit) => (
-                                <TouchableOpacity
-                                    key={habit.id}
-                                    onPress={() => {
-                                        logger.log('Navigating to habit:', habit.id)
-                                        router.push({
-                                            pathname: '/screens/dashboard/HabitDetails',
-                                            params: { habitId: habit.id }
-                                        })
-                                    }}
-                                    activeOpacity={0.8}
-                                >
-                                    <HabitBox
-                                        title={habit.habit_name}
-                                        userProgress={habit.userProgress}
-                                        partnerProgress={habit.partnerProgress}
-                                        streak={habit.current_streak || 0}
+                            <TouchableOpacity
+                                key={habit.id}
+                                onPress={() => {
+                                    logger.log('Navigating to habit:', habit.id)
+                                    router.push({
+                                        pathname: '/screens/dashboard/HabitDetails',
+                                        params: { habitId: habit.id }
+                                    })
+                                }}
+                                activeOpacity={0.8}
+                            >
+                                <HabitBox
+                                    title={habit.habit_name}
+                                    userProgress={habit.userProgress}
+                                    partnerProgress={habit.partnerProgress}
+                                    streak={habit.current_streak || 0}
                                         leftAvatar={habit.userAvatar}
                                         rightAvatar={habit.partnerAvatar}
                                         userName={habit.userName}
                                         partnerName={habit.partnerName}
-                                    />
-                                </TouchableOpacity>
+                                />
+                            </TouchableOpacity>
                             ))}
                         </View>
                     ) : (
@@ -328,7 +328,7 @@ export default function HabitViews() {
                             </Text>
                         </TouchableOpacity>
                     )}
-                </ScrollView>
+            </ScrollView>
             </Animated.View>
             
             <HomeUI />

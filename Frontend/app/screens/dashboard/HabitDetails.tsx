@@ -334,142 +334,142 @@ export default function HabitDetails() {
                     transform: [{ translateY: slideAnim }]
                 }}
             >
-                <ScrollView
+            <ScrollView
                     className="flex-1"
                     contentContainerStyle={{
                         paddingTop: 80,
                         paddingBottom: 180,
                         paddingHorizontal: 20
                     }}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    refreshControl={
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                refreshControl={
                         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7"/>
-                    }
-                >
+                }
+            >
                     <Text className="font-wix text-white text-[36px] text-center mb-6">
-                        {habit.habit_name}
-                    </Text>
+                    {habit.habit_name}
+                </Text>
 
                     <View className="items-center justify-center mb-6">
-                        <HabitBox
-                            title={habit.habit_name}
-                            userProgress={getUserProgress()}
-                            partnerProgress={getPartnerProgress()}
-                            streak={habit.current_streak || 0}
+                    <HabitBox
+                        title={habit.habit_name}
+                        userProgress={getUserProgress()}
+                        partnerProgress={getPartnerProgress()}
+                        streak={habit.current_streak || 0}
                             leftAvatar={userAvatar}
                             rightAvatar={partnerAvatar}
                             userName={userName}
                             partnerName={partnerName}
-                        />
-                    </View>
+                    />
+                </View>
 
                     <View className="flex-row justify-center items-start gap-6 mb-6">
-                        {goals[0] && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    console.log('Navigating to goal:', goals[0].goal_name)
-                                    router.push({
-                                        pathname: '/screens/dashboard/GoalPage',
-                                        params: {
-                                            habitId: habitId,
-                                            userId: goals[0].user_id
-                                        }
-                                    })
-                                }}
-                                activeOpacity={0.8}
-                                className="flex-col items-center"
-                            >
-                                <ProgressCircle progress={goals[0].progress_percentage} size={80}/>
+                    {goals[0] && (
+                        <TouchableOpacity
+                            onPress={() => {
+                                console.log('Navigating to goal:', goals[0].goal_name)
+                                router.push({
+                                    pathname: '/screens/dashboard/GoalPage',
+                                    params: {
+                                        habitId: habitId,
+                                        userId: goals[0].user_id
+                                    }
+                                })
+                            }}
+                            activeOpacity={0.8}
+                            className="flex-col items-center"
+                        >
+                            <ProgressCircle progress={goals[0].progress_percentage} size={80}/>
                                 <View className="bg-white/10 rounded-2xl p-4 w-40 min-h-[112px] mt-4 justify-center items-center border border-white/20">
                                     <Text className="font-wix font-bold text-lg mb-2 text-center text-white">GOAL:</Text>
                                     <Text className="text-center text-sm text-white/80 font-wix">
-                                        {goals[0].goal_name}
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        )}
+                                    {goals[0].goal_name}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
-                        {goals.length > 1 && (
-                            <View
+                    {goals.length > 1 && (
+                        <View
                                 className="w-[1px] bg-white/20"
-                                style={{height: 240}}
-                            />
-                        )}
+                            style={{height: 240}}
+                        />
+                    )}
 
-                        {goals[1] && (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    console.log('Navigating to goal:', goals[1].goal_name)
-                                    router.push({
-                                        pathname: '/screens/dashboard/GoalPage',
-                                        params: {
-                                            habitId: habitId,
-                                            userId: goals[1].user_id
-                                        }
-                                    })
-                                }}
-                                activeOpacity={0.8}
-                                className="flex-col items-center"
-                            >
-                                <ProgressCircle progress={goals[1].progress_percentage} size={80}/>
+                    {goals[1] && (
+                        <TouchableOpacity
+                            onPress={() => {
+                                console.log('Navigating to goal:', goals[1].goal_name)
+                                router.push({
+                                    pathname: '/screens/dashboard/GoalPage',
+                                    params: {
+                                        habitId: habitId,
+                                        userId: goals[1].user_id
+                                    }
+                                })
+                            }}
+                            activeOpacity={0.8}
+                            className="flex-col items-center"
+                        >
+                            <ProgressCircle progress={goals[1].progress_percentage} size={80}/>
                                 <View className="bg-white/10 rounded-2xl p-4 w-40 min-h-[112px] mt-4 justify-center items-center border border-white/20">
                                     <Text className="font-wix font-bold text-lg mb-2 text-center text-white">GOAL:</Text>
                                     <Text className="text-center text-sm text-white/80 font-wix">
-                                        {goals[1].goal_name}
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        )}
+                                    {goals[1].goal_name}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
-                        {goals.length === 0 && (
+                    {goals.length === 0 && (
                             <View className="flex-col items-center py-8 bg-white/5 rounded-2xl w-full border border-white/10">
                                 <Text className="text-white/70 text-center font-wix">No goals set yet</Text>
                                 <Text className="text-white/50 text-sm text-center mt-2">
-                                    Add a goal to track progress!
-                                </Text>
-                            </View>
-                        )}
-                    </View>
+                                Add a goal to track progress!
+                            </Text>
+                        </View>
+                    )}
+                </View>
 
                     <View className="bg-white/10 rounded-2xl p-4 mb-6 border border-white/20">
                         <Text className="text-white text-center text-xl mb-4 font-wix">
-                            {getMonthName()}
-                        </Text>
+                        {getMonthName()}
+                    </Text>
                         <View className="flex-row flex-wrap justify-center gap-1">
-                            {Array.from({length: getDaysInMonth()}, (_, i) => {
-                                const day = i + 1
-                                const completionStatus = isDayCompleted(day)
-                                const dayColor = getDayColor(completionStatus)
+                        {Array.from({length: getDaysInMonth()}, (_, i) => {
+                            const day = i + 1
+                            const completionStatus = isDayCompleted(day)
+                            const dayColor = getDayColor(completionStatus)
 
-                                return (
-                                    <View
-                                        key={i}
+                            return (
+                                <View
+                                    key={i}
                                         className={`w-9 h-9 rounded-xl justify-center items-center ${dayColor} ${!completionStatus.completed ? 'border border-white/20' : ''}`}
-                                    >
+                                >
                                         <Text className={`font-semibold font-wix ${
                                             completionStatus.completed ? 'text-white' : 'text-white/60'
-                                        }`}>
-                                            {day}
-                                        </Text>
-                                    </View>
-                                )
-                            })}
-                        </View>
+                                    }`}>
+                                        {day}
+                                    </Text>
+                                </View>
+                            )
+                        })}
+                    </View>
 
-                        {/* Legend */}
-                        <View className="mt-4 flex-row justify-center items-center gap-4">
-                            <View className="flex-row items-center gap-2">
-                                <View className="w-6 h-6 rounded-lg bg-yellow-400"/>
+                    {/* Legend */}
+                    <View className="mt-4 flex-row justify-center items-center gap-4">
+                        <View className="flex-row items-center gap-2">
+                            <View className="w-6 h-6 rounded-lg bg-yellow-400"/>
                                 <Text className="text-white/70 text-xs font-wix">One Partner</Text>
-                            </View>
-                            <View className="flex-row items-center gap-2">
-                                <View className="w-6 h-6 rounded-lg bg-green-400"/>
+                        </View>
+                        <View className="flex-row items-center gap-2">
+                            <View className="w-6 h-6 rounded-lg bg-green-400"/>
                                 <Text className="text-white/70 text-xs font-wix">Both Partners</Text>
-                            </View>
                         </View>
                     </View>
-                </ScrollView>
+                </View>
+            </ScrollView>
             </Animated.View>
 
             <View className="absolute bottom-5 w-full px-5 items-center gap-3">
