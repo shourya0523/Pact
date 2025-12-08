@@ -366,6 +366,15 @@ export default function Profile() {
                             </View>
                         ))}
                     </View>
+
+                    {/* Settings Link */}
+                    <TouchableOpacity
+                        className="w-[90%] bg-white/85 rounded-2xl mt-6 px-6 py-4 flex-row items-center justify-between"
+                        onPress={() => router.push('/screens/dashboard/Settings')}
+                    >
+                        <Text className="text-gray-700 font-wix text-[16px]">Settings</Text>
+                        <Ionicons name="chevron-forward" size={24} color="#7C4DFF" />
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
 

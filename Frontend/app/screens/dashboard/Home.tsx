@@ -3,7 +3,7 @@ import { View, Text, Image, ActivityIndicator, ScrollView, RefreshControl, Alert
 import { useRouter } from "expo-router";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getBaseUrl } from "../../../config";
-import HomeUI from "../../components/common/ui/home-ui";
+import HomeUI from "@/components/ui/home-ui";
 import HabitSelect from "../../components/common/ui/habitSelect";
 import ProgressCheck from "../../components/common/ui/progressCheck";
 import PurpleParticles from "../../components/space/purpleStarsParticlesBackground";
@@ -243,7 +243,7 @@ export default function HomePage() {
             <Text className="text-white text-[28px] font-semibold">Check In</Text>
             <View className="flex-row justify-between items-center mb-3">
               <Text className="text-white text-[22px]">Today's Goals</Text>
-              <TouchableOpacity onPress={() => router.push('/screens/dashboard/HabitViews')}>
+              <TouchableOpacity onPress={() => router.push('/screens/dashboard/ViewAllGoals')}>
                 <Text className="text-gray-300 text-xs">View All</Text>
               </TouchableOpacity>
             </View>

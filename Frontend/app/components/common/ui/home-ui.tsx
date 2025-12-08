@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, View, TouchableOpacity, Platform, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { scaleSize } from '@/utils/constants';
 
 export default function HomeUI() {
@@ -40,6 +41,13 @@ export default function HomeUI() {
             source={require('app/images/home-ui/Stat.png')}
             style={{ width: iconSize, height: iconSize }}
             resizeMode="contain"
+            />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/screens/dashboard/ViewAllPartnerships')}>
+            <Ionicons 
+                name="people" 
+                size={iconSize} 
+                color="white" 
             />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.push('/screens/dashboard/Notifications')}>

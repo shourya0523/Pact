@@ -8,6 +8,7 @@ import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import BackwardButton from '@/components/ui/backwardButton'
 import { Ionicons } from '@expo/vector-icons'
 import { scaleFont, scaleSize } from '../../utils/constants'
+import { logger } from '../../utils/logger'
 
 interface HabitDraft {
     id: string;
@@ -38,7 +39,7 @@ export default function HabitDrafts() {
     )
 
     const fetchDrafts = async () => {
-        console.log('🚀 STARTING fetchDrafts')
+        logger.log('🚀 STARTING fetchDrafts')
         setLoading(true)
         try {
             const token = await AsyncStorage.getItem('access_token')
@@ -51,7 +52,7 @@ export default function HabitDrafts() {
             }
 
             const BASE_URL = await getBaseUrl()
-            console.log('🔍 Fetching drafts...')
+            logger.log('🔍 Fetching drafts...')
 
             const draftsResponse = await fetch(`${BASE_URL}/api/habits/drafts`, {
                 method: 'GET',
@@ -61,7 +62,7 @@ export default function HabitDrafts() {
                 }
             })
 
-            console.log('📡 Drafts response status:', draftsResponse.status)
+            logger.log('📡 Drafts response status:', draftsResponse.status)
 
             if (draftsResponse.status === 401) {
                 await AsyncStorage.clear()
@@ -71,17 +72,17 @@ export default function HabitDrafts() {
             }
 
             if (!draftsResponse.ok) {
-                console.error('❌ Failed to fetch drafts')
+                logger.error('❌ Failed to fetch drafts')
                 setDrafts([])
                 setLoading(false)
                 return
             }
 
             const draftsData = await draftsResponse.json()
-            console.log('✅ Fetched drafts:', draftsData)
+            logger.log('✅ Fetched drafts:', draftsData.length)
             setDrafts(draftsData)
         } catch (err) {
-            console.error('💥 Fetch drafts error:', err)
+            logger.error('💥 Fetch drafts error:', err)
             setDrafts([])
         } finally {
             setLoading(false)
@@ -119,7 +120,7 @@ export default function HabitDrafts() {
                                 Alert.alert("Error", "Failed to delete draft")
                             }
                         } catch (err) {
-                            console.error('Error deleting draft:', err)
+                            logger.error('Error deleting draft:', err)
                             Alert.alert("Error", "Failed to delete draft")
                         }
                     }
@@ -171,7 +172,7 @@ export default function HabitDrafts() {
                             >
                                 <TouchableOpacity
                                     onPress={() => {
-                                        console.log('Navigating to edit draft:', draft.id)
+                                        logger.log('Navigating to edit draft:', draft.id)
                                         router.push({
                                             pathname: '/screens/dashboard/createHabit',
                                             params: { draftId: draft.id }

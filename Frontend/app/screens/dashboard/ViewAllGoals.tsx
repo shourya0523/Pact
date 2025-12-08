@@ -8,6 +8,7 @@ import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
 import GoalBox from '@/components/ui/goalBox'
 import GreyButton from '@/components/ui/greyButton'
 import {Ionicons} from '@expo/vector-icons'
+import { logger } from '../../utils/logger'
 
 interface Goal {
     habit_id: string;
@@ -40,8 +41,6 @@ export default function ViewAllGoals() {
             }
 
             const BASE_URL = await getBaseUrl()
-            console.log('🔍 Fetching goals from:', `${BASE_URL}/api/users/me/goals`)
-            console.log('🔑 Token:', token.substring(0, 20) + '...')
 
             const response = await fetch(`${BASE_URL}/api/goals/users/me/goals`, {
                 method: 'GET',
@@ -50,8 +49,6 @@ export default function ViewAllGoals() {
                     'Content-Type': 'application/json'
                 }
             })
-
-            console.log('📡 Response status:', response.status)
 
             if (response.status === 401) {
                 await AsyncStorage.clear()
@@ -62,52 +59,63 @@ export default function ViewAllGoals() {
 
             if (response.ok) {
                 const data = await response.json()
-                console.log('✅ Fetched goals:', data)
-                console.log('📊 Number of goals:', data.length)
-
-                // Debug each goal
-                data.forEach((goal: any, index: number) => {
-                    console.log(`Goal ${index + 1}:`, {
-                        name: goal.habit_name,
-                        status: goal.goal_status,
-                        habit_id: goal.habit_id,
-                        current: goal.current_value,
-                        target: goal.target_value
-                    })
-                })
-
                 setGoals(data)
-
-                // Alert if no goals found
-                if (data.length === 0) {
-                    setTimeout(() => {
-                        Alert.alert(
-                            "No Goals Found",
-                            "You don't have any goals yet. Create one to get started!",
-                            [{text: "OK"}]
-                        )
-                    }, 500)
-                }
             } else {
                 const errorData = await response.json()
-                console.error('❌ Failed to fetch goals:', errorData)
                 Alert.alert("Error", errorData.detail || "Failed to fetch goals")
                 setGoals([])
             }
         } catch (err) {
-            console.error('💥 Fetch goals error:', err)
+            Alert.alert("Error", "Failed to load goals")
             setGoals([])
         } finally {
             setLoading(false)
         }
     }
 
+    const handleCheckIn = async (habitId: string) => {
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            
+            if (!token) {
+                Alert.alert("Not Authenticated", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            const BASE_URL = await getBaseUrl()
+            
+            const response = await fetch(`${BASE_URL}/api/habits/${habitId}/log`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ completed: true })
+            })
+
+            if (response.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            if (response.ok) {
+                Alert.alert("Checked In! ✅", "Great job! Keep up the momentum! 🔥")
+                fetchGoals()
+            } else {
+                const errorData = await response.json()
+                Alert.alert("Check-in Failed", errorData.detail || "Unable to check in. Please try again.")
+            }
+        } catch (err) {
+            logger.error('Check-in error:', err)
+            Alert.alert("Error", "Unable to check in.")
+        }
+    }
+
     const activeGoals = goals.filter(g => g.goal_status === 'active')
     const completedGoals = goals.filter(g => g.goal_status === 'completed')
-
-    console.log('📊 Total goals:', goals.length)
-    console.log('✅ Active goals:', activeGoals.length)
-    console.log('🎯 Completed goals:', completedGoals.length)
 
     if (loading) {
         return (
@@ -139,9 +147,8 @@ export default function ViewAllGoals() {
                         <TouchableOpacity
                             key={goal.habit_id}
                             onPress={() => {
-                                console.log('Navigating to goal:', goal.habit_id, goal.habit_name)
                                 router.push({
-                                    pathname: '/screens/dashboard/GoalDetails',
+                                    pathname: '/screens/dashboard/GoalPage',
                                     params: {habitId: goal.habit_id}
                                 })
                             }}
@@ -153,10 +160,7 @@ export default function ViewAllGoals() {
                                 currentValue={goal.current_value || 0}
                                 targetValue={goal.target_value || 0}
                                 progress_percentage={goal.progress_percentage || 0}
-                                onCheckIn={() => {
-                                    // TODO: Call your check-in API endpoint
-                                    console.log('Check in for goal:', goal.habit_id)
-                                }}
+                                onCheckIn={() => handleCheckIn(goal.habit_id)}
                                 onViewGoal={() => {
                                     router.push({
                                         pathname: '/screens/dashboard/HabitDetails',
@@ -167,26 +171,33 @@ export default function ViewAllGoals() {
                         </TouchableOpacity>
                     ))
                 ) : (
-                    <View className="py-8">
-                        <Text className="text-white/60 text-center text-lg">No active goals yet</Text>
-                        <Text className="text-white/40 text-center mt-2">Create your first goal below!</Text>
+                    <View className="py-12 px-6 items-center">
+                        <Text className="text-white/60 text-center text-lg mb-2">No goals yet</Text>
+                        <Text className="text-white/40 text-center text-sm mb-6">
+                            Create a habit first to set goals!
+                        </Text>
+                        <TouchableOpacity
+                            className="bg-white/50 rounded-full p-4 shadow-lg"
+                            onPress={() => router.push('/screens/dashboard/createHabit')}
+                        >
+                            <Ionicons name="add" size={32} color="white"/>
+                        </TouchableOpacity>
+                        <Text className="text-white/50 text-center text-xs mt-3">
+                            Create Habit
+                        </Text>
                     </View>
                 )}
 
                 {completedGoals.length > 0 && (
                     <GreyButton
                         text="COMPLETED GOALS"
-                        onPress={() => router.push('/screens/dashboard/CompletedGoals')}
+                        onPress={() => {
+                            // TODO: Implement completed goals screen
+                            Alert.alert("Coming Soon", "Completed goals view will be available soon!")
+                        }}
                         style={{width: '80%', backgroundColor: '#3E1B56', marginTop: 20}}
                     />
                 )}
-
-                <TouchableOpacity
-                    className="mt-6 bg-white/50 rounded-full p-4 shadow-lg"
-                    onPress={() => router.push('/screens/dashboard/createGoal')}
-                >
-                    <Ionicons name="add" size={32} color="white"/>
-                </TouchableOpacity>
             </View>
 
             <HomeUI/>

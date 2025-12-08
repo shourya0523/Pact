@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { View, Text, TextInput, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
@@ -9,9 +9,12 @@ import LightGreyButton from '@/components/ui/lightGreyButton'
 import PurpleButton from '@/components/ui/purpleButton'
 import GoalType from '@/components/popups/goal-set'
 import InvitePartners from '@/components/popups/invite-partner'
+import { logger } from '../../utils/logger'
 
 export default function StudyHabitCreation() {
     const router = useRouter()
+    const params = useLocalSearchParams()
+    const draftId = params.draftId as string | undefined
     
     const [habitName, setHabitName] = useState('')
     const [habitType, setHabitType] = useState<'build' | 'break'>('build')
@@ -21,7 +24,9 @@ export default function StudyHabitCreation() {
     const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null)
     const [selectedPartnerName, setSelectedPartnerName] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const [saving, setSaving] = useState(false)
     const [createdHabitId, setCreatedHabitId] = useState<string | null>(null)
+    const [isEditingDraft, setIsEditingDraft] = useState(false)
 
     const [goalPopupVisible, setGoalPopupVisible] = useState(false)
     const [goalType, setGoalType] = useState<'completion' | 'frequency' | null>(null)
@@ -29,8 +34,65 @@ export default function StudyHabitCreation() {
     const [goalSet, setGoalSet] = useState(false)
 
     useEffect(() => {
-        fetchPartnership()
-    }, [])
+        if (draftId) {
+            loadDraft()
+        } else {
+            fetchPartnership()
+        }
+    }, [draftId])
+
+    const loadDraft = async () => {
+        if (!draftId) return
+        
+        setLoading(true)
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            if (!token) {
+                Alert.alert("Not Authenticated", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            const BASE_URL = await getBaseUrl()
+            const response = await fetch(`${BASE_URL}/api/habits/drafts/${draftId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+
+            if (response.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            if (response.ok) {
+                const draftData = await response.json()
+                logger.log('📥 Loaded draft:', draftData)
+                
+                // Populate form with draft data
+                setHabitName(draftData.habit_name || '')
+                setHabitType(draftData.habit_type || 'build')
+                setDescription(draftData.description || '')
+                setFrequency(draftData.frequency || 'daily')
+                setIsEditingDraft(true)
+                
+                // Note: Partner info might not be in draft (drafts don't require partners)
+                // User can still add/change partner when converting to active habit
+            } else {
+                Alert.alert("Error", "Failed to load draft.")
+                router.back()
+            }
+        } catch (err) {
+            logger.error('Error loading draft:', err)
+            Alert.alert("Error", "Failed to load draft.")
+            router.back()
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const fetchPartnership = async () => {
         try {
@@ -46,117 +108,292 @@ export default function StudyHabitCreation() {
                 }
             })
 
+            if (response.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
             if (response.ok) {
                 const data = await response.json()
-                console.log('Partnership data:', data)
+                logger.log('Partnership data:', data)
                 if (data && data.id) {
                     setPartnershipId(data.id)
-                    console.log('Partnership ID set:', data.id)
+                    logger.log('Partnership ID set:', data.id)
                 }
             } else {
-                console.log('No partnership found')
+                logger.log('No partnership found')
             }
         } catch (err) {
-            console.error('Error fetching partnership:', err)
+            logger.error('Error fetching partnership:', err)
+        }
+    }
+
+    // Validation function to check all required fields
+    const validateFields = (): { isValid: boolean; missingFields: string[] } => {
+        const missingFields: string[] = []
+        
+        if (!habitName.trim()) {
+            missingFields.push("Habit Name")
+        }
+        
+        if (!selectedPartnerId) {
+            missingFields.push("Partner")
+        }
+        
+        // Description and goal are optional, so we don't check them
+        
+        return {
+            isValid: missingFields.length === 0,
+            missingFields
         }
     }
 
     const handleCreate = async () => {
-    if (!habitName.trim()) {
-        Alert.alert("Missing Habit Name", "Please enter a habit name.")
-        return
-    }
+        console.log('🔵 handleCreate called', { habitName, selectedPartnerId, loading, saving })
+        
+        // Validate all required fields
+        const validation = validateFields()
+        if (!validation.isValid) {
+            const missingList = validation.missingFields.join(", ")
+            Alert.alert(
+                "Incomplete Form",
+                `Please complete the following fields:\n\n${validation.missingFields.map(f => `• ${f}`).join('\n')}`,
+                [{ text: "OK" }]
+            )
+            return
+        }
 
-    if (!selectedPartnerId) {
-        Alert.alert("No Partner Selected", "Please invite a partner before creating the habit.")
-        return
-    }
+        if (loading || saving) {
+            console.log('⏸️ Already loading/saving, ignoring click')
+            return
+        }
 
-    setLoading(true)
+        setLoading(true)
+        console.log('🔄 Starting habit creation...')
 
-    try {
-        const token = await AsyncStorage.getItem('access_token')
+        try {
+            const token = await AsyncStorage.getItem('access_token')
         
         if (!token) {
-            Alert.alert("Not Authenticated", "Please log in again.")
-            router.replace("/screens/auth/LoginScreen")
-            return
-        }
-
-        const BASE_URL = await getBaseUrl()
-        
-        // First, find the partnership_id between current user and selected partner
-        const partnershipsResponse = await fetch(`${BASE_URL}/api/partnerships/all`, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
+                Alert.alert("Not Authenticated", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                setLoading(false)
+                return
             }
-        })
 
-        if (!partnershipsResponse.ok) {
-            Alert.alert("Error", "Unable to find partnership.")
-            setLoading(false)
-            return
-        }
-
-        const partnerships = await partnershipsResponse.json()
-        const partnership = partnerships.find((p: any) => p.partner_id === selectedPartnerId)
-
-        if (!partnership) {
-            Alert.alert("Error", "Partnership not found with selected partner.")
-            setLoading(false)
-            return
-        }
-
-        // Now create the habit with the partnership_id
-        const habitData = {
-            habit_name: habitName.trim(),
-            habit_type: habitType,
-            category: 'productivity',
-            description: description.trim() || undefined,
-            frequency: frequency,
-            partnership_id: partnership.partnership_id
-        }
-
-        console.log('Creating habit with data:', habitData)
-
-        const response = await fetch(`${BASE_URL}/api/habits`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(habitData)
-        })
-
-        const data = await response.json()
-        console.log('Response:', data)
-
-        if (response.ok) {
-            console.log('✅ Habit created successfully:', data)
-            setCreatedHabitId(data.id)
+            const BASE_URL = await getBaseUrl()
             
-            Alert.alert(
-                "Habit Created! ✅",
-                `"${habitName}" has been created and sent to ${selectedPartnerName} for approval!`,
-                [{
-                    text: "View Habits",
-                    onPress: () => router.replace("./screens/dashboard/habitViews")
-                }]
-            )
-        } else {
-            console.error('Creation failed:', data)
-            Alert.alert("Creation Failed", data.detail || "Unable to create habit.")
-        }
-    } catch (err: any) {
-        console.error('Habit creation error:', err)
-        Alert.alert("Error", "Unable to create habit. Please check your connection.")
-    } finally {
-        setLoading(false)
-    }
-}
+            // First, find the partnership_id between current user and selected partner
+            let partnershipsResponse
+            try {
+                partnershipsResponse = await fetch(`${BASE_URL}/api/partnerships/all`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    }
+                })
+            } catch (err: any) {
+                logger.error('Network error fetching partnerships:', err)
+                Alert.alert("Network Error", "Unable to connect. Please check your connection.")
+                setLoading(false)
+                return
+            }
 
-    const handleSave = () => {
-        Alert.alert("Draft Saved", "Habit saved as draft (feature coming soon!)")
+            if (partnershipsResponse.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                setLoading(false)
+                return
+            }
+
+            if (!partnershipsResponse.ok) {
+                const errorData = await partnershipsResponse.json().catch(() => ({}))
+                logger.error('Failed to fetch partnerships:', errorData)
+                Alert.alert("Error", errorData.detail || "Unable to find partnership.")
+                setLoading(false)
+                return
+            }
+
+            const partnerships = await partnershipsResponse.json()
+            const partnership = partnerships.find((p: any) => p.partner_id === selectedPartnerId)
+
+            if (!partnership) {
+                Alert.alert("Error", "Partnership not found with selected partner.")
+                setLoading(false)
+                return
+            }
+
+            // Now create the habit with the partnership_id
+            const habitData = {
+                habit_name: habitName.trim(),
+                habit_type: habitType,
+                category: 'productivity',
+                description: description.trim() || undefined,
+                frequency: frequency,
+                partnership_id: partnership.partnership_id
+            }
+
+            logger.log('Creating habit with data:', habitData)
+
+            const response = await fetch(`${BASE_URL}/api/habits`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(habitData)
+            })
+
+            if (response.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                setLoading(false)
+                return
+            }
+
+            const data = await response.json()
+            logger.log('Response:', data)
+
+            if (response.ok) {
+                logger.log('✅ Habit created successfully:', data)
+                setCreatedHabitId(data.id)
+                
+                // If this was created from a draft, delete the draft and reset state
+                if (isEditingDraft && draftId) {
+                    try {
+                        await fetch(`${BASE_URL}/api/habits/drafts/${draftId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                            }
+                        })
+                        // Reset draft editing state after successful deletion
+                        setIsEditingDraft(false)
+                    } catch (err) {
+                        logger.error('Error deleting draft after creation:', err)
+                        // Don't fail the whole operation if draft deletion fails
+                        setIsEditingDraft(false)
+                    }
+                }
+                
+                // Navigate directly to all habits screen after successful creation
+                // The habit will appear in the list (pending approval)
+                router.replace("/screens/dashboard/HabitViews")
+            } else {
+                logger.error('Creation failed:', data)
+                Alert.alert("Creation Failed", data.detail || "Unable to create habit.")
+            }
+        } catch (err: any) {
+            console.error('❌ Habit creation error:', err)
+            logger.error('Habit creation error:', err)
+            const errorMessage = err?.message || err?.toString() || "Unable to create habit. Please check your connection."
+            Alert.alert("Error", errorMessage)
+        } finally {
+            console.log('✅ handleCreate finished, setting loading to false')
+            setLoading(false)
+        }
+    }
+
+    const handleSave = async () => {
+        // Only require habit name for draft (partner is optional for drafts)
+        if (!habitName.trim()) {
+            Alert.alert("Missing Habit Name", "Please enter a habit name to save as draft.")
+            return
+        }
+
+        if (loading || saving) {
+            return
+        }
+
+        setSaving(true)
+        console.log('💾 Saving as draft...')
+
+        try {
+            const token = await AsyncStorage.getItem('access_token')
+            
+            if (!token) {
+                Alert.alert("Not Authenticated", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            const BASE_URL = await getBaseUrl()
+            
+            const draftData = {
+                habit_name: habitName.trim(),
+                habit_type: habitType,
+                category: 'productivity',
+                description: description.trim() || undefined,
+                frequency: frequency,
+                // Note: partnership_id is intentionally omitted for drafts
+            }
+
+            // Check if draft still exists before attempting update
+            // If draftId exists but isEditingDraft is false, it means draft was deleted
+            // (e.g., after creating habit from draft), so create new draft instead
+            const shouldUpdate = isEditingDraft && draftId
+            
+            logger.log(shouldUpdate ? 'Updating draft:' : 'Creating draft:', draftData)
+
+            const url = shouldUpdate
+                ? `${BASE_URL}/api/habits/drafts/${draftId}`
+                : `${BASE_URL}/api/habits/drafts`
+            
+            const method = shouldUpdate ? 'PUT' : 'POST'
+
+            const response = await fetch(url, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(draftData)
+            })
+
+            if (response.status === 401) {
+                await AsyncStorage.clear()
+                Alert.alert("Session Expired", "Please log in again.")
+                router.replace("/screens/auth/LoginScreen")
+                return
+            }
+
+            const data = await response.json()
+
+            if (response.ok) {
+                logger.log('✅ Draft saved successfully:', data)
+                
+                // Update draftId if this was a new draft (so we can update it later)
+                if (!isEditingDraft && data.id) {
+                    // Note: We can't update the route params, but the draft is saved
+                    // User can continue editing and it will update the existing draft
+                }
+                
+                Alert.alert(
+                    "Draft Saved! ✅",
+                    isEditingDraft 
+                        ? "Your draft has been updated."
+                        : "Your habit has been saved as a draft. You can continue editing or create it later.",
+                    [{
+                        text: "OK",
+                        onPress: () => router.back()
+                    }]
+                )
+            } else {
+                logger.error('Draft save failed:', data)
+                Alert.alert("Save Failed", data.detail || "Unable to save draft.")
+            }
+        } catch (err: any) {
+            console.error('❌ Draft save error:', err)
+            logger.error('Draft save error:', err)
+            const errorMessage = err?.message || err?.toString() || "Unable to save draft. Please check your connection."
+            Alert.alert("Error", errorMessage)
+        } finally {
+            console.log('✅ handleSave finished')
+            setSaving(false)
+        }
     }
 
     return (
@@ -185,16 +422,23 @@ export default function StudyHabitCreation() {
                 showsVerticalScrollIndicator={false}
             >
                 <View className="flex-1 justify-center items-center">
-                <Text className="font-wix text-white text-[38px] mt-12 text-center">Create Habit</Text>
-                <TextInput
-                    className="w-[80%] h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix mt-12"
-                    placeholder="Study everyday"
-                    placeholderTextColor="#3F414E"
-                    style={{ paddingHorizontal: 20 }}
-                    value={habitName}
-                    onChangeText={setHabitName}
-                    editable={!loading}
-                />
+                <Text className="font-wix text-white text-[38px] mt-12 text-center">
+                    {isEditingDraft ? 'Edit Draft' : 'Create Habit'}
+                </Text>
+                <View className="w-[80%] mt-12">
+                    <Text className="font-wix text-white text-[16px] mb-2">
+                        Habit Name <Text className="text-red-400">*</Text>
+                    </Text>
+                    <TextInput
+                        className="h-[50px] bg-white/85 rounded-[15px] text-[16px] font-wix"
+                        placeholder="Study everyday"
+                        placeholderTextColor="#3F414E"
+                        style={{ paddingHorizontal: 20 }}
+                        value={habitName}
+                        onChangeText={setHabitName}
+                        editable={!loading && !saving}
+                    />
+                </View>
                 <Text className="font-wix text-white text-[24px] text-center mt-4">Habit Type</Text>
                 <View className="flex-row justify-center space-x-8 mt-4">
                     <LightGreyButton 
@@ -237,7 +481,7 @@ export default function StudyHabitCreation() {
                         {selectedPartnerName ? (
                             <View className="items-center">
                                 <Text className="font-wix text-white text-[24px] text-center mt-4 mb-2">
-                                Add Partner!
+                                    Add Partner! <Text className="text-red-400">*</Text>
                                 </Text>
                                 <Text className="font-wix text-green-400 text-[16px] text-center mt-4 mb-4">
                                     ✓ {selectedPartnerName} added as partner
@@ -246,7 +490,7 @@ export default function StudyHabitCreation() {
                         ) : (
                             <>
                                 <Text className="font-wix text-white text-[24px] text-center mt-4 mb-4">
-                                Add Partner!
+                                    Add Partner! <Text className="text-red-400">*</Text>
                                 </Text>
                                 <PurpleButton 
                                     onPress={() => setInvitePopupVisible(true)}
@@ -305,18 +549,26 @@ export default function StudyHabitCreation() {
                 </View>
                 <View className="flex-row justify-center mt-20 mb-10">
                     <GreyButton
-                        onPress={handleCreate}
+                        onPress={() => {
+                            console.log('🔘 CREATE button pressed', { loading, saving, habitName, selectedPartnerId })
+                            handleCreate()
+                        }}
                         text={loading ? "CREATING..." : "CREATE"}
+                        disabled={loading || saving}
                         style={{ marginRight: 14, width: '200px', height: '65px' }}
                     />
                     <GreyButton
-                        onPress={handleSave}
-                        text="SAVE"
-                        style={{ width: '200px', height: '65px'}}
+                        onPress={() => {
+                            console.log('🔘 SAVE button pressed', { loading, saving })
+                            handleSave()
+                        }}
+                        text={saving ? "SAVING..." : "SAVE"}
+                        disabled={loading || saving}
+                        style={{ width: '200px', height: '65px' }}
                     />
                 </View>
                 
-                {loading && (
+                {(loading || saving) && (
                     <ActivityIndicator size="large" color="#ffffff" />
                 )}
                 </View>
@@ -325,7 +577,7 @@ export default function StudyHabitCreation() {
                 visible={goalPopupVisible}
                 onClose={() => setGoalPopupVisible(false)}
                 onSelect={(type) => {
-                    console.log('🎯 Goal type selected:', type)
+                    logger.log('🎯 Goal type selected:', type)
                     setGoalType(type)
                     setGoalPopupVisible(false)
                     // Note: Navigation to goal screen will happen after habit creation
@@ -338,7 +590,7 @@ export default function StudyHabitCreation() {
                 onSelectPartner={(partnerId, partnerName) => {
                 setSelectedPartnerId(partnerId);
                 setSelectedPartnerName(partnerName);
-                console.log('Partner selected:', partnerName, partnerId);
+                logger.log('Partner selected:', partnerName, partnerId);
                 }}
             />
         </KeyboardAvoidingView>

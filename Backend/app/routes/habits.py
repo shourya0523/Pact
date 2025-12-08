@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import List
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.routes.auth import get_current_user
+from app.models.user import UserResponse
 
 router = APIRouter(prefix="/habits", tags=["Habits"])
 security = HTTPBearer()
@@ -70,15 +71,31 @@ async def create_habit(
         credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
     """
-    Create new habit for partnership - Requires partner approval
-    Habit will be in PENDING_APPROVAL status until partner approves
+    Create new habit for partnership.
+    Habits become ACTIVE immediately (no partner approval flow).
     """
     db = get_database()
     user_id = await get_current_user_id(credentials)
 
+    # Validate partnership_id is provided
+    if not habit.partnership_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Partnership ID is required"
+        )
+
+    # Validate and convert partnership_id to ObjectId
+    try:
+        partnership_object_id = ObjectId(habit.partnership_id)
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid partnership ID format"
+        )
+
     # Verify partnership exists and user is part of it
     partnership = await db.partnerships.find_one({
-        "_id": ObjectId(habit.partnership_id),
+        "_id": partnership_object_id,
         "$or": [
             {"user_id_1": ObjectId(user_id)},
             {"user_id_2": ObjectId(user_id)}
@@ -92,11 +109,11 @@ async def create_habit(
             detail="Partnership not found or inactive"
         )
 
-    # Create habit with PENDING_APPROVAL status
-    habit_data = habit.model_dump()
+    # Create habit with ACTIVE status (no approval required)
+    habit_data = habit.model_dump(mode='json')
     habit_data["created_by"] = user_id
-    habit_data["status"] = HabitStatus.PENDING_APPROVAL.value
-    habit_data["approved_by"] = None
+    habit_data["status"] = HabitStatus.ACTIVE.value
+    habit_data["approved_by"] = user_id  # creator is implicitly the approver
     habit_data["count_checkins"] = 0
     habit_data["created_at"] = datetime.utcnow()
     habit_data["updated_at"] = datetime.utcnow()
@@ -112,29 +129,11 @@ async def create_habit(
 async def get_pending_habits(
         credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Get habits waiting for current user's approval"""
-    db = get_database()
-    user_id = await get_current_user_id(credentials)
-
-    # Find user's partnerships
-    partnerships = await db.partnerships.find({
-        "$or": [
-            {"user_id_1": ObjectId(user_id)},
-            {"user_id_2": ObjectId(user_id)}
-        ],
-        "status": "active"
-    }).to_list(100)
-
-    partnership_ids = [str(p["_id"]) for p in partnerships]
-
-    # Get pending habits where current user is NOT the creator
-    habits = await db.habits.find({
-        "partnership_id": {"$in": partnership_ids},
-        "status": HabitStatus.PENDING_APPROVAL.value,
-        "created_by": {"$ne": user_id}
-    }).to_list(100)
-
-    return [format_habit_response(habit) for habit in habits]
+    """
+    Pending approval flow removed.
+    This endpoint now returns an empty list for backward compatibility.
+    """
+    return []
 
 
 @router.get("", response_model=List[HabitResponse])
@@ -268,58 +267,13 @@ async def approve_habit(
         habit_id: str,
         credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Approve a pending habit"""
-    db = get_database()
-    user_id = await get_current_user_id(credentials)
-
-    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-
-    if not habit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Habit not found"
-        )
-
-    # Verify user is part of partnership
-    partnership = await db.partnerships.find_one({
-        "_id": ObjectId(habit["partnership_id"]),
-        "$or": [
-            {"user_id_1": ObjectId(user_id)},
-            {"user_id_2": ObjectId(user_id)}
-        ]
-    })
-
-    if not partnership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    if habit["created_by"] == user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot approve your own habit"
-        )
-
-    if habit["status"] != HabitStatus.PENDING_APPROVAL.value:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Habit is not pending approval"
-        )
-
-    # Approve habit
-    await db.habits.update_one(
-        {"_id": ObjectId(habit_id)},
-        {
-            "$set": {
-                "status": HabitStatus.ACTIVE.value,
-                "approved_by": user_id,
-                "updated_at": datetime.utcnow()
-            }
-        }
+    """
+    Deprecated: approval flow removed. Habits are active immediately.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Approval flow removed. Habits are active immediately."
     )
-
-    return {"message": "Habit approved", "habit_id": habit_id}
 
 
 @router.post("/{habit_id}/reject")
@@ -327,60 +281,24 @@ async def reject_habit(
         habit_id: str,
         credentials: HTTPAuthorizationCredentials = Depends(security)
 ):
-    """Reject a pending habit (deletes it)"""
-    db = get_database()
-    user_id = await get_current_user_id(credentials)
-
-    habit = await db.habits.find_one({"_id": ObjectId(habit_id)})
-
-    if not habit:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Habit not found"
-        )
-
-    # Verify user is part of partnership
-    partnership = await db.partnerships.find_one({
-        "_id": ObjectId(habit["partnership_id"]),
-        "$or": [
-            {"user_id_1": ObjectId(user_id)},
-            {"user_id_2": ObjectId(user_id)}
-        ]
-    })
-
-    if not partnership:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Access denied"
-        )
-
-    if habit["created_by"] == user_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot reject your own habit"
-        )
-
-    if habit["status"] != HabitStatus.PENDING_APPROVAL.value:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Habit is not pending approval"
-        )
-
-    # Delete the rejected habit
-    await db.habits.delete_one({"_id": ObjectId(habit_id)})
-
-    return {"message": "Habit rejected and deleted", "habit_id": habit_id}
+    """
+    Deprecated: approval flow removed. Habits are active immediately.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Approval flow removed. Habits are active immediately."
+    )
 
 
 # Draft routes
 @router.post("/drafts", response_model=HabitResponse, status_code=status.HTTP_201_CREATED)
 async def create_habit_draft(
         habit_data: HabitCreate,
-        current_user: dict = Depends(get_current_user),
+        current_user: UserResponse = Depends(get_current_user),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Create a habit draft (status = DRAFT)"""
-    habit_dict = habit_data.model_dump(exclude_none=True)
+    habit_dict = habit_data.model_dump(exclude_none=True, mode='json')
     habit_dict["created_by"] = current_user.id
     habit_dict["status"] = HabitStatus.DRAFT.value
     habit_dict["partnership_id"] = None
@@ -395,7 +313,7 @@ async def create_habit_draft(
 
 @router.get("/drafts", response_model=List[HabitResponse])
 async def get_user_drafts(
-        current_user: dict = Depends(get_current_user),
+        current_user: UserResponse = Depends(get_current_user),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get all draft habits for the authenticated user"""
@@ -410,7 +328,7 @@ async def get_user_drafts(
 @router.get("/drafts/{draft_id}", response_model=HabitResponse)
 async def get_draft(
         draft_id: str,
-        current_user: dict = Depends(get_current_user),
+        current_user: UserResponse = Depends(get_current_user),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Get a specific draft by ID"""
@@ -439,7 +357,7 @@ async def get_draft(
 async def update_habit_draft(
         draft_id: str,
         habit_data: HabitUpdate,
-        current_user: dict = Depends(get_current_user),
+        current_user: UserResponse = Depends(get_current_user),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Update an existing habit draft"""
@@ -461,7 +379,7 @@ async def update_habit_draft(
             detail="Draft not found"
         )
 
-    update_dict = habit_data.model_dump(exclude_none=True)
+    update_dict = habit_data.model_dump(exclude_none=True, mode='json')
     update_dict["updated_at"] = datetime.utcnow()
 
     await db.habits.update_one(
@@ -476,7 +394,7 @@ async def update_habit_draft(
 @router.delete("/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_habit_draft(
         draft_id: str,
-        current_user: dict = Depends(get_current_user),
+        current_user: UserResponse = Depends(get_current_user),
         db: AsyncIOMotorDatabase = Depends(get_database)
 ):
     """Delete a habit draft"""
@@ -558,13 +476,14 @@ async def add_partner_to_habit(
             detail="No active partnership found with this user"
         )
     
-    # Update habit with partnership_id
+    # Update habit with partnership_id (habit remains ACTIVE)
     await db.habits.update_one(
         {"_id": ObjectId(habit_id)},
         {
             "$set": {
                 "partnership_id": str(partnership["_id"]),
-                "status": HabitStatus.PENDING_APPROVAL.value,  # Needs partner approval
+                "status": HabitStatus.ACTIVE.value,
+                "approved_by": habit["created_by"],  # creator implicitly approves
                 "updated_at": datetime.utcnow()
             }
         }
@@ -575,5 +494,5 @@ async def add_partner_to_habit(
         "message": "Partner added to habit",
         "habit_id": habit_id,
         "partnership_id": str(partnership["_id"]),
-        "status": "pending_approval"
+        "status": HabitStatus.ACTIVE.value
     }

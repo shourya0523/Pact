@@ -27,7 +27,7 @@ class HabitCategory(str, Enum):
 class HabitFrequency(str, Enum):
     DAILY = "daily"
     WEEKLY = "weekly"
-    MONTH = "month"
+    MONTHLY = "monthly"
     # CUSTOM = "custom"
 
 
@@ -42,6 +42,7 @@ class HabitBase(BaseModel):
     habit_type: HabitType
     category: HabitCategory
     description: Optional[str] = None
+    frequency: HabitFrequency = Field(default=HabitFrequency.DAILY)
     streak: int = Field(default=0)  # NEW
     # Per-user goals embedded in habit
     goals: Dict[str, UserGoal] = Field(

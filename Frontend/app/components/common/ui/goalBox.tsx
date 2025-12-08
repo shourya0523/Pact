@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 
 interface GoalBoxProps {
     title: string
-    progress: number
+    progress_percentage?: number
     currentValue: number
     targetValue: number
     onCheckIn?: () => void

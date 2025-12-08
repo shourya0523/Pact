@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
+import { View, Text, TextInput, ActivityIndicator, ScrollView, TouchableOpacity, RefreshControl, Alert } from 'react-native'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { getBaseUrl } from '../../../config'
 import BackwardButton from '@/components/ui/backwardButton'
 import WhiteParticles from 'app/components/space/whiteStarsParticlesBackground'
+import HomeUI from '@/components/ui/home-ui'
+import { logger } from '../../utils/logger'
 
 interface PendingRequest {
     request_id: string
@@ -72,7 +74,7 @@ export default function ViewAllPartnerships() {
 
             if (requestsResponse.ok) {
                 const requestsData = await requestsResponse.json()
-                console.log('Pending requests:', requestsData)
+                logger.log('Pending requests:', requestsData.length)
                 setPendingRequests(requestsData)
             }
 
@@ -85,12 +87,12 @@ export default function ViewAllPartnerships() {
 
             if (partnersResponse.ok) {
                 const partnersData = await partnersResponse.json()
-                console.log('Current partners:', partnersData)
+                logger.log('Current partners:', partnersData.length)
                 setCurrentPartners(partnersData)
             }
 
         } catch (err: any) {
-            console.error('Error fetching partnerships:', err)
+            logger.error('Error fetching partnerships:', err)
             showMessage("Unable to load partnerships data", "error")
         } finally {
             setLoading(false)
@@ -138,7 +140,7 @@ export default function ViewAllPartnerships() {
             }
 
         } catch (err: any) {
-            console.error('Error sending request:', err)
+            logger.error('Error sending request:', err)
             showMessage("Unable to send request", "error")
         } finally {
             setSendingRequest(false)
@@ -173,7 +175,7 @@ export default function ViewAllPartnerships() {
             }
 
         } catch (err: any) {
-            console.error('Error accepting request:', err)
+            logger.error('Error accepting request:', err)
             showMessage("Unable to accept request", "error")
         }
     }
@@ -204,44 +206,56 @@ export default function ViewAllPartnerships() {
             }
 
         } catch (err: any) {
-            console.error('Error declining request:', err)
+            logger.error('Error declining request:', err)
             showMessage("Unable to decline request", "error")
         }
     }
 
     const handleRemovePartner = async (partnershipId: string, username: string) => {
-        const confirmed = confirm(`Are you sure you want to remove ${username}?`)
-        
-        if (confirmed) {
-            try {
-                const token = await AsyncStorage.getItem('access_token')
-                
-                if (!token) {
-                    showMessage("Please log in again", "error")
-                    return
-                }
+        Alert.alert(
+            "Remove Partner",
+            `Are you sure you want to remove ${username}?`,
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                },
+                {
+                    text: "Remove",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            const token = await AsyncStorage.getItem('access_token')
+                            
+                            if (!token) {
+                                showMessage("Please log in again", "error")
+                                return
+                            }
 
-                const BASE_URL = await getBaseUrl()
-                
-                const response = await fetch(`${BASE_URL}/api/partnerships/${partnershipId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
+                            const BASE_URL = await getBaseUrl()
+                            
+                            const response = await fetch(`${BASE_URL}/api/partnerships/${partnershipId}`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                }
+                            })
+
+                            if (response.ok) {
+                                showMessage(`${username} removed`, "success")
+                                fetchData()
+                            } else {
+                                showMessage("Unable to remove partner", "error")
+                            }
+
+                        } catch (err: any) {
+                            logger.error('Error removing partner:', err)
+                            showMessage("Unable to remove partner", "error")
+                        }
                     }
-                })
-
-                if (response.ok) {
-                    showMessage(`${username} removed`, "success")
-                    fetchData()
-                } else {
-                    showMessage("Unable to remove partner", "error")
                 }
-
-            } catch (err: any) {
-                console.error('Error removing partner:', err)
-                showMessage("Unable to remove partner", "error")
-            }
-        }
+            ]
+        )
     }
 
     const getInitial = (name: string) => {
@@ -457,6 +471,8 @@ export default function ViewAllPartnerships() {
                     </View>
                 </View>
             </ScrollView>
+            
+            <HomeUI />
         </View>
     )
 }
