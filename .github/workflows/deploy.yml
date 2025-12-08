@@ -1,0 +1,32 @@
+name: deploy.yml
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Get secrets from AWS Secrets Manager
+        id: secrets
+        run: |
+          # Get SSH key
+          echo "$(aws secretsmanager get-secret-value --secret-id pact/ec2/ssh-key --query SecretString --output text | jq -r '.ec2_private_key')" > ssh_key.pem
+          chmod 600 ssh_key.pem
+          # Get EC2 config
+          export EC2_HOST=$(aws secretsmanager get-secret-value --secret-id pact/ec2/config --query SecretString --output text | jq -r '.ec2_host')
+          export EC2_USER=$(aws secretsmanager get-secret-value --secret-id pact/ec2/config --query SecretString --output text | jq -r '.ec2_user')
+          
+          echo "EC2_HOST=$EC2_HOST" >>$GITHUB_ENV
+          echo "EC2_USER=$EC2_USER" >> $GITHUB_ENV
+      - name: Deploy to EC2
+        run: |
+          ssh -i ssh_key.pem -o StrictHostKeyChecking=no ${{ env.EC2_USER }}@${{ env.EC2_HOST }} << 'EOF'
+            cd Pact
+            git pull origin main
+            docker-compose down
+            docker-compose up -d --build
+            docker logs pact-backend
+          EOF
